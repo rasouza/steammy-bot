@@ -1,4 +1,4 @@
-import { Entity, EntityRepositoryType, ManyToOne, PrimaryKey, Property } from '@mikro-orm/core'
+import { Entity, EntityRepositoryType, ManyToOne, PrimaryKey, PrimaryKeyProp } from '@mikro-orm/core'
 import { EntityRepository } from '@mikro-orm/sqlite'
 
 import { CustomBaseEntity } from './BaseEntity'
@@ -13,14 +13,16 @@ export class Subscription extends CustomBaseEntity {
 
 	[EntityRepositoryType]?: SubscriptionRepository
 
+	@PrimaryKey({ autoincrement: false })
+    id: string
+
 	@PrimaryKey()
-    id: number
+		platform: string
 
-	@Property()
-    channel: string
-
-	@ManyToOne()
+	@ManyToOne({ primary: true })
     guild!: Guild
+
+	[PrimaryKeyProp]?: ['id', 'platform', 'guild']
 
 }
 

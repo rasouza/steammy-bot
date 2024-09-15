@@ -14,15 +14,15 @@ enum PlatformChoices {
 @Discord()
 @Injectable()
 @Category('Gaming')
-export default class SubscribeCommand {
+export default class UnsubscribeCommand {
 
 	constructor(
 		private subscription: Subscription
 	) {}
 
-	@Slash({ name: 'subscribe', description: 'Subscribe for gaming offer news from platforms like Gamepass, Epic, etc.' })
+	@Slash({ name: 'unsubscribe', description: 'Remove subscription from gaming platforms' })
 	@Guard()
-	async subscribe(
+	async unsubscribe(
 		@SlashChoice({
 			name: PlatformChoices.XboxGamepass,
 			value: PlatformChoices.XboxGamepass,
@@ -31,7 +31,7 @@ export default class SubscribeCommand {
 			value: PlatformChoices.EpicGames,
 		})
 		@SlashOption({
-			description: 'Pick a platform to subscribe',
+			description: 'Pick a platform to unsubscribe',
 			name: 'platform',
 			required: true,
 			type: ApplicationCommandOptionType.String,
@@ -42,12 +42,12 @@ export default class SubscribeCommand {
 		const { channel, guild } = interaction
 		try {
 			if (guild && channel && channel.type === ChannelType.GuildText) {
-				await this.subscription.add(platform, channel, guild)
-				interaction.followUp(`**#${channel.name}** subscribed to **${platform}** news`)
+				await this.subscription.remove(platform, channel, guild)
+				interaction.followUp(`**#${channel.name}** unsubscribed from **${platform}** news`)
 			}
 		} catch (error: any) {
 			if (error instanceof SubscriptionAlreadyExists) {
-				interaction.followUp(`This channel is already subscribed to **${platform}** news`)
+				interaction.followUp(`This channel is already subscribed to ${platform} news`)
 			}
 		}
 	}

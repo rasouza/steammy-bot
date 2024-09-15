@@ -41,8 +41,12 @@ export class Database {
 			// create migration if no one is present in the migrations folder
 			const pendingMigrations = await migrator.getPendingMigrations()
 			const executedMigrations = await migrator.getExecutedMigrations()
+			const needMigration = await migrator.checkMigrationNeeded()
 			if (pendingMigrations.length === 0 && executedMigrations.length === 0)
 				await migrator.createInitialMigration()
+
+			if (needMigration)
+				await migrator.createMigration()
 
 			// migrate to the latest migration
 			await this._orm.getMigrator().up()
