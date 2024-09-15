@@ -14,6 +14,7 @@ export class Subscription extends CustomBaseEntity {
 	[EntityRepositoryType]?: SubscriptionRepository
 	[PrimaryKeyProp]?: ['id', 'platform', 'guild']
 
+	// Discord Channel ID
 	@PrimaryKey({ autoincrement: false })
     id: string
 

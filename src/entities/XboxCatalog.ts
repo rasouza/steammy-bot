@@ -44,4 +44,8 @@ export class XboxCatalog extends CustomBaseEntity {
 
 export class XboxCatalogRepository extends EntityRepository<XboxCatalog> {
 
+	async fetchNotBroadcasted() {
+		return await this.find({ broadcasted: false })
+	}
+
 }

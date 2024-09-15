@@ -8,7 +8,9 @@ export * from './Scheduler'
 export * from './Pastebin'
 export * from './PluginsManager'
 export * from './EventManager'
+export * from './GameEmbed'
 
 export * from './Subscription'
+export * from './Broadcast'
 
 export * from './Platforms/Xbox'
