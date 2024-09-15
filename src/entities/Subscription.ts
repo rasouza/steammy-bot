@@ -12,6 +12,7 @@ import { Guild } from './Guild'
 export class Subscription extends CustomBaseEntity {
 
 	[EntityRepositoryType]?: SubscriptionRepository
+	[PrimaryKeyProp]?: ['id', 'platform', 'guild']
 
 	@PrimaryKey({ autoincrement: false })
     id: string
@@ -21,8 +22,6 @@ export class Subscription extends CustomBaseEntity {
 
 	@ManyToOne({ primary: true })
     guild!: Guild
-
-	[PrimaryKeyProp]?: ['id', 'platform', 'guild']
 
 }
 

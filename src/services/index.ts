@@ -10,3 +10,5 @@ export * from './PluginsManager'
 export * from './EventManager'
 
 export * from './Subscription'
+
+export * from './Platforms/Xbox'

@@ -91,3 +91,11 @@ type APIConfigType = {
 	enabled: boolean
 	port: number
 }
+
+type XboxConfigType = {
+	apiUrl: string
+	market: string
+	language: string
+	gameTypeId: string
+	hydration: string
+}

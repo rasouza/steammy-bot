@@ -20,6 +20,7 @@
           "primary": false,
           "nullable": false,
           "length": 0,
+          "default": "CURRENT_TIMESTAMP",
           "mappedType": "datetime"
         },
         "updated_at": {
@@ -30,6 +31,7 @@
           "primary": false,
           "nullable": false,
           "length": 0,
+          "default": "CURRENT_TIMESTAMP",
           "mappedType": "datetime"
         },
         "value": {
@@ -77,6 +79,7 @@
           "primary": false,
           "nullable": false,
           "length": 0,
+          "default": "CURRENT_TIMESTAMP",
           "mappedType": "datetime"
         },
         "updated_at": {
@@ -87,6 +90,7 @@
           "primary": false,
           "nullable": false,
           "length": 0,
+          "default": "CURRENT_TIMESTAMP",
           "mappedType": "datetime"
         },
         "prefix": {
@@ -153,6 +157,7 @@
           "primary": false,
           "nullable": false,
           "length": 0,
+          "default": "CURRENT_TIMESTAMP",
           "mappedType": "datetime"
         },
         "updated_at": {
@@ -163,6 +168,7 @@
           "primary": false,
           "nullable": false,
           "length": 0,
+          "default": "CURRENT_TIMESTAMP",
           "mappedType": "datetime"
         },
         "file_name": {
@@ -403,6 +409,7 @@
           "primary": false,
           "nullable": false,
           "length": 0,
+          "default": "CURRENT_TIMESTAMP",
           "mappedType": "datetime"
         },
         "updated_at": {
@@ -413,6 +420,7 @@
           "primary": false,
           "nullable": false,
           "length": 0,
+          "default": "CURRENT_TIMESTAMP",
           "mappedType": "datetime"
         }
       },
@@ -474,6 +482,7 @@
           "primary": false,
           "nullable": false,
           "length": 0,
+          "default": "CURRENT_TIMESTAMP",
           "mappedType": "datetime"
         },
         "updated_at": {
@@ -484,6 +493,7 @@
           "primary": false,
           "nullable": false,
           "length": 0,
+          "default": "CURRENT_TIMESTAMP",
           "mappedType": "datetime"
         },
         "last_interact": {
@@ -498,6 +508,119 @@
         }
       },
       "name": "user",
+      "indexes": [
+        {
+          "keyName": "primary",
+          "columnNames": [
+            "id"
+          ],
+          "composite": false,
+          "primary": true,
+          "unique": true
+        }
+      ],
+      "checks": [],
+      "foreignKeys": {}
+    },
+    {
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "mappedType": "text"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "datetime",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": 0,
+          "default": "CURRENT_TIMESTAMP",
+          "mappedType": "datetime"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "datetime",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": 0,
+          "default": "CURRENT_TIMESTAMP",
+          "mappedType": "datetime"
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "mappedType": "text"
+        },
+        "price": {
+          "name": "price",
+          "type": "integer",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "mappedType": "integer"
+        },
+        "size": {
+          "name": "size",
+          "type": "integer",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "mappedType": "integer"
+        },
+        "developer": {
+          "name": "developer",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "mappedType": "text"
+        },
+        "image": {
+          "name": "image",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "mappedType": "text"
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "mappedType": "text"
+        },
+        "broadcasted": {
+          "name": "broadcasted",
+          "type": "integer",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "default": "false",
+          "mappedType": "integer"
+        }
+      },
+      "name": "xbox_catalog",
       "indexes": [
         {
           "keyName": "primary",

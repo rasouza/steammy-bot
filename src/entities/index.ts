@@ -8,3 +8,4 @@ export * from './Image'
 export * from './Pastebin'
 
 export * from './Subscription'
+export * from './XboxCatalog'
