@@ -4,13 +4,14 @@ import { Client } from 'discordx'
 import { delay, inject } from 'tsyringe'
 
 import { Schedule, Service } from '@/decorators'
-import { Subscription, SubscriptionRepository, XboxCatalog, XboxCatalogRepository } from '@/entities'
+import { EpicCatalog, EpicCatalogRepository, Subscription, SubscriptionRepository, XboxCatalog, XboxCatalogRepository } from '@/entities'
 import { Database, GameEmbed, Logger } from '@/services'
 
 @Service()
 export class Broadcast {
 
 	private xboxRepository: XboxCatalogRepository
+	private epicRepository: EpicCatalogRepository
 	private subscriptionRepository: SubscriptionRepository
 
 	constructor(
@@ -20,45 +21,74 @@ export class Broadcast {
     @inject(delay(() => Client)) private client: Client
 
 	) {
-		this.logger.console('Service Broadcast invoked !', 'info')
 		this.xboxRepository = this.db.get(XboxCatalog)
+		this.epicRepository = this.db.get(EpicCatalog)
 		this.subscriptionRepository = this.db.get(Subscription)
 	}
 
-	@Schedule('* * * * *')
+	@Schedule('10 * * * *')
 	async gamepass() {
 		const games = await this.xboxRepository.fetchNotBroadcasted()
+		if (games.length === 0) return
+
 		this.logger.console(`Broadcasting ${games.length} new games for ${chalk.bold.green('Xbox Game Pass')}`, 'info')
-		try {
-			games.forEach(async (game) => {
-				await this.send(game)
+
+		for (const game of games) {
+			try {
+				await this.send('New game available on **Xbox Game Pass**', game)
 				game.broadcasted = true
-			})
+			} catch (error: unknown) {
+				if (error instanceof Error) {
+					this.logger.console(error.message, 'error')
+				}
 
-			await this.xboxRepository.flush()
-		} catch (error) {
-
+				continue
+			}
 		}
+
+		await this.xboxRepository.flush()
 	}
 
-	// TODO: Define type of games
-	private async send(game: any) {
+	@Schedule('10 * * * *')
+	async epic() {
+		const games = await this.epicRepository.fetchNotBroadcasted()
+		if (games.length === 0) return
+
+		this.logger.console(`Broadcasting ${games.length} new games for ${chalk.bold.green('Epic Games')}`, 'info')
+
+		for (const game of games) {
+			try {
+				await this.send('New game available on **Epic Games**', game)
+				game.broadcasted = true
+			} catch (error: unknown) {
+				if (error instanceof Error) {
+					this.logger.console(error.message, 'error')
+				}
+
+				continue
+			}
+		}
+
+		await this.epicRepository.flush()
+	}
+
+	private async send(message: string, game: Game) {
 		const subscriptions = await this.subscriptionRepository.findAll()
 
 		const embed = this.embed.build(game)
 		// TODO: Abstract to other Game platforms
 		const content: WebhookMessageCreateOptions = {
-			content: 'New game available on Xbox Game Pass',
+			content: message,
 			embeds: [embed],
 		}
 
-		subscriptions.forEach(async (subscription) => {
+		for (const subscription of subscriptions) {
 			const channel = await this.client.channels.fetch(subscription.id)
 
 			if (channel?.isTextBased()) {
 				await channel.send(content)
 			}
-		})
+		}
 	}
 
 }

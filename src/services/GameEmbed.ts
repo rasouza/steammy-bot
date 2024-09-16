@@ -8,15 +8,14 @@ const MAX_LENGTH = 300
 @Service()
 export class GameEmbed {
 
-	// TODO: Define type of games
-	build(game: any) {
+	build(game: Game) {
 		const builder = new EmbedBuilder()
 		const fields = []
 		const { title, developer, description, price, size, image } = game
 
 		builder.setTitle(title)
 		builder.setDescription(this.truncate(description))
-		if (image) builder.setImage(image)
+		if (image) builder.setImage(encodeURI(image))
 
 		if (price) fields.push({ name: 'Price', value: `$${price / 100}` })
 		if (size) fields.push({ name: 'Size', value: filesize(size) })
