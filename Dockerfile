@@ -78,3 +78,5 @@ FROM node:20.11-alpine as runner
 
     # finaly start the bot
     CMD ["npm", "run", "start"]
+
+    EXPOSE 4000
