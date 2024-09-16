@@ -40,6 +40,8 @@ export class Xbox {
 		const gameIds = await this.fetchAllIds()
 		const gameList = await this.enrichGameCatalog(gameIds)
 
+		this.logger.console(`Fetched ${gameList.length} games from ${chalk.bold.green('Xbox Game Pass')}`, 'info')
+
 		return gameList.map(game => merge(game, gamePlaceholder, MAPPER_SCHEMA))
 	}
 
@@ -66,8 +68,6 @@ export class Xbox {
 
 			return list
 		}, [])
-
-		this.logger.console(`Fetched ${chalk.bold.green('Xbox')} catalog: ${gameIds.length} entries`, 'info')
 
 		return gameIds
 	}

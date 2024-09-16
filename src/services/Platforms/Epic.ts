@@ -1,4 +1,5 @@
 import axios from 'axios'
+import chalk from 'chalk'
 import { merge } from 'object-mapper'
 
 import { epicConfig } from '@/configs'
@@ -70,13 +71,11 @@ export class Epic {
 	}
 
 	async fetchGames(): Promise<Game[]> {
-		// Placeholder is to ensure type safety when merging
-		let gamePlaceholder: GameWithOffer
-
 		const gameList = await this.fetchCatalog()
-		const games = gameList.map(game => merge(game, gamePlaceholder, MAPPER_SCHEMA))
 
-		return games.reduce((list: Game[], game) => {
+		const games = gameList.reduce((list: Game[], gameEntry) => {
+			const game = merge(gameEntry, MAPPER_SCHEMA) as GameWithOffer
+
 			if (game.offer.upcoming && game.offer.discount === 0) {
 				// Remove offer property
 				const { offer: _, ...gameWithoutOffer } = game
@@ -85,9 +84,13 @@ export class Epic {
 
 			return list
 		}, [])
+
+		this.logger.console(`Fetched ${games.length} games from ${chalk.bold.green('Epic Games')}`, 'info')
+
+		return games
 	}
 
-	@Schedule('* * * * *')
+	@Schedule('0 * * * *')
 	async sync() {
 		const games = await this.fetchGames()
 
