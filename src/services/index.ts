@@ -14,3 +14,4 @@ export * from './Subscription'
 export * from './Broadcast'
 
 export * from './Platforms/Xbox'
+export * from './Platforms/Epic'

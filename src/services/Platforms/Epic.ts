@@ -1,0 +1,107 @@
+import axios from 'axios'
+import { merge } from 'object-mapper'
+
+import { epicConfig } from '@/configs'
+import { Schedule, Service } from '@/decorators'
+import { EpicCatalog, EpicCatalogRepository } from '@/entities'
+import { Database, Logger } from '@/services'
+
+const isDeveloper = (item: any) => item.key === 'developerName'
+const isThumbnail = (item: any) => item.type === 'Thumbnail'
+const isEmpty = (element: object) => element?.constructor === Object && Object.keys(element).length === 0
+
+const MAPPER_SCHEMA = {
+	'title': 'title',
+	'id': 'id',
+	'description': 'description',
+	'price.totalPrice.originalPrice': 'price',
+	'promotions.promotionalOffers[0].promotionalOffers[0].startDate':
+    'offer.startDate',
+	'promotions.promotionalOffers[0].promotionalOffers[0].endDate':
+    'offer.endDate',
+	'promotions.upcomingPromotionalOffers[0].promotionalOffers[0].startDate':
+		'offer.startDate',
+	'promotions.upcomingPromotionalOffers[0].promotionalOffers[0].endDate':
+		'offer.endDate',
+	'promotions.upcomingPromotionalOffers[0].promotionalOffers[0].discountSetting.discountPercentage':
+		'offer.discount',
+	'promotions': {
+		key: 'offer.upcoming',
+		transform: (value: any) => {
+			const { promotionalOffers, upcomingPromotionalOffers } = value || {}
+			if (isEmpty(promotionalOffers) && isEmpty(upcomingPromotionalOffers))
+				return
+
+			return upcomingPromotionalOffers?.length > 0
+		},
+	},
+	'customAttributes[]': {
+		key: 'developer',
+		transform(value: any) {
+			if (Array.isArray(value)) {
+				const developer = value.filter(isDeveloper)
+				if (developer.length > 0) {
+					return developer[0].value
+				}
+			}
+		},
+	},
+	'keyImages[]': {
+		key: 'image',
+		transform: (value: any) => {
+			if (isEmpty(value)) return
+			const image = value.filter(isThumbnail)[0]?.url
+
+			return image
+		},
+	},
+}
+
+@Service()
+export class Epic {
+
+	private epicRepository: EpicCatalogRepository
+
+	constructor(
+		private logger: Logger,
+		private db: Database
+	) {
+		this.epicRepository = this.db.get(EpicCatalog)
+	}
+
+	async fetchGames(): Promise<Game[]> {
+		// Placeholder is to ensure type safety when merging
+		let gamePlaceholder: GameWithOffer
+
+		const gameList = await this.fetchCatalog()
+		const games = gameList.map(game => merge(game, gamePlaceholder, MAPPER_SCHEMA))
+
+		return games.reduce((list: Game[], game) => {
+			if (game.offer.upcoming && game.offer.discount === 0) {
+				// Remove offer property
+				const { offer: _, ...gameWithoutOffer } = game
+				list.push(gameWithoutOffer)
+			}
+
+			return list
+		}, [])
+	}
+
+	@Schedule('* * * * *')
+	async sync() {
+		const games = await this.fetchGames()
+
+		// FIXME: On later version of MikroORM, it's possible to omit the offer property
+		this.epicRepository.upsertMany(games)
+
+		await this.epicRepository.flush()
+	}
+
+	private async fetchCatalog(): Promise<EpicGame[]> {
+		const { apiUrl } = epicConfig
+		const { data }: { data: FreeGamesPromotionApiResponse } = await axios.get(`${apiUrl}/freeGamesPromotions`)
+
+		return data.data.Catalog.searchStore.elements
+	}
+
+}

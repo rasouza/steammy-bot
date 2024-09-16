@@ -99,3 +99,7 @@ type XboxConfigType = {
 	gameTypeId: string
 	hydration: string
 }
+
+type EpicConfigType = {
+	apiUrl: string
+}

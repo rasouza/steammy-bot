@@ -3,7 +3,7 @@ import chalk from 'chalk'
 import { merge } from 'object-mapper'
 
 import { xboxConfig } from '@/configs'
-import { Service } from '@/decorators'
+import { Schedule, Service } from '@/decorators'
 import { XboxCatalog, XboxCatalogRepository } from '@/entities'
 import { Database, Logger } from '@/services'
 
@@ -30,22 +30,25 @@ export class Xbox {
 		private logger: Logger,
 		private db: Database
 	) {
-		this.logger.console('Service Broadcast invoked !', 'info')
 		this.xboxRepository = this.db.get(XboxCatalog)
 	}
 
-	async fetchAllGames() {
+	async fetchGames(): Promise<Game[]> {
+		// Placeholder is to ensure type safety when merging
+		let gamePlaceholder: Game
+
 		const gameIds = await this.fetchAllIds()
 		const gameList = await this.enrichGameCatalog(gameIds)
-		await this.sync(gameList)
+
+		return gameList.map(game => merge(game, gamePlaceholder, MAPPER_SCHEMA))
 	}
 
-	async sync(gameList: XboxGame[]) {
-		// TODO: Define type of games
-		const games = gameList.map(game => merge(game, MAPPER_SCHEMA))
-
+	@Schedule('0 * * * *')
+	async sync() {
+		const games = await this.fetchGames()
 		this.xboxRepository.upsertMany(games)
-		this.xboxRepository.flush()
+
+		await this.xboxRepository.flush()
 	}
 
 	private async fetchAllIds() {
@@ -69,7 +72,7 @@ export class Xbox {
 		return gameIds
 	}
 
-	private async enrichGameCatalog(gameIds: string[]) {
+	private async enrichGameCatalog(gameIds: string[]): Promise<XboxGame[]> {
 		const { apiUrl, language, market, hydration } = xboxConfig
 
 		const body = {
