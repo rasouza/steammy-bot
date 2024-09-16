@@ -22,7 +22,7 @@ export default class PlaygroundCommand {
 	async playground(
 		interaction: CommandInteraction
 	) {
-		await this.xbox.fetchAllGames()
+		await this.xbox.sync()
 		interaction.followUp('playground command invoked!')
 	}
 
