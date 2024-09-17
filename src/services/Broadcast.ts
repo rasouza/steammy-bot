@@ -3,15 +3,15 @@ import { WebhookMessageCreateOptions } from 'discord.js'
 import { Client } from 'discordx'
 import { delay, inject } from 'tsyringe'
 
+import { GamePlatform } from '@/constants'
 import { Schedule, Service } from '@/decorators'
-import { EpicCatalog, EpicCatalogRepository, Subscription, SubscriptionRepository, XboxCatalog, XboxCatalogRepository } from '@/entities'
+import { GameCatalog, GameCatalogRepository, Subscription, SubscriptionRepository } from '@/entities'
 import { Database, GameEmbed, Logger } from '@/services'
 
 @Service()
 export class Broadcast {
 
-	private xboxRepository: XboxCatalogRepository
-	private epicRepository: EpicCatalogRepository
+	private gameRepository: GameCatalogRepository
 	private subscriptionRepository: SubscriptionRepository
 
 	constructor(
@@ -21,14 +21,13 @@ export class Broadcast {
     @inject(delay(() => Client)) private client: Client
 
 	) {
-		this.xboxRepository = this.db.get(XboxCatalog)
-		this.epicRepository = this.db.get(EpicCatalog)
+		this.gameRepository = this.db.get(GameCatalog)
 		this.subscriptionRepository = this.db.get(Subscription)
 	}
 
 	@Schedule('10 * * * *')
 	async gamepass() {
-		const games = await this.xboxRepository.fetchNotBroadcasted()
+		const games = await this.gameRepository.fetchNotBroadcasted(GamePlatform.XBOX)
 		if (games.length === 0) return
 
 		this.logger.console(`Broadcasting ${games.length} new games for ${chalk.bold.green('Xbox Game Pass')}`, 'info')
@@ -46,12 +45,12 @@ export class Broadcast {
 			}
 		}
 
-		await this.xboxRepository.flush()
+		await this.gameRepository.flush()
 	}
 
 	@Schedule('10 * * * *')
 	async epic() {
-		const games = await this.epicRepository.fetchNotBroadcasted()
+		const games = await this.gameRepository.fetchNotBroadcasted(GamePlatform.EPIC)
 		if (games.length === 0) return
 
 		this.logger.console(`Broadcasting ${games.length} new games for ${chalk.bold.green('Epic Games')}`, 'info')
@@ -69,10 +68,11 @@ export class Broadcast {
 			}
 		}
 
-		await this.epicRepository.flush()
+		await this.gameRepository.flush()
 	}
 
 	private async send(message: string, game: Game) {
+		// FIXME: Need to filter by platform
 		const subscriptions = await this.subscriptionRepository.findAll()
 
 		const embed = this.embed.build(game)

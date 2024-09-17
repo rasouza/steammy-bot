@@ -1,15 +1,11 @@
 import { Category } from '@discordx/utilities'
 import { ApplicationCommandOptionType, ChannelType, CommandInteraction } from 'discord.js'
 
+import { GamePlatform, GamePlatformName } from '@/constants'
 import { Discord, Injectable, Slash, SlashChoice, SlashOption } from '@/decorators'
 import { SubscriptionAlreadyExists } from '@/errors'
 import { Guard } from '@/guards'
 import { Subscription } from '@/services'
-
-enum PlatformChoices {
-	XboxGamepass = 'Xbox Game Pass',
-	EpicGames = 'Epic Games'
-}
 
 @Discord()
 @Injectable()
@@ -24,11 +20,11 @@ export default class UnsubscribeCommand {
 	@Guard()
 	async unsubscribe(
 		@SlashChoice({
-			name: PlatformChoices.XboxGamepass,
-			value: PlatformChoices.XboxGamepass,
+			name: 'Epic Games',
+			value: GamePlatform.EPIC,
 		}, {
-			name: PlatformChoices.EpicGames,
-			value: PlatformChoices.EpicGames,
+			name: 'Xbox Game Pass',
+			value: GamePlatform.XBOX,
 		})
 		@SlashOption({
 			description: 'Pick a platform to unsubscribe',
@@ -36,18 +32,19 @@ export default class UnsubscribeCommand {
 			required: true,
 			type: ApplicationCommandOptionType.String,
 		})
-		platform: string,
+		platform: typeof GamePlatform[keyof typeof GamePlatform],
 		interaction: CommandInteraction
 	) {
 		const { channel, guild } = interaction
 		try {
 			if (guild && channel && channel.type === ChannelType.GuildText) {
 				await this.subscription.remove(platform, channel, guild)
-				interaction.followUp(`**#${channel.name}** unsubscribed from **${platform}** news`)
+				interaction.followUp(`**#${channel.name}** unsubscribed from **${GamePlatformName[platform]}** news`)
 			}
-		} catch (error: any) {
+		} catch (error) {
+			// FIXME: This error will never happen
 			if (error instanceof SubscriptionAlreadyExists) {
-				interaction.followUp(`This channel is already subscribed to ${platform} news`)
+				interaction.followUp(`This channel is already subscribed to ${GamePlatformName[platform]} news`)
 			}
 		}
 	}

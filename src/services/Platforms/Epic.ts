@@ -4,7 +4,7 @@ import { merge } from 'object-mapper'
 
 import { epicConfig } from '@/configs'
 import { Schedule, Service } from '@/decorators'
-import { EpicCatalog, EpicCatalogRepository } from '@/entities'
+import { GameCatalog, GameCatalogRepository } from '@/entities'
 import { Database, Logger } from '@/services'
 
 const isDeveloper = (item: any) => item.key === 'developerName'
@@ -56,18 +56,22 @@ const MAPPER_SCHEMA = {
 			return image
 		},
 	},
+	'nonExistentField': {
+		key: 'platform',
+		transform: () => 'epic',
+	},
 }
 
 @Service()
 export class Epic {
 
-	private epicRepository: EpicCatalogRepository
+	private gameRepository: GameCatalogRepository
 
 	constructor(
 		private logger: Logger,
 		private db: Database
 	) {
-		this.epicRepository = this.db.get(EpicCatalog)
+		this.gameRepository = this.db.get(GameCatalog)
 	}
 
 	async fetchGames(): Promise<Game[]> {
@@ -77,7 +81,8 @@ export class Epic {
 			const game = merge(gameEntry, MAPPER_SCHEMA) as GameWithOffer
 
 			if (game.offer.upcoming && game.offer.discount === 0) {
-				// FIXME: Remove offer property for MikrORM upsert. On later version of MikroORM, it's possible to omit the offer property
+				// FIXME: Remove offer property for MikrORM upsert.
+				// On later version of MikroORM, it's possible to omit the offer property
 				const { offer: _, ...gameWithoutOffer } = game
 				list.push(gameWithoutOffer)
 			}
@@ -85,7 +90,7 @@ export class Epic {
 			return list
 		}, [])
 
-		this.logger.console(`Fetched ${games.length} games from ${chalk.bold.green('Epic Games')}`, 'info')
+		this.logger.console(`[Epic Game API] Fetched ${games.length} games from ${chalk.bold.green('Epic Games')}`, 'info')
 
 		return games
 	}
@@ -94,9 +99,9 @@ export class Epic {
 	async sync() {
 		const games = await this.fetchGames()
 
-		this.epicRepository.upsertMany(games)
+		this.gameRepository.upsertMany(games)
 
-		await this.epicRepository.flush()
+		await this.gameRepository.flush()
 	}
 
 	private async fetchCatalog(): Promise<EpicGame[]> {

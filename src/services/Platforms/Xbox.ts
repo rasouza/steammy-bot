@@ -4,7 +4,7 @@ import { merge } from 'object-mapper'
 
 import { xboxConfig } from '@/configs'
 import { Schedule, Service } from '@/decorators'
-import { XboxCatalog, XboxCatalogRepository } from '@/entities'
+import { GameCatalog, GameCatalogRepository } from '@/entities'
 import { Database, Logger } from '@/services'
 
 const MAPPER_SCHEMA = {
@@ -19,18 +19,22 @@ const MAPPER_SCHEMA = {
 	},
 	'ApproximateSizeInBytes': 'size',
 	'ProductDescription': 'description',
+	'nonExistentField': {
+		key: 'platform',
+		transform: () => 'xbox',
+	},
 }
 
 @Service()
 export class Xbox {
 
-	private xboxRepository: XboxCatalogRepository
+	private gameRepository: GameCatalogRepository
 
 	constructor(
 		private logger: Logger,
 		private db: Database
 	) {
-		this.xboxRepository = this.db.get(XboxCatalog)
+		this.gameRepository = this.db.get(GameCatalog)
 	}
 
 	async fetchGames(): Promise<Game[]> {
@@ -48,9 +52,9 @@ export class Xbox {
 	@Schedule('0 * * * *')
 	async sync() {
 		const games = await this.fetchGames()
-		this.xboxRepository.upsertMany(games)
+		this.gameRepository.upsertMany(games)
 
-		await this.xboxRepository.flush()
+		await this.gameRepository.flush()
 	}
 
 	private async fetchAllIds() {
@@ -69,6 +73,8 @@ export class Xbox {
 			return list
 		}, [])
 
+		this.logger.console(`[Xbox API] Fetched ${chalk.bold.green(gameIds.length)} IDs`, 'info')
+
 		return gameIds
 	}
 
@@ -86,6 +92,8 @@ export class Xbox {
 			},
 		}
 		const { data } = await axios.post(`${apiUrl}/products`, body, params)
+
+		this.logger.console(`[Xbox API] Enriched catalog for ${chalk.bold.green(gameIds.length)} IDs`, 'info')
 
 		const gameList: XboxGame[] = Object.values(data.Products)
 

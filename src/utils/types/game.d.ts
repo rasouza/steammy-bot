@@ -6,6 +6,7 @@ type Game = {
 	image?: string
 	price?: number
 	size?: number
+	platform: string
 }
 
 type GameWithOffer = Game & {

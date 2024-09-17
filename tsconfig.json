@@ -56,7 +56,9 @@
 
 			"@/api/server": ["src/api/server.ts"],
 
-			"@/env": ["src/utils/types/environment.ts"]
+			"@/env": ["src/utils/types/environment.ts"],
+			"@/constants": ["src/utils/types/constants.ts"],
+
 		}
 	},
 
