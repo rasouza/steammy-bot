@@ -3,7 +3,7 @@ import { WebhookMessageCreateOptions } from 'discord.js'
 import { Client } from 'discordx'
 import { delay, inject } from 'tsyringe'
 
-import { GamePlatform } from '@/constants'
+import { GamePlatform, GamePlatformName } from '@/constants'
 import { Schedule, Service } from '@/decorators'
 import { GameCatalog, GameCatalogRepository, Subscription, SubscriptionRepository } from '@/entities'
 import { Database, GameEmbed, Logger } from '@/services'
@@ -27,56 +27,18 @@ export class Broadcast {
 
 	@Schedule('10 * * * *')
 	async gamepass() {
-		const games = await this.gameRepository.fetchNotBroadcasted(GamePlatform.XBOX)
-		if (games.length === 0) return
-
-		this.logger.console(`Broadcasting ${games.length} new games for ${chalk.bold.green('Xbox Game Pass')}`, 'info')
-
-		for (const game of games) {
-			try {
-				await this.send('New game available on **Xbox Game Pass**', game)
-				game.broadcasted = true
-			} catch (error: unknown) {
-				if (error instanceof Error) {
-					this.logger.console(error.message, 'error')
-				}
-
-				continue
-			}
-		}
-
-		await this.gameRepository.flush()
+		await this.broadcastGames(GamePlatform.XBOX)
 	}
 
 	@Schedule('10 * * * *')
 	async epic() {
-		const games = await this.gameRepository.fetchNotBroadcasted(GamePlatform.EPIC)
-		if (games.length === 0) return
-
-		this.logger.console(`Broadcasting ${games.length} new games for ${chalk.bold.green('Epic Games')}`, 'info')
-
-		for (const game of games) {
-			try {
-				await this.send('New game available on **Epic Games**', game)
-				game.broadcasted = true
-			} catch (error: unknown) {
-				if (error instanceof Error) {
-					this.logger.console(error.message, 'error')
-				}
-
-				continue
-			}
-		}
-
-		await this.gameRepository.flush()
+		await this.broadcastGames(GamePlatform.EPIC)
 	}
 
 	private async send(message: string, game: Game) {
-		// FIXME: Need to filter by platform
-		const subscriptions = await this.subscriptionRepository.findAll()
+		const subscriptions = await this.subscriptionRepository.find({ platform: game.platform })
 
 		const embed = this.embed.build(game)
-		// TODO: Abstract to other Game platforms
 		const content: WebhookMessageCreateOptions = {
 			content: message,
 			embeds: [embed],
@@ -89,6 +51,28 @@ export class Broadcast {
 				await channel.send(content)
 			}
 		}
+	}
+
+	private async broadcastGames(platform: typeof GamePlatform[keyof typeof GamePlatform]) {
+		const games = await this.gameRepository.fetchNotBroadcasted(platform)
+		if (games.length === 0) return
+
+		this.logger.console(`Broadcasting ${games.length} new games for ${chalk.bold.green(GamePlatformName[platform])}`, 'info')
+
+		for (const game of games) {
+			try {
+				await this.send(`New game available on **${GamePlatformName[platform]}**`, game)
+				game.broadcasted = true
+			} catch (error: unknown) {
+				if (error instanceof Error) {
+					this.logger.console(error.message, 'error')
+				}
+
+				continue
+			}
+		}
+
+		await this.gameRepository.flush()
 	}
 
 }
