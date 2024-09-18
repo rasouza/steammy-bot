@@ -1,8 +1,8 @@
 import { Category } from '@discordx/utilities'
-import { ApplicationCommandOptionType, ChannelType, CommandInteraction } from 'discord.js'
+import { ChannelType, CommandInteraction } from 'discord.js'
 
 import { GamePlatform, GamePlatformName } from '@/constants'
-import { Discord, Injectable, Slash, SlashChoice, SlashOption } from '@/decorators'
+import { Discord, Injectable, PlatformOption, Slash } from '@/decorators'
 import { SubscriptionAlreadyExists } from '@/errors'
 import { Guard } from '@/guards'
 import { Subscription } from '@/services'
@@ -19,19 +19,7 @@ export default class UnsubscribeCommand {
 	@Slash({ name: 'unsubscribe', description: 'Remove subscription from gaming platforms' })
 	@Guard()
 	async unsubscribe(
-		@SlashChoice({
-			name: 'Epic Games',
-			value: GamePlatform.EPIC,
-		}, {
-			name: 'Xbox Game Pass',
-			value: GamePlatform.XBOX,
-		})
-		@SlashOption({
-			description: 'Pick a platform to unsubscribe',
-			name: 'platform',
-			required: true,
-			type: ApplicationCommandOptionType.String,
-		})
+		@PlatformOption({ description: 'Pick a platform to unsubscribe' })
 		platform: typeof GamePlatform[keyof typeof GamePlatform],
 		interaction: CommandInteraction
 	) {

@@ -1,8 +1,8 @@
 import { Category } from '@discordx/utilities'
-import { ApplicationCommandOptionType, CommandInteraction } from 'discord.js'
+import { CommandInteraction } from 'discord.js'
 
 import { GamePlatform } from '@/constants'
-import { Discord, Injectable, Slash, SlashChoice, SlashOption } from '@/decorators'
+import { Discord, Injectable, PlatformOption, Slash } from '@/decorators'
 import { Guard, UserPermissions } from '@/guards'
 import { Epic, Xbox } from '@/services'
 
@@ -24,19 +24,7 @@ export default class SyncCommand {
 		UserPermissions(['Administrator'])
 	)
 	async sync(
-		@SlashChoice({
-			name: 'Epic Games',
-			value: GamePlatform.EPIC,
-		}, {
-			name: 'Xbox Game Pass',
-			value: GamePlatform.XBOX,
-		})
-		@SlashOption({
-			description: 'Pick a platform to synchronize',
-			name: 'platform',
-			required: true,
-			type: ApplicationCommandOptionType.String,
-		})
+		@PlatformOption({ description: 'Pick a platform to synchronize' })
 		platform: typeof GamePlatform[keyof typeof GamePlatform],
 		interaction: CommandInteraction
 	) {
