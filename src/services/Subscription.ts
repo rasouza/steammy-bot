@@ -43,8 +43,11 @@ export class Subscription {
 			if (!subscription) throw new NotFound('Subscription not found for this channel')
 
 			this.subscriptionRepository.removeAndFlush(subscription)
-		} catch (error: any) {
-			this.logger.console(`Error removing subscription for channel ${chalk.bold.blue(`#${channel.name}`)} in guild ${chalk.bold.blue(guild.name)}: ${error}`, 'error')
+		} catch (error) {
+			if (error instanceof Error) {
+				this.logger.console(`Error removing subscription for channel ${chalk.bold.blue(`#${channel.name}`)} in guild ${chalk.bold.blue(guild.name)}: ${error.message}`, 'error')
+			}
+			throw error
 		}
 	}
 

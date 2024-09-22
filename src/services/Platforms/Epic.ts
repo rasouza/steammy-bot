@@ -81,7 +81,6 @@ export class Epic {
 			const game = merge(gameEntry, MAPPER_SCHEMA) as GameWithOffer
 
 			if (game.offer.upcoming && game.offer.discount === 0) {
-				// FIXME: Remove offer property for MikrORM upsert.
 				// On later version of MikroORM, it's possible to omit the offer property
 				const { offer: _, ...gameWithoutOffer } = game
 				list.push(gameWithoutOffer)

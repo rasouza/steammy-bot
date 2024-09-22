@@ -3,7 +3,7 @@ import { ChannelType, CommandInteraction } from 'discord.js'
 
 import { GamePlatform, GamePlatformName } from '@/constants'
 import { Discord, Injectable, PlatformOption, Slash } from '@/decorators'
-import { SubscriptionAlreadyExists } from '@/errors'
+import { NotFound } from '@/errors'
 import { Guard } from '@/guards'
 import { Subscription } from '@/services'
 
@@ -30,9 +30,8 @@ export default class UnsubscribeCommand {
 				interaction.followUp(`**#${channel.name}** unsubscribed from **${GamePlatformName[platform]}** news`)
 			}
 		} catch (error) {
-			// FIXME: This error will never happen
-			if (error instanceof SubscriptionAlreadyExists) {
-				interaction.followUp(`This channel is already subscribed to ${GamePlatformName[platform]} news`)
+			if (error instanceof NotFound) {
+				interaction.followUp(`This channel is **not** subscribed to ${GamePlatformName[platform]} news`)
 			}
 		}
 	}
