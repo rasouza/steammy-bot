@@ -29,7 +29,7 @@ export default class SyncCommand {
 		interaction: CommandInteraction
 	) {
 		await this[platform].sync()
-		interaction.followUp('playground command invoked!')
+		interaction.followUp('Game catalog synchronized')
 	}
 
 }

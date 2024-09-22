@@ -1,5 +1,5 @@
 import chalk from 'chalk'
-import { WebhookMessageCreateOptions } from 'discord.js'
+import { ChannelType, WebhookMessageCreateOptions } from 'discord.js'
 import { Client } from 'discordx'
 import { delay, inject } from 'tsyringe'
 
@@ -26,7 +26,7 @@ export class Broadcast {
 	}
 
 	@Schedule('10 * * * *')
-	async gamepass() {
+	async xbox() {
 		await this.broadcastGames(GamePlatform.XBOX)
 	}
 
@@ -47,7 +47,8 @@ export class Broadcast {
 		for (const subscription of subscriptions) {
 			const channel = await this.client.channels.fetch(subscription.id)
 
-			if (channel?.isTextBased()) {
+			if (channel && channel.type === ChannelType.GuildText) {
+				this.logger.console(`Sending ${chalk.bold.green(game.title)} game broadcast to ${chalk.bold.blue(`#${channel.name}`)} in guild ${chalk.bold.blue(channel.guild.name)}`, 'info')
 				await channel.send(content)
 			}
 		}
