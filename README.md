@@ -1,14 +1,14 @@
 <p align="center">
-    <img width="500" height="500" src="https://i.imgur.com/19Nas88.png"></img>
+    <img height="450" src="https://github.com/barthofu/tscord/assets/66025667/7cf87e0f-37e9-46ce-b244-dda6c45941c9"></img>
 </p>
 
 <div align="center">
 
-[![Latest version](https://img.shields.io/github/v/release/barthofu/tscord?color=4b38ff&label=latest%20version&logo=github&logoColor=white&colorA=4b38ff)](https://github.com/barthofu/tscord/releases/latest)
+[![Latest version](https://img.shields.io/github/v/release/barthofu/tscord?color=4b38ff&label=latest%20version&logo=github&logoColor=white&colorA=4b38ff&style=flat)](https://github.com/barthofu/tscord/releases/latest)
 
-[![Build state](https://img.shields.io/github/actions/workflow/status/barthofu/tscord/build.yml?branch=main&colorB=4b38ff&colorA=4b38ff)](https://github.com/barthofu/tscord/actions/workflows/build.yml)
-![Repo size](https://img.shields.io/github/repo-size/barthofu/tscord?colorB=4b38ff&colorA=4b38ff)
-![Stars count](https://img.shields.io/github/stars/barthofu/tscord?colorB=4b38ff&colorA=4b38ff)
+[![Build state](https://img.shields.io/github/actions/workflow/status/barthofu/tscord/build.yml?branch=main&colorB=4b38ff&colorA=4b38ff&style=flat)](https://github.com/barthofu/tscord/actions/workflows/build.yml)
+![Repo size](https://img.shields.io/github/repo-size/barthofu/tscord?colorB=4b38ff&colorA=4b38ff&style=flat)
+![Stars count](https://img.shields.io/github/stars/barthofu/tscord?colorB=4b38ff&colorA=4b38ff&style=flat)
 
 <table>
   <tr>
@@ -20,7 +20,7 @@
 
 It uses [`discordx`](https://github.com/discordx-ts/discordx) and [`discord.js v14`](https://github.com/discordjs/discord.js) under the hood to simplify the development of discord bots.
 
-This template was created to give developers a starting point for new Discord bots, so that much of the initial setup can be avoided and developers can instead focus on meaningful bot features. Developers can simply follow the [installation](https://tscord.discbot.app/docs/bot/get-started/installation) and the [configuration](https://tscord.discbot.app/docs/bot/get-started/configuration) instructions, and have a working bot with many boilerplate features already included!
+This template was created to give developers a starting point for new Discord bots, so that much of the initial setup can be avoided and developers can instead focus on meaningful bot features. Developers can simply follow the [installation](https://tscord.bartho.dev/docs/bot/get-started/installation) and the [configuration](https://tscord.bartho.dev/docs/bot/get-started/configuration) instructions, and have a working bot with many boilerplate features already included!
     </td>
   </tr>
 </table>
@@ -35,7 +35,7 @@ Getting started is as easy as one command
 npx tscord init bot my-bot
 ```
 
-**[To know how to use TSCord and all its components, check the documentation here](https://tscord.discbot.app/)** ㅤ
+**[To know how to use TSCord and all its components, check the documentation here](https://tscord.bartho.dev/)** ㅤ
 
 </td>
 </tr>
@@ -139,7 +139,7 @@ This template is also developer friendly and follow strict design patterns to ea
 
 ## 📚 Documentation
 
-### Check the [**official documentation**](https://tscord.discbot.app/) to get started and understand how to use this template.
+### Check the [**official documentation**](https://tscord.bartho.dev/) to get started and understand how to use this template.
 
 You can also find useful documentations at:
 - [discordx documentation](https://discordx.js.org/)

@@ -1,3 +1,4 @@
+
 import { Collection, Entity, EntityRepositoryType, OneToMany, PrimaryKey, Property } from '@mikro-orm/core'
 import { EntityRepository } from '@mikro-orm/sqlite'
 
@@ -8,7 +9,7 @@ import { Subscription } from './Subscription'
 // ================= Entity ==================
 // ===========================================
 
-@Entity({ customRepository: () => GuildRepository })
+@Entity({ repository: () => GuildRepository })
 export class Guild extends CustomBaseEntity {
 
 	[EntityRepositoryType]?: GuildRepository
@@ -41,7 +42,7 @@ export class GuildRepository extends EntityRepository<Guild> {
 
 		if (guild) {
 			guild.lastInteract = new Date()
-			await this.flush()
+			await this.em.flush()
 		}
 	}
 

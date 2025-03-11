@@ -8,7 +8,7 @@ import { Guild } from './Guild'
 // ================= Entity ==================
 // ===========================================
 
-@Entity({ customRepository: () => SubscriptionRepository })
+@Entity({ repository: () => SubscriptionRepository })
 export class Subscription extends CustomBaseEntity {
 
 	[EntityRepositoryType]?: SubscriptionRepository

@@ -1,5 +1,8 @@
 import { Options } from '@mikro-orm/core'
+import { EntityGenerator } from '@mikro-orm/entity-generator'
+import { Migrator } from '@mikro-orm/migrations'
 import { SqlHighlighter } from '@mikro-orm/sql-highlighter'
+import { PostgreSqlDriver } from '@mikro-orm/postgresql'
 
 // eslint-disable-next-line unused-imports/no-unused-imports
 import { env } from '@/env'
@@ -27,19 +30,19 @@ const envMikroORMConfig = {
 		/**
 		 * SQLite
 		 */
-		// type: 'better-sqlite', // or 'sqlite'
+		// driver: SqliteDriver,
 		// dbName: `${databaseConfig.path}db.sqlite`,
 
 		/**
 		 * MongoDB
 		 */
-		// type: 'mongo',
+		// driver: MongoDriver,
 		// clientUrl: env['DATABASE_HOST'],
 
 		/**
 		 * PostgreSQL
 		 */
-		type: 'postgresql',
+		driver: PostgreSqlDriver,
 		dbName: env.DATABASE_NAME,
 		host: env.DATABASE_HOST,
 		port: Number(env.DATABASE_PORT),
@@ -49,22 +52,22 @@ const envMikroORMConfig = {
 		/**
 		 * MySQL
 		 */
-		// type: 'mysql',
-		// dbName: env['DATABASE_NAME'],
-		// host: env['DATABASE_HOST'],
-		// port: Number(env['DATABASE_PORT']),
-		// user: env['DATABASE_USER'],
-		// password: env['DATABASE_PASSWORD'],
+		// driver: MySqlDriver,
+		// dbName: env.DATABASE_NAME,
+		// host: env.DATABASE_HOST,
+		// port: Number(env.DATABASE_PORT),
+		// user: env.DATABASE_USER,
+		// password: env.DATABASE_PASSWORD,
 
 		/**
 		 * MariaDB
 		 */
-		// type: 'mariadb',
-		// dbName: env['DATABASE_NAME'],
-		// host: env['DATABASE_HOST'],
-		// port: Number(env['DATABASE_PORT']),
-		// user: env['DATABASE_USER'],
-		// password: env['DATABASE_PASSWORD'],
+		// driver: MariaDbDriver,
+		// dbName: env.DATABASE_NAME,
+		// host: env.DATABASE_HOST,
+		// port: Number(env.DATABASE_PORT),
+		// user: env.DATABASE_USER,
+		// password: env.DATABASE_PASSWORD,
 
 		highlighter: new SqlHighlighter(),
 		debug: false,
@@ -74,6 +77,11 @@ const envMikroORMConfig = {
 			emit: 'js',
 			snapshot: true,
 		},
+
+		extensions: [
+			Migrator,
+			EntityGenerator,
+		],
 	},
 
 	development: {

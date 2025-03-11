@@ -41,12 +41,8 @@ export class Database {
 			// create migration if no one is present in the migrations folder
 			const pendingMigrations = await migrator.getPendingMigrations()
 			const executedMigrations = await migrator.getExecutedMigrations()
-			const needMigration = await migrator.checkMigrationNeeded()
 			if (pendingMigrations.length === 0 && executedMigrations.length === 0)
 				await migrator.createInitialMigration()
-
-			if (needMigration)
-				await migrator.createMigration()
 
 			// migrate to the latest migration
 			await this._orm.getMigrator().up()
@@ -190,11 +186,10 @@ export class Database {
 	}
 
 	isSQLiteDatabase(): boolean {
-		const type = mikroORMConfig[env.NODE_ENV]!.type
+		const config = mikroORMConfig[env.NODE_ENV]
 
-		if (type)
-			return ['sqlite', 'better-sqlite'].includes(type)
-		else return false
+		// @ts-expect-error
+		return !!config.dbName && !config.port
 	}
 
 }

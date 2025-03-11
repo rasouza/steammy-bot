@@ -9,7 +9,7 @@ import { CustomBaseEntity } from './BaseEntity'
 // ================= Entity ==================
 // ===========================================
 
-@Entity({ customRepository: () => GameCatalogRepository })
+@Entity({ repository: () => GameCatalogRepository })
 export class GameCatalog extends CustomBaseEntity {
 
 	[EntityRepositoryType]?: GameCatalogRepository
