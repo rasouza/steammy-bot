@@ -100,7 +100,7 @@ export class Epic {
 
 		this.gameRepository.upsertMany(games)
 
-		await this.gameRepository.flush()
+		await this.db.em.flush()
 	}
 
 	private async fetchCatalog(): Promise<EpicGame[]> {

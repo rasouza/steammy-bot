@@ -54,15 +54,15 @@ export default class ReadyEvent {
 		const client = await resolveDependency(Client)
 		const activity = generalConfig.activities[this.activityIndex]
 
-		if (activity.type === 'STREAMING') { // streaming activity
+		if (activity?.type === 'STREAMING') { // streaming activity
 			client.user?.setStatus('online')
 			client.user?.setActivity(activity.text, {
 				url: 'https://www.twitch.tv/discord',
 				type: ActivityType.Streaming,
 			})
 		} else { // other activities
-			client.user?.setActivity(activity.text, {
-				type: ActivityTypeEnumString.indexOf(activity.type),
+			client.user?.setActivity(activity?.text, {
+				type: ActivityTypeEnumString.indexOf(activity?.type),
 			})
 		}
 

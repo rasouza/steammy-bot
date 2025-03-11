@@ -21,13 +21,13 @@ export class Subscription {
 
 	async add(platform: string, channel: TextChannel, guild: Guild): Promise<void> {
 		try {
-			await this.subscriptionRepository.create({
+			await this.db.em.create(SubscriptionEntity, {
 				id: channel.id,
 				platform,
 				guild: guild.id,
 			})
 
-			await this.subscriptionRepository.flush()
+			await this.db.em.flush()
 			this.logger.console(`Adding ${chalk.bold.green(platform)} subscription for channel ${chalk.bold.blue(`#${channel.name}`)} in guild ${chalk.bold.blue(guild.name)}`, 'info')
 		} catch (error: any) {
 			if (error.code === 'SQLITE_CONSTRAINT_PRIMARYKEY') {
@@ -42,7 +42,7 @@ export class Subscription {
 			const subscription = await this.subscriptionRepository.findOne({ id: channel.id, guild: guild.id, platform })
 			if (!subscription) throw new NotFound('Subscription not found for this channel')
 
-			this.subscriptionRepository.removeAndFlush(subscription)
+			this.db.em.removeAndFlush(subscription)
 		} catch (error) {
 			if (error instanceof Error) {
 				this.logger.console(`Error removing subscription for channel ${chalk.bold.blue(`#${channel.name}`)} in guild ${chalk.bold.blue(guild.name)}: ${error.message}`, 'error')

@@ -39,7 +39,7 @@ export class Xbox {
 
 	async fetchGames(): Promise<Game[]> {
 		// Placeholder is to ensure type safety when merging
-		let gamePlaceholder: Game
+		const gamePlaceholder: Game = {} as Game
 
 		const gameIds = await this.fetchAllIds()
 		const gameList = await this.enrichGameCatalog(gameIds)
@@ -54,7 +54,7 @@ export class Xbox {
 		const games = await this.fetchGames()
 		this.gameRepository.upsertMany(games)
 
-		await this.gameRepository.flush()
+		await this.db.em.flush()
 	}
 
 	private async fetchAllIds() {

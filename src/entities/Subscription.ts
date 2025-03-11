@@ -1,5 +1,5 @@
-import { Entity, EntityRepositoryType, ManyToOne, PrimaryKey, PrimaryKeyProp } from '@mikro-orm/core'
-import { EntityRepository } from '@mikro-orm/sqlite'
+import { Entity, EntityRepositoryType, ManyToOne, OptionalProps, PrimaryKey, PrimaryKeyProp } from '@mikro-orm/core'
+import { EntityRepository } from '@mikro-orm/postgresql'
 
 import { CustomBaseEntity } from './BaseEntity'
 import { Guild } from './Guild'
@@ -13,6 +13,7 @@ export class Subscription extends CustomBaseEntity {
 
 	[EntityRepositoryType]?: SubscriptionRepository
 	[PrimaryKeyProp]?: ['id', 'platform', 'guild']
+	[OptionalProps]?: 'createdAt' | 'updatedAt'
 
 	// Discord Channel ID
 	@PrimaryKey({ autoincrement: false })

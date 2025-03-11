@@ -73,7 +73,7 @@ export class Broadcast {
 			}
 		}
 
-		await this.gameRepository.flush()
+		await this.db.em.flush()
 	}
 
 }
