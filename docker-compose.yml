@@ -7,10 +7,21 @@ services:
   app:
     image: ghcr.io/rasouza/steammy-bot:main
     volumes:
-        - ./database:/app/database
+        # - ./database:/app/database
         - ./logs/:/app/logs
         - ./assets:/app/assets
     restart: unless-stopped
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN}
+      - TEST_GUILD_ID=${TEST_GUILD_ID}
+      - BOT_OWNER_ID=${BOT_OWNER_ID}
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - DATABASE_HOST=${DATABASE_HOST}
+      - DATABASE_PORT=${DATABASE_PORT}
+      - API_PORT=${API_PORT}
+      - API_ADMIN_TOKEN=${API_ADMIN_TOKEN}
     # depends_on:
     #   - database
 
