@@ -8,24 +8,24 @@ type XboxCatalogIdResponse = {
 	id: string
 }
 
-type XboxImage = {
+type XboxApiImage = {
 	URI: string
 	Width: number
 	Height: number
 }
 
-type XboxPrice = {
+type XboxApiPrice = {
 	MSRP: string
 	SalesPrice: string
 	IsFree: boolean
 }
 
-type XboxGame = {
+type XboxApiGame = {
 	StoreId: string
 	ProductTitle: string
 	DeveloperName: string
-	ImageHero: XboxImage
-	Price: XboxPrice
+	ImageHero: XboxApiImage
+	Price: XboxApiPrice
 	ApproximateSizeInBytes: number
 	ProductDescription: string
 }

@@ -5,13 +5,14 @@ import { delay, inject } from 'tsyringe'
 
 import { GamePlatform, GamePlatformName } from '@/constants'
 import { Schedule, Service } from '@/decorators'
-import { GameCatalog, GameCatalogRepository, Subscription, SubscriptionRepository } from '@/entities'
+import { CatalogXbox, CatalogXboxRepository, Subscription, SubscriptionRepository } from '@/entities'
 import { Database, GameEmbed, Logger } from '@/services'
 
 @Service()
 export class Broadcast {
 
-	private gameRepository: GameCatalogRepository
+	// TODO: add Epic Repository
+	private xboxRepository: CatalogXboxRepository
 	private subscriptionRepository: SubscriptionRepository
 
 	constructor(
@@ -21,7 +22,7 @@ export class Broadcast {
     @inject(delay(() => Client)) private client: Client
 
 	) {
-		this.gameRepository = this.db.get(GameCatalog)
+		this.xboxRepository = this.db.get(CatalogXbox)
 		this.subscriptionRepository = this.db.get(Subscription)
 	}
 
@@ -35,8 +36,8 @@ export class Broadcast {
 		await this.broadcastGames(GamePlatform.EPIC)
 	}
 
-	private async send(message: string, game: Game) {
-		const subscriptions = await this.subscriptionRepository.find({ platform: game.platform })
+	private async send(message: string, game: Game, platform: typeof GamePlatform[keyof typeof GamePlatform]) {
+		const subscriptions = await this.subscriptionRepository.find({ platform })
 
 		const embed = this.embed.build(game)
 		const content: WebhookMessageCreateOptions = {
@@ -55,14 +56,14 @@ export class Broadcast {
 	}
 
 	private async broadcastGames(platform: typeof GamePlatform[keyof typeof GamePlatform]) {
-		const games = await this.gameRepository.fetchNotBroadcasted(platform)
+		const games = await this.xboxRepository.fetchNotBroadcasted()
 		if (games.length === 0) return
 
 		this.logger.console(`Broadcasting ${games.length} new games for ${chalk.bold.green(GamePlatformName[platform])}`, 'info')
 
 		for (const game of games) {
 			try {
-				await this.send(`New game available on **${GamePlatformName[platform]}**`, game)
+				await this.send(`New game available on **${GamePlatformName[platform]}**`, game, platform)
 				game.broadcasted = true
 			} catch (error: unknown) {
 				if (error instanceof Error) {

@@ -6,14 +6,17 @@ type Game = {
 	image?: string
 	price?: number
 	size?: number
-	platform: string
 }
 
-type GameWithOffer = Game & {
+type EpicGame = Game & {
+	offer_start_at: Date
+	offer_end_at: Date
 	offer: {
-		startDate?: string
-		endDate?: string
 		discount?: number
 		upcoming: boolean
 	}
 }
+
+type XboxGame = Game
+
+// TODO: Write EpicGame (do not forget the offer_start_at and offer_end_at fields)

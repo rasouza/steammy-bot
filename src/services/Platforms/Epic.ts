@@ -4,7 +4,7 @@ import { merge } from 'object-mapper'
 
 import { epicConfig } from '@/configs'
 import { Schedule, Service } from '@/decorators'
-import { GameCatalog, GameCatalogRepository } from '@/entities'
+import { CatalogEpic, CatalogEpicRepository } from '@/entities'
 import { Database, Logger } from '@/services'
 
 const isDeveloper = (item: any) => item.key === 'developerName'
@@ -17,13 +17,13 @@ const MAPPER_SCHEMA = {
 	'description': 'description',
 	'price.totalPrice.originalPrice': 'price',
 	'promotions.promotionalOffers[0].promotionalOffers[0].startDate':
-    'offer.startDate',
+    'offer_start_at',
 	'promotions.promotionalOffers[0].promotionalOffers[0].endDate':
-    'offer.endDate',
+    'offer_end_at',
 	'promotions.upcomingPromotionalOffers[0].promotionalOffers[0].startDate':
-		'offer.startDate',
+		'offer_start_at',
 	'promotions.upcomingPromotionalOffers[0].promotionalOffers[0].endDate':
-		'offer.endDate',
+		'offer_end_at',
 	'promotions.upcomingPromotionalOffers[0].promotionalOffers[0].discountSetting.discountPercentage':
 		'offer.discount',
 	'promotions': {
@@ -56,29 +56,25 @@ const MAPPER_SCHEMA = {
 			return image
 		},
 	},
-	'nonExistentField': {
-		key: 'platform',
-		transform: () => 'epic',
-	},
 }
 
 @Service()
 export class Epic {
 
-	private gameRepository: GameCatalogRepository
+	private epicRepository: CatalogEpicRepository
 
 	constructor(
 		private logger: Logger,
 		private db: Database
 	) {
-		this.gameRepository = this.db.get(GameCatalog)
+		this.epicRepository = this.db.get(CatalogEpic)
 	}
 
 	async fetchGames(): Promise<Game[]> {
 		const gameList = await this.fetchCatalog()
 
 		const games = gameList.reduce((list: Game[], gameEntry) => {
-			const game = merge(gameEntry, MAPPER_SCHEMA) as GameWithOffer
+			const game = merge(gameEntry, MAPPER_SCHEMA) as EpicGame
 
 			if (game.offer.upcoming && game.offer.discount === 0) {
 				// On later version of MikroORM, it's possible to omit the offer property
@@ -98,12 +94,12 @@ export class Epic {
 	async sync() {
 		const games = await this.fetchGames()
 
-		this.gameRepository.upsertMany(games)
+		this.epicRepository.upsertMany(games)
 
 		await this.db.em.flush()
 	}
 
-	private async fetchCatalog(): Promise<EpicGame[]> {
+	private async fetchCatalog(): Promise<EpicApiGame[]> {
 		const { apiUrl } = epicConfig
 		const { data }: { data: FreeGamesPromotionApiResponse } = await axios.get(`${apiUrl}/freeGamesPromotions`)
 

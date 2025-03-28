@@ -4,7 +4,7 @@ import { merge } from 'object-mapper'
 
 import { xboxConfig } from '@/configs'
 import { Schedule, Service } from '@/decorators'
-import { GameCatalog, GameCatalogRepository } from '@/entities'
+import { CatalogXbox, CatalogXboxRepository } from '@/entities'
 import { Database, Logger } from '@/services'
 
 const MAPPER_SCHEMA = {
@@ -19,22 +19,18 @@ const MAPPER_SCHEMA = {
 	},
 	'ApproximateSizeInBytes': 'size',
 	'ProductDescription': 'description',
-	'nonExistentField': {
-		key: 'platform',
-		transform: () => 'xbox',
-	},
 }
 
 @Service()
 export class Xbox {
 
-	private gameRepository: GameCatalogRepository
+	private xboxRepository: CatalogXboxRepository
 
 	constructor(
 		private logger: Logger,
 		private db: Database
 	) {
-		this.gameRepository = this.db.get(GameCatalog)
+		this.xboxRepository = this.db.get(CatalogXbox)
 	}
 
 	async fetchGames(): Promise<Game[]> {
@@ -52,7 +48,7 @@ export class Xbox {
 	@Schedule('0 * * * *')
 	async sync() {
 		const games = await this.fetchGames()
-		this.gameRepository.upsertMany(games)
+		this.xboxRepository.upsertMany(games)
 
 		await this.db.em.flush()
 	}
@@ -78,7 +74,7 @@ export class Xbox {
 		return gameIds
 	}
 
-	private async enrichGameCatalog(gameIds: string[]): Promise<XboxGame[]> {
+	private async enrichGameCatalog(gameIds: string[]): Promise<XboxApiGame[]> {
 		const { apiUrl, language, market, hydration } = xboxConfig
 
 		const body = {
@@ -95,7 +91,7 @@ export class Xbox {
 
 		this.logger.console(`[Xbox API] Enriched catalog for ${chalk.bold.green(gameIds.length)} IDs`, 'info')
 
-		const gameList: XboxGame[] = Object.values(data.Products)
+		const gameList: XboxApiGame[] = Object.values(data.Products)
 
 		return gameList
 	}

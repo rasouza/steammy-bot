@@ -1,23 +1,23 @@
-type EpicGame = {
+type EpicApiGame = {
 	id: string
 	title: string
 	description: string
 	expiryDate: string
 	status: string
-	keyImages: EpicImage[]
+	keyImages: EpicApiImage[]
 	promotions: {
-		promotionalOffers: EpicPromotionalOffer[]
-		upcomingPromotionalOffers: EpicPromotionalOffer[]
+		promotionalOffers: EpicApiPromotionalOffer[]
+		upcomingPromotionalOffers: EpicApiPromotionalOffer[]
 	}
-	price: EpicPrice
+	price: EpicApiPrice
 }
 
-type EpicImage = {
+type EpicApiImage = {
 	type: string
 	url: string
 }
 
-type EpicPrice = {
+type EpicApiPrice = {
 	totalPrice: {
 		discountPrice: number
 		originalPrice: number
@@ -26,7 +26,7 @@ type EpicPrice = {
 	}
 }
 
-type EpicPromotionalOffer = {
+type EpicApiPromotionalOffer = {
 	promotionalOffers: {
 		startDate: string
 		endDate: string
@@ -41,7 +41,7 @@ type FreeGamesPromotionApiResponse = {
 	data: {
 		Catalog: {
 			searchStore: {
-				elements: EpicGame[]
+				elements: EpicApiGame[]
 			}
 		}
 	}
