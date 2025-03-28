@@ -9,10 +9,10 @@ import { CustomBaseEntity } from './BaseEntity'
 // ================= Entity ==================
 // ===========================================
 
-@Entity({ repository: () => GameCatalogRepository, schema: 'steammy_bot' })
-export class GameCatalog extends CustomBaseEntity {
+@Entity({ repository: () => CatalogXboxRepository, schema: 'steammy_bot' })
+export class CatalogXbox extends CustomBaseEntity {
 
-	[EntityRepositoryType]?: GameCatalogRepository
+	[EntityRepositoryType]?: CatalogXboxRepository
 
 	// TODO: Use AutoIncrement ID to avoid conflicts between platform IDs
 	@PrimaryKey({ autoincrement: false })
@@ -39,19 +39,16 @@ export class GameCatalog extends CustomBaseEntity {
 	@Property({ default: false })
 	broadcasted: boolean
 
-	@Property()
-	platform: string
-
 }
 
 // ===========================================
 // =========== Custom Repository =============
 // ===========================================
 
-export class GameCatalogRepository extends EntityRepository<GameCatalog> {
+export class CatalogXboxRepository extends EntityRepository<CatalogXbox> {
 
-	async fetchNotBroadcasted(platform: typeof GamePlatform[keyof typeof GamePlatform]) {
-		return await this.find({ broadcasted: false, platform })
+	async fetchNotBroadcasted() {
+		return await this.find({ broadcasted: false })
 	}
 
 }

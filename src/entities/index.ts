@@ -8,4 +8,5 @@ export * from './Image'
 export * from './Pastebin'
 
 export * from './Subscription'
-export * from './GameCatalog'
+export * from './CatalogXbox'
+export * from './CatalogEpic'
