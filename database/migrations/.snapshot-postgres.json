@@ -1,8 +1,8 @@
 {
   "namespaces": [
-    "public"
+    "steammy_bot"
   ],
-  "name": "public",
+  "name": "steammy_bot",
   "tables": [
     {
       "columns": {
@@ -13,28 +13,27 @@
           "autoincrement": false,
           "primary": false,
           "nullable": false,
+          "length": 255,
           "mappedType": "string"
         },
         "created_at": {
           "name": "created_at",
-          "type": "timestamptz(0)",
+          "type": "timestamptz",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
           "length": 6,
-          "default": "CURRENT_TIMESTAMP",
           "mappedType": "datetime"
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "timestamptz(0)",
+          "type": "timestamptz",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
           "length": 6,
-          "default": "CURRENT_TIMESTAMP",
           "mappedType": "datetime"
         },
         "value": {
@@ -44,12 +43,13 @@
           "autoincrement": false,
           "primary": false,
           "nullable": false,
+          "length": 255,
           "default": "''",
           "mappedType": "string"
         }
       },
       "name": "data",
-      "schema": "public",
+      "schema": "steammy_bot",
       "indexes": [
         {
           "keyName": "data_pkey",
@@ -57,12 +57,14 @@
             "key"
           ],
           "composite": false,
+          "constraint": true,
           "primary": true,
           "unique": true
         }
       ],
       "checks": [],
-      "foreignKeys": {}
+      "foreignKeys": {},
+      "nativeEnums": {}
     },
     {
       "columns": {
@@ -73,28 +75,27 @@
           "autoincrement": false,
           "primary": false,
           "nullable": false,
+          "length": 255,
           "mappedType": "string"
         },
         "created_at": {
           "name": "created_at",
-          "type": "timestamptz(0)",
+          "type": "timestamptz",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
           "length": 6,
-          "default": "CURRENT_TIMESTAMP",
           "mappedType": "datetime"
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "timestamptz(0)",
+          "type": "timestamptz",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
           "length": 6,
-          "default": "CURRENT_TIMESTAMP",
           "mappedType": "datetime"
         },
         "title": {
@@ -104,6 +105,7 @@
           "autoincrement": false,
           "primary": false,
           "nullable": false,
+          "length": 255,
           "mappedType": "string"
         },
         "price": {
@@ -131,6 +133,7 @@
           "autoincrement": false,
           "primary": false,
           "nullable": true,
+          "length": 255,
           "mappedType": "string"
         },
         "image": {
@@ -140,6 +143,7 @@
           "autoincrement": false,
           "primary": false,
           "nullable": true,
+          "length": 255,
           "mappedType": "string"
         },
         "description": {
@@ -168,11 +172,12 @@
           "autoincrement": false,
           "primary": false,
           "nullable": false,
+          "length": 255,
           "mappedType": "string"
         }
       },
       "name": "game_catalog",
-      "schema": "public",
+      "schema": "steammy_bot",
       "indexes": [
         {
           "keyName": "game_catalog_pkey",
@@ -180,12 +185,14 @@
             "id"
           ],
           "composite": false,
+          "constraint": true,
           "primary": true,
           "unique": true
         }
       ],
       "checks": [],
-      "foreignKeys": {}
+      "foreignKeys": {},
+      "nativeEnums": {}
     },
     {
       "columns": {
@@ -196,28 +203,27 @@
           "autoincrement": false,
           "primary": false,
           "nullable": false,
+          "length": 255,
           "mappedType": "string"
         },
         "created_at": {
           "name": "created_at",
-          "type": "timestamptz(0)",
+          "type": "timestamptz",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
           "length": 6,
-          "default": "CURRENT_TIMESTAMP",
           "mappedType": "datetime"
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "timestamptz(0)",
+          "type": "timestamptz",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
           "length": 6,
-          "default": "CURRENT_TIMESTAMP",
           "mappedType": "datetime"
         },
         "prefix": {
@@ -227,6 +233,7 @@
           "autoincrement": false,
           "primary": false,
           "nullable": true,
+          "length": 255,
           "mappedType": "string"
         },
         "deleted": {
@@ -241,7 +248,7 @@
         },
         "last_interact": {
           "name": "last_interact",
-          "type": "timestamptz(0)",
+          "type": "timestamptz",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
@@ -251,7 +258,7 @@
         }
       },
       "name": "guild",
-      "schema": "public",
+      "schema": "steammy_bot",
       "indexes": [
         {
           "keyName": "guild_pkey",
@@ -259,19 +266,21 @@
             "id"
           ],
           "composite": false,
+          "constraint": true,
           "primary": true,
           "unique": true
         }
       ],
       "checks": [],
-      "foreignKeys": {}
+      "foreignKeys": {},
+      "nativeEnums": {}
     },
     {
       "columns": {
         "id": {
           "name": "id",
           "type": "serial",
-          "unsigned": true,
+          "unsigned": false,
           "autoincrement": true,
           "primary": true,
           "nullable": false,
@@ -279,24 +288,22 @@
         },
         "created_at": {
           "name": "created_at",
-          "type": "timestamptz(0)",
+          "type": "timestamptz",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
           "length": 6,
-          "default": "CURRENT_TIMESTAMP",
           "mappedType": "datetime"
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "timestamptz(0)",
+          "type": "timestamptz",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
           "length": 6,
-          "default": "CURRENT_TIMESTAMP",
           "mappedType": "datetime"
         },
         "file_name": {
@@ -306,6 +313,7 @@
           "autoincrement": false,
           "primary": false,
           "nullable": false,
+          "length": 255,
           "mappedType": "string"
         },
         "base_path": {
@@ -315,6 +323,7 @@
           "autoincrement": false,
           "primary": false,
           "nullable": false,
+          "length": 255,
           "default": "''",
           "mappedType": "string"
         },
@@ -325,6 +334,7 @@
           "autoincrement": false,
           "primary": false,
           "nullable": false,
+          "length": 255,
           "mappedType": "string"
         },
         "size": {
@@ -352,6 +362,7 @@
           "autoincrement": false,
           "primary": false,
           "nullable": false,
+          "length": 255,
           "mappedType": "string"
         },
         "delete_hash": {
@@ -361,11 +372,12 @@
           "autoincrement": false,
           "primary": false,
           "nullable": false,
+          "length": 255,
           "mappedType": "string"
         }
       },
       "name": "image",
-      "schema": "public",
+      "schema": "steammy_bot",
       "indexes": [
         {
           "keyName": "image_pkey",
@@ -373,12 +385,14 @@
             "id"
           ],
           "composite": false,
+          "constraint": true,
           "primary": true,
           "unique": true
         }
       ],
       "checks": [],
-      "foreignKeys": {}
+      "foreignKeys": {},
+      "nativeEnums": {}
     },
     {
       "columns": {
@@ -389,6 +403,7 @@
           "autoincrement": false,
           "primary": false,
           "nullable": false,
+          "length": 255,
           "mappedType": "string"
         },
         "edit_code": {
@@ -398,6 +413,7 @@
           "autoincrement": false,
           "primary": false,
           "nullable": false,
+          "length": 255,
           "mappedType": "string"
         },
         "lifetime": {
@@ -412,7 +428,7 @@
         },
         "created_at": {
           "name": "created_at",
-          "type": "timestamptz(0)",
+          "type": "timestamptz",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
@@ -422,7 +438,7 @@
         }
       },
       "name": "pastebin",
-      "schema": "public",
+      "schema": "steammy_bot",
       "indexes": [
         {
           "keyName": "pastebin_pkey",
@@ -430,19 +446,21 @@
             "id"
           ],
           "composite": false,
+          "constraint": true,
           "primary": true,
           "unique": true
         }
       ],
       "checks": [],
-      "foreignKeys": {}
+      "foreignKeys": {},
+      "nativeEnums": {}
     },
     {
       "columns": {
         "id": {
           "name": "id",
           "type": "serial",
-          "unsigned": true,
+          "unsigned": false,
           "autoincrement": true,
           "primary": true,
           "nullable": false,
@@ -455,6 +473,7 @@
           "autoincrement": false,
           "primary": false,
           "nullable": false,
+          "length": 255,
           "mappedType": "string"
         },
         "value": {
@@ -464,6 +483,7 @@
           "autoincrement": false,
           "primary": false,
           "nullable": false,
+          "length": 255,
           "default": "''",
           "mappedType": "string"
         },
@@ -478,7 +498,7 @@
         },
         "created_at": {
           "name": "created_at",
-          "type": "timestamptz(0)",
+          "type": "timestamptz",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
@@ -488,7 +508,7 @@
         }
       },
       "name": "stat",
-      "schema": "public",
+      "schema": "steammy_bot",
       "indexes": [
         {
           "keyName": "stat_pkey",
@@ -496,12 +516,14 @@
             "id"
           ],
           "composite": false,
+          "constraint": true,
           "primary": true,
           "unique": true
         }
       ],
       "checks": [],
-      "foreignKeys": {}
+      "foreignKeys": {},
+      "nativeEnums": {}
     },
     {
       "columns": {
@@ -512,6 +534,7 @@
           "autoincrement": false,
           "primary": false,
           "nullable": false,
+          "length": 255,
           "mappedType": "string"
         },
         "platform": {
@@ -521,6 +544,7 @@
           "autoincrement": false,
           "primary": false,
           "nullable": false,
+          "length": 255,
           "mappedType": "string"
         },
         "guild_id": {
@@ -530,33 +554,32 @@
           "autoincrement": false,
           "primary": false,
           "nullable": false,
+          "length": 255,
           "mappedType": "string"
         },
         "created_at": {
           "name": "created_at",
-          "type": "timestamptz(0)",
+          "type": "timestamptz",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
           "length": 6,
-          "default": "CURRENT_TIMESTAMP",
           "mappedType": "datetime"
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "timestamptz(0)",
+          "type": "timestamptz",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
           "length": 6,
-          "default": "CURRENT_TIMESTAMP",
           "mappedType": "datetime"
         }
       },
       "name": "subscription",
-      "schema": "public",
+      "schema": "steammy_bot",
       "indexes": [
         {
           "keyName": "subscription_pkey",
@@ -566,6 +589,7 @@
             "guild_id"
           ],
           "composite": true,
+          "constraint": true,
           "primary": true,
           "unique": true
         }
@@ -577,14 +601,15 @@
           "columnNames": [
             "guild_id"
           ],
-          "localTableName": "public.subscription",
+          "localTableName": "steammy_bot.subscription",
           "referencedColumnNames": [
             "id"
           ],
-          "referencedTableName": "public.guild",
+          "referencedTableName": "steammy_bot.guild",
           "updateRule": "cascade"
         }
-      }
+      },
+      "nativeEnums": {}
     },
     {
       "columns": {
@@ -595,33 +620,32 @@
           "autoincrement": false,
           "primary": false,
           "nullable": false,
+          "length": 255,
           "mappedType": "string"
         },
         "created_at": {
           "name": "created_at",
-          "type": "timestamptz(0)",
+          "type": "timestamptz",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
           "length": 6,
-          "default": "CURRENT_TIMESTAMP",
           "mappedType": "datetime"
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "timestamptz(0)",
+          "type": "timestamptz",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
           "length": 6,
-          "default": "CURRENT_TIMESTAMP",
           "mappedType": "datetime"
         },
         "last_interact": {
           "name": "last_interact",
-          "type": "timestamptz(0)",
+          "type": "timestamptz",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
@@ -631,7 +655,7 @@
         }
       },
       "name": "user",
-      "schema": "public",
+      "schema": "steammy_bot",
       "indexes": [
         {
           "keyName": "user_pkey",
@@ -639,12 +663,15 @@
             "id"
           ],
           "composite": false,
+          "constraint": true,
           "primary": true,
           "unique": true
         }
       ],
       "checks": [],
-      "foreignKeys": {}
+      "foreignKeys": {},
+      "nativeEnums": {}
     }
-  ]
+  ],
+  "nativeEnums": {}
 }
