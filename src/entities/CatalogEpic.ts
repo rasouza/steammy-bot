@@ -54,7 +54,7 @@ export class CatalogEpic extends CustomBaseEntity {
 export class CatalogEpicRepository extends EntityRepository<CatalogEpic> {
 
 	async fetchNotBroadcasted() {
-		return await this.find({ broadcasted: false })
+		return await this.find({ broadcasted: false, offer_start_at: { $lte: new Date() }, offer_end_at: { $gte: new Date() } })
 	}
 
 }
