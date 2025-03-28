@@ -3,15 +3,15 @@ import { ChannelType, WebhookMessageCreateOptions } from 'discord.js'
 import { Client } from 'discordx'
 import { delay, inject } from 'tsyringe'
 
-import { GamePlatform, GamePlatformName } from '@/constants'
+import { GamePlatform } from '@/constants'
 import { Schedule, Service } from '@/decorators'
-import { CatalogXbox, CatalogXboxRepository, Subscription, SubscriptionRepository } from '@/entities'
+import { CatalogEpicRepository, CatalogXbox, CatalogXboxRepository, Subscription, SubscriptionRepository } from '@/entities'
 import { Database, GameEmbed, Logger } from '@/services'
 
 @Service()
 export class Broadcast {
 
-	// TODO: add Epic Repository
+	private epicRepository: CatalogEpicRepository
 	private xboxRepository: CatalogXboxRepository
 	private subscriptionRepository: SubscriptionRepository
 
@@ -28,12 +28,12 @@ export class Broadcast {
 
 	@Schedule('10 * * * *')
 	async xbox() {
-		await this.broadcastGames(GamePlatform.XBOX)
+		await this.broadcastXbox()
 	}
 
 	@Schedule('10 * * * *')
 	async epic() {
-		await this.broadcastGames(GamePlatform.EPIC)
+		await this.broadcastEpic()
 	}
 
 	private async send(message: string, game: Game, platform: typeof GamePlatform[keyof typeof GamePlatform]) {
@@ -55,15 +55,37 @@ export class Broadcast {
 		}
 	}
 
-	private async broadcastGames(platform: typeof GamePlatform[keyof typeof GamePlatform]) {
-		const games = await this.xboxRepository.fetchNotBroadcasted()
+	private async broadcastEpic() {
+		const games = await this.epicRepository.fetchNotBroadcasted()
 		if (games.length === 0) return
 
-		this.logger.console(`Broadcasting ${games.length} new games for ${chalk.bold.green(GamePlatformName[platform])}`, 'info')
+		this.logger.console(`Broadcasting ${games.length} new games for ${chalk.bold.green('Epic')}`, 'info')
 
 		for (const game of games) {
 			try {
-				await this.send(`New game available on **${GamePlatformName[platform]}**`, game, platform)
+				await this.send(`New game available on **Epic**`, game, 'epic')
+				game.broadcasted = true
+			} catch (error: unknown) {
+				if (error instanceof Error) {
+					this.logger.console(error.message, 'error')
+				}
+
+				continue
+			}
+		}
+
+		await this.db.em.flush()
+	}
+
+	private async broadcastXbox() {
+		const games = await this.xboxRepository.fetchNotBroadcasted()
+		if (games.length === 0) return
+
+		this.logger.console(`Broadcasting ${games.length} new games for ${chalk.bold.green('Xbox')}`, 'info')
+
+		for (const game of games) {
+			try {
+				await this.send(`New game available on **Xbox**`, game, 'xbox')
 				game.broadcasted = true
 			} catch (error: unknown) {
 				if (error instanceof Error) {
