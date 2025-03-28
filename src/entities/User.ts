@@ -7,16 +7,16 @@ import { CustomBaseEntity } from './BaseEntity'
 // ================= Entity ==================
 // ===========================================
 
-@Entity({ repository: () => UserRepository })
+@Entity({ repository: () => UserRepository, schema: 'steammy_bot' })
 export class User extends CustomBaseEntity {
 
 	[EntityRepositoryType]?: UserRepository
 
 	@PrimaryKey({ autoincrement: false })
-    id!: string
+	id!: string
 
 	@Property()
-    lastInteract: Date = new Date()
+	lastInteract: Date = new Date()
 
 }
 

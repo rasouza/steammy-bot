@@ -5,22 +5,22 @@ import { EntityRepository } from '@mikro-orm/postgresql'
 // ================= Entity ==================
 // ===========================================
 
-@Entity({ repository: () => PastebinRepository })
+@Entity({ repository: () => PastebinRepository, schema: 'steammy_bot' })
 export class Pastebin {
 
 	[EntityRepositoryType]?: PastebinRepository
 
 	@PrimaryKey({ autoincrement: false })
-    id: string
+	id: string
 
 	@Property()
-    editCode: string
+	editCode: string
 
 	@Property()
-    lifetime: number = -1
+	lifetime: number = -1
 
 	@Property()
-    createdAt: Date = new Date()
+	createdAt: Date = new Date()
 
 }
 

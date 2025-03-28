@@ -5,25 +5,25 @@ import { EntityRepository } from '@mikro-orm/postgresql'
 // ================= Entity ==================
 // ===========================================
 
-@Entity({ repository: () => StatRepository })
+@Entity({ repository: () => StatRepository, schema: 'steammy_bot' })
 export class Stat {
 
 	[EntityRepositoryType]?: StatRepository
 
 	@PrimaryKey()
-    id: number
+	id: number
 
 	@Property()
-    type!: string
+	type!: string
 
 	@Property()
-    value: string = ''
+	value: string = ''
 
 	@Property({ type: 'json', nullable: true })
-    additionalData?: any
+	additionalData?: any
 
 	@Property()
-    createdAt: Date = new Date()
+	createdAt: Date = new Date()
 
 }
 

@@ -7,34 +7,34 @@ import { CustomBaseEntity } from './BaseEntity'
 // ================= Entity ==================
 // ===========================================
 
-@Entity({ repository: () => ImageRepository })
+@Entity({ repository: () => ImageRepository, schema: 'steammy_bot' })
 export class Image extends CustomBaseEntity {
 
 	[EntityRepositoryType]?: ImageRepository
 
 	@PrimaryKey()
-    id: number
+	id: number
 
 	@Property()
-    fileName: string
+	fileName: string
 
 	@Property({ default: '' })
-    basePath?: string
+	basePath?: string
 
 	@Property()
-    url: string
+	url: string
 
 	@Property()
-    size: number
+	size: number
 
 	@Property()
-    tags: string[]
+	tags: string[]
 
 	@Property()
-    hash: string
+	hash: string
 
 	@Property()
-    deleteHash: string
+	deleteHash: string
 
 }
 

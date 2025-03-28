@@ -8,7 +8,7 @@ import { Guild } from './Guild'
 // ================= Entity ==================
 // ===========================================
 
-@Entity({ repository: () => SubscriptionRepository })
+@Entity({ repository: () => SubscriptionRepository, schema: 'steammy_bot' })
 export class Subscription extends CustomBaseEntity {
 
 	[EntityRepositoryType]?: SubscriptionRepository
@@ -17,13 +17,13 @@ export class Subscription extends CustomBaseEntity {
 
 	// Discord Channel ID
 	@PrimaryKey({ autoincrement: false })
-    id: string
+	id: string
 
 	@PrimaryKey()
-		platform: string
+	platform: string
 
 	@ManyToOne({ primary: true })
-    guild!: Guild
+	guild!: Guild
 
 }
 

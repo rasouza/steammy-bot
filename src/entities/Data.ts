@@ -19,16 +19,16 @@ type DataType = keyof typeof defaultData
 // ================= Entity ==================
 // ===========================================
 
-@Entity({ repository: () => DataRepository })
+@Entity({ repository: () => DataRepository, schema: 'steammy_bot' })
 export class Data extends CustomBaseEntity {
 
 	[EntityRepositoryType]?: DataRepository
 
 	@PrimaryKey()
-    key!: string
+	key!: string
 
 	@Property()
-    value: string = ''
+	value: string = ''
 
 }
 

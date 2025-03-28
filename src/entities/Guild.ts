@@ -1,4 +1,3 @@
-
 import { Collection, Entity, EntityRepositoryType, OneToMany, PrimaryKey, Property } from '@mikro-orm/core'
 import { EntityRepository } from '@mikro-orm/postgresql'
 
@@ -9,22 +8,22 @@ import { Subscription } from './Subscription'
 // ================= Entity ==================
 // ===========================================
 
-@Entity({ repository: () => GuildRepository })
+@Entity({ repository: () => GuildRepository, schema: 'steammy_bot' })
 export class Guild extends CustomBaseEntity {
 
 	[EntityRepositoryType]?: GuildRepository
 
 	@PrimaryKey({ autoincrement: false })
-    id!: string
+	id!: string
 
 	@Property({ nullable: true, type: 'string' })
-    prefix: string | null
+	prefix: string | null
 
 	@Property()
-    deleted: boolean = false
+	deleted: boolean = false
 
 	@Property()
-    lastInteract: Date = new Date()
+	lastInteract: Date = new Date()
 
 	@OneToMany('Subscription', 'guild')
 	subscriptions = new Collection<Subscription>(this)

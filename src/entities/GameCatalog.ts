@@ -9,38 +9,38 @@ import { CustomBaseEntity } from './BaseEntity'
 // ================= Entity ==================
 // ===========================================
 
-@Entity({ repository: () => GameCatalogRepository })
+@Entity({ repository: () => GameCatalogRepository, schema: 'steammy_bot' })
 export class GameCatalog extends CustomBaseEntity {
 
 	[EntityRepositoryType]?: GameCatalogRepository
 
 	// TODO: Use AutoIncrement ID to avoid conflicts between platform IDs
 	@PrimaryKey({ autoincrement: false })
-    id: string
+	id: string
 
 	@Property()
-    title: string
+	title: string
 
 	@Property({ columnType: 'int8', nullable: true })
-    price: number
+	price: number
 
 	@Property({ columnType: 'int8', nullable: true })
-    size: number
+	size: number
 
 	@Property({ nullable: true })
-    developer: string
+	developer: string
 
 	@Property({ nullable: true })
-    image: string
+	image: string
 
 	@Property({ columnType: 'text' })
-    description: string
+	description: string
 
 	@Property({ default: false })
-    broadcasted: boolean
+	broadcasted: boolean
 
 	@Property()
-		platform: string
+	platform: string
 
 }
 
