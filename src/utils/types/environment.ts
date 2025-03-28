@@ -16,6 +16,7 @@ export const env = cleanEnv(process.env, {
 	DATABASE_NAME: str({ default: undefined }),
 	DATABASE_USER: str({ default: undefined }),
 	DATABASE_PASSWORD: str({ default: undefined }),
+	DATABASE_SCHEMA: str({ default: 'public' }),
 
 	API_PORT: num({ default: undefined }),
 	API_ADMIN_TOKEN: str({ default: undefined }),

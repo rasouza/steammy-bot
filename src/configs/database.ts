@@ -1,8 +1,8 @@
 import { Options } from '@mikro-orm/core'
 import { EntityGenerator } from '@mikro-orm/entity-generator'
 import { Migrator } from '@mikro-orm/migrations'
-import { SqlHighlighter } from '@mikro-orm/sql-highlighter'
 import { PostgreSqlDriver } from '@mikro-orm/postgresql'
+import { SqlHighlighter } from '@mikro-orm/sql-highlighter'
 
 // eslint-disable-next-line unused-imports/no-unused-imports
 import { env } from '@/env'
@@ -48,6 +48,7 @@ const envMikroORMConfig = {
 		port: Number(env.DATABASE_PORT),
 		user: env.DATABASE_USER,
 		password: env.DATABASE_PASSWORD,
+		schema: env.DATABASE_SCHEMA,
 
 		/**
 		 * MySQL
