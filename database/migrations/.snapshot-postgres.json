@@ -24,6 +24,7 @@
           "primary": false,
           "nullable": false,
           "length": 6,
+          "default": "CURRENT_TIMESTAMP",
           "mappedType": "datetime"
         },
         "updated_at": {
@@ -34,6 +35,7 @@
           "primary": false,
           "nullable": false,
           "length": 6,
+          "default": "CURRENT_TIMESTAMP",
           "mappedType": "datetime"
         },
         "title": {
@@ -162,6 +164,7 @@
           "primary": false,
           "nullable": false,
           "length": 6,
+          "default": "CURRENT_TIMESTAMP",
           "mappedType": "datetime"
         },
         "updated_at": {
@@ -172,6 +175,7 @@
           "primary": false,
           "nullable": false,
           "length": 6,
+          "default": "CURRENT_TIMESTAMP",
           "mappedType": "datetime"
         },
         "title": {
@@ -280,6 +284,7 @@
           "primary": false,
           "nullable": false,
           "length": 6,
+          "default": "CURRENT_TIMESTAMP",
           "mappedType": "datetime"
         },
         "updated_at": {
@@ -290,6 +295,7 @@
           "primary": false,
           "nullable": false,
           "length": 6,
+          "default": "CURRENT_TIMESTAMP",
           "mappedType": "datetime"
         },
         "value": {
@@ -342,6 +348,7 @@
           "primary": false,
           "nullable": false,
           "length": 6,
+          "default": "CURRENT_TIMESTAMP",
           "mappedType": "datetime"
         },
         "updated_at": {
@@ -352,6 +359,7 @@
           "primary": false,
           "nullable": false,
           "length": 6,
+          "default": "CURRENT_TIMESTAMP",
           "mappedType": "datetime"
         },
         "prefix": {
@@ -422,6 +430,7 @@
           "primary": false,
           "nullable": false,
           "length": 6,
+          "default": "CURRENT_TIMESTAMP",
           "mappedType": "datetime"
         },
         "updated_at": {
@@ -432,6 +441,7 @@
           "primary": false,
           "nullable": false,
           "length": 6,
+          "default": "CURRENT_TIMESTAMP",
           "mappedType": "datetime"
         },
         "file_name": {
@@ -693,6 +703,7 @@
           "primary": false,
           "nullable": false,
           "length": 6,
+          "default": "CURRENT_TIMESTAMP",
           "mappedType": "datetime"
         },
         "updated_at": {
@@ -703,6 +714,7 @@
           "primary": false,
           "nullable": false,
           "length": 6,
+          "default": "CURRENT_TIMESTAMP",
           "mappedType": "datetime"
         }
       },
@@ -759,6 +771,7 @@
           "primary": false,
           "nullable": false,
           "length": 6,
+          "default": "CURRENT_TIMESTAMP",
           "mappedType": "datetime"
         },
         "updated_at": {
@@ -769,6 +782,7 @@
           "primary": false,
           "nullable": false,
           "length": 6,
+          "default": "CURRENT_TIMESTAMP",
           "mappedType": "datetime"
         },
         "last_interact": {
