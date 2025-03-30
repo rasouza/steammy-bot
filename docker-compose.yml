@@ -28,18 +28,18 @@ services:
   
   # ==== PostgreSQL database ====
 
-  # database:
-  #   image: postgres
-  #   container_name: database
-  #   restart: always
-  #   volumes:
-  #     - ./data:/var/lib/postgresql:rw
-  #   environment:
-  #     - POSTGRES_DB=${DATABASE_NAME}
-  #     - POSTGRES_USER=${DATABASE_USER}
-  #     - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
-  #   ports:
-  #     - 5432:5432
+  database:
+    image: postgres
+    container_name: database
+    restart: always
+    volumes:
+      - ./data:/var/lib/postgresql:rw
+    environment:
+      - POSTGRES_DB=${DATABASE_NAME}
+      - POSTGRES_USER=${DATABASE_USER}
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
+    ports:
+      - 5432:5432
 
   # ==== MySQL database ====
 
