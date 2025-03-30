@@ -1,3 +1,4 @@
+/* eslint-disable ts/no-unsafe-function-type */
 import { Service } from '@/decorators'
 import { Logger } from '@/services'
 

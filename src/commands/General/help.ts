@@ -82,11 +82,11 @@ export default class HelpCommand {
 					.map((cmd) => {
 						return `</${
 							cmd.group ? `${cmd.group} ` : ''
-								}${cmd.subgroup ? `${cmd.subgroup} ` : ''
-								}${cmd.name
-								}:${
-								applicationCommands.find(acmd => acmd.name === (cmd.group ? cmd.group : cmd.name))!.id
-								}>`
+						}${cmd.subgroup ? `${cmd.subgroup} ` : ''
+						}${cmd.name
+						}:${
+							applicationCommands.find(acmd => acmd.name === (cmd.group ? cmd.group : cmd.name))!.id
+						}>`
 					})
 
 				embed.addFields([{

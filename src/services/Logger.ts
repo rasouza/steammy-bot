@@ -149,7 +149,7 @@ export class Logger {
 		if (
 			channel
 			&& (channel instanceof TextChannel
-			|| channel instanceof ThreadChannel)
+				|| channel instanceof ThreadChannel)
 		) {
 			if (typeof message !== 'string')
 				return channel.send(message).catch(console.error)
@@ -282,17 +282,17 @@ export class Logger {
             (${chalk.bold.white(type)})
             "${chalk.bold.green(action)}"
             ${channel instanceof TextChannel || channel instanceof ThreadChannel
-                ? `${chalk.dim.italic.gray('in channel')} ${chalk.bold.blue(`#${channel.name}`)}`
-                : ''
-            }
+					? `${chalk.dim.italic.gray('in channel')} ${chalk.bold.blue(`#${channel.name}`)}`
+					: ''
+			}
             ${guild
-                ? `${chalk.dim.italic.gray('in guild')} ${chalk.bold.blue(`${guild.name}`)}`
-                : ''
-            }
+					? `${chalk.dim.italic.gray('in guild')} ${chalk.bold.blue(`${guild.name}`)}`
+					: ''
+			}
             ${user
-                ? `${chalk.dim.italic.gray('by')} ${chalk.bold.blue(`${user.username}#${user.discriminator}`)}`
-                : ''
-            }
+					? `${chalk.dim.italic.gray('by')} ${chalk.bold.blue(`${user.username}#${user.discriminator}`)}`
+					: ''
+			}
         `
 
 		if (logsConfig.interaction.console)
@@ -400,9 +400,9 @@ export class Logger {
                 (${chalk.bold.white(type)})
                 ${chalk.dim.italic.gray('Guild')}
                 ${guild
-                    ? `${chalk.bold.green(guild.name)} (${chalk.bold.blue(guildId)})`
-                    : guildId
-                }
+						? `${chalk.bold.green(guild.name)} (${chalk.bold.blue(guildId)})`
+						: guildId
+				}
                 ${chalk.dim.italic.gray(additionalMessage)}
             `
 

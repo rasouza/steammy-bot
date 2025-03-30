@@ -45,7 +45,7 @@ export class Plugin {
 			return this.stopLoad('Missing tscordRequiredVersion in plugin.json')
 
 		// check plugin.json values
-		if (!pluginConfig.name.match(/^[a-zA-Z0-9-_]+$/))
+		if (!pluginConfig.name.match(/^[\w-]+$/))
 			return this.stopLoad('Invalid name in plugin.json')
 		if (!semver.valid(pluginConfig.version))
 			return this.stopLoad('Invalid version in plugin.json')

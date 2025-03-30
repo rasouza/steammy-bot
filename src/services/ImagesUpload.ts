@@ -73,22 +73,24 @@ export class ImagesUpload {
 		// check if the image is already in the database and that its md5 hash is the same.
 		for (const imagePath of images) {
 			const imageHash = await imageHasher(
-                `${this.imageFolderPath}/${imagePath}`,
-                16,
-                true
+				`${this.imageFolderPath}/${imagePath}`,
+				16,
+				true
 			) as string
 
 			const imageInDb = await this.imageRepo.findOne({
 				hash: imageHash,
 			})
 
-			if (!imageInDb)
+			if (!imageInDb) {
 				await this.addNewImageToImgur(imagePath, imageHash)
-			else if (
+			} else if (
 				imageInDb && (
 					imageInDb.basePath !== imagePath.split('/').slice(0, -1).join('/')
 					|| imageInDb.fileName !== imagePath.split('/').slice(-1)[0])
-			) console.warn(`Image ${chalk.bold.green(imagePath)} has the same hash as ${chalk.bold.green(imageInDb.basePath + (imageInDb.basePath?.length ? '/' : '') + imageInDb.fileName)} so it will skip`)
+			) {
+				console.warn(`Image ${chalk.bold.green(imagePath)} has the same hash as ${chalk.bold.green(imageInDb.basePath + (imageInDb.basePath?.length ? '/' : '') + imageInDb.fileName)} so it will skip`)
+			}
 		}
 	}
 
@@ -99,9 +101,9 @@ export class ImagesUpload {
 		await this.imgurClient.deleteImage(image.deleteHash)
 
 		this.logger.log(
-            `Image ${image.fileName} deleted from database because it is not in the filesystem anymore`,
-            'info',
-            true
+			`Image ${image.fileName} deleted from database because it is not in the filesystem anymore`,
+			'info',
+			true
 		)
 	}
 
@@ -124,9 +126,9 @@ export class ImagesUpload {
 
 			if (!uploadResponse.success) {
 				this.logger.log(
-                    `Error uploading image ${imageFileName} to imgur: ${uploadResponse.status} ${uploadResponse.data}`,
-                    'error',
-                    true
+					`Error uploading image ${imageFileName} to imgur: ${uploadResponse.status} ${uploadResponse.data}`,
+					'error',
+					true
 				)
 
 				return
@@ -145,9 +147,9 @@ export class ImagesUpload {
 
 			// log the success
 			this.logger.log(
-                `Image ${chalk.bold.green(imagePath)} uploaded to imgur`,
-                'info',
-                true
+				`Image ${chalk.bold.green(imagePath)} uploaded to imgur`,
+				'info',
+				true
 			)
 		} catch (error: any) {
 			this.logger.log(error?.toString(), 'error', true)

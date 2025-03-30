@@ -53,9 +53,9 @@ export default class StatsCommand {
 	})
 	async statsHandler(
 		@SlashOption({ name: 'days', type: ApplicationCommandOptionType.Number, required: true }) days: number,
-			interaction: CommandInteraction,
-			client: Client,
-			{ localize }: InteractionData
+		interaction: CommandInteraction,
+		client: Client,
+		{ localize }: InteractionData
 	) {
 		const embeds: EmbedBuilder[] = []
 

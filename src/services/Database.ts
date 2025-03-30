@@ -134,7 +134,7 @@ export class Database {
 			console.debug(`${backupPath}${snapshotName}`)
 			await restore(
 				mikroORMConfig[env.NODE_ENV]!.dbName!,
-                `${backupPath}${snapshotName}`
+				`${backupPath}${snapshotName}`
 			)
 
 			await this.refreshConnection()

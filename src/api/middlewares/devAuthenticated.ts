@@ -65,7 +65,7 @@ export class DevAuthenticated {
 			} else {
 				throw new Unauthorized('Unauthorized')
 			}
-		} catch (err) {
+		} catch {
 			throw new BadRequest('Invalid discord token')
 		}
 	}

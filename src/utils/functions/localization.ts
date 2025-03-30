@@ -21,9 +21,7 @@ export function setOptionsLocalization<K extends SanitizedOptions & { name?: str
 		options[`${target}Localizations`] = getLocalizedInfo(target.toUpperCase() as 'NAME' | 'DESCRIPTION', localizationSource)
 
 	if (!options[target as keyof typeof options]) {
-		options[target as keyof typeof options]
-            = getLocalizedInfo(target.toUpperCase() as 'NAME' | 'DESCRIPTION', localizationSource)?.[generalConfig.defaultLocale]
-            || (target === 'name' ? nameFallback : undefined)
+		options[target as keyof typeof options] = getLocalizedInfo(target.toUpperCase() as 'NAME' | 'DESCRIPTION', localizationSource)?.[generalConfig.defaultLocale] || (target === 'name' ? nameFallback : undefined)
 	}
 
 	return options

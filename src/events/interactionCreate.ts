@@ -30,7 +30,9 @@ export default class InteractionCreateEvent {
 		if (
 			generalConfig.automaticDeferring
 			&& interaction instanceof CommandInteraction
-		) await interaction.deferReply()
+		) {
+			await interaction.deferReply()
+		}
 
 		// insert user in db if not exists
 		await syncUser(interaction.user)

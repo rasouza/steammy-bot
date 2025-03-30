@@ -1,3 +1,5 @@
+import process from 'node:process'
+
 import { cleanEnv, num, str } from 'envalid'
 
 import { apiConfig, generalConfig, mikroORMConfig } from '@/configs'
@@ -6,7 +8,7 @@ import { env } from '@/env'
 export function checkEnvironmentVariables() {
 	const config = mikroORMConfig[env.NODE_ENV]
 
-	const isSqliteDatabase = config.hasOwnProperty('dbName') && config.dbName != '' && !config.hasOwnProperty('port')
+	const isSqliteDatabase = Object.prototype.hasOwnProperty.call(config, 'dbName') && config.dbName !== '' && !Object.prototype.hasOwnProperty.call(config, 'port')
 	if (!isSqliteDatabase) {
 		cleanEnv(process.env, {
 			DATABASE_HOST: str(),
