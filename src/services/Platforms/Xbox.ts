@@ -34,15 +34,12 @@ export class Xbox {
 	}
 
 	async fetchGames(): Promise<Game[]> {
-		// Placeholder is to ensure type safety when merging
-		const gamePlaceholder: Game = {} as Game
-
 		const gameIds = await this.fetchAllIds()
 		const gameList = await this.enrichGameCatalog(gameIds)
 
 		this.logger.console(`Fetched ${gameList.length} games from ${chalk.bold.green('Xbox Game Pass')}`, 'info')
 
-		return gameList.map(game => merge(game, gamePlaceholder, MAPPER_SCHEMA))
+		return gameList.map(game => merge(game, {} as Game, MAPPER_SCHEMA))
 	}
 
 	@Schedule('0 * * * *')
@@ -87,11 +84,10 @@ export class Xbox {
 				hydration,
 			},
 		}
+
 		const { data } = await axios.post(`${apiUrl}/products`, body, params)
-
-		this.logger.console(`[Xbox API] Enriched catalog for ${chalk.bold.green(gameIds.length)} IDs`, 'info')
-
 		const gameList: XboxApiGame[] = Object.values(data.Products)
+		this.logger.console(`[Xbox API] Enriched catalog for ${chalk.bold.green(gameIds.length)} IDs`, 'info')
 
 		return gameList
 	}
