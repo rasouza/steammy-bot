@@ -1,8 +1,9 @@
 name: Deploy (SSH)
 
 on:
-  # push:
-  #   branches: [ main ]
+  push:
+    branches: [ main ]
+    tags: [ 'v*.*.*' ]
 
   # allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -17,20 +18,39 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: executing remote ssh commands using password
-        uses: appleboy/ssh-action@master
-        env:
-          PROJECT_PATH: ${{ secrets.PROJECT_PATH }}
-          # PERSONAL_ACCESS_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
-          host: ${{ secrets.IP }}
-          username: ${{ secrets.USERNAME }}
-          # password: ${{ secrets.PASSWORD }}
-          key: ${{ secrets.KEY }}
-          # passphrase: ${{ secrets.PASSPHRASE }}
-          port: ${{ secrets.PORT }}
-          envs: PROJECT_PATH
-          script: |
-            cd $PROJECT_PATH
-            git pull https://github.com/rasouza/steammy-bot.git main
-            pm2 restart pm2.config.json
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Build and push
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+
+      - name: Deploy to Coolify
+        run: | 
+         curl --request GET '${{ secrets.COOLIFY_WEBHOOK }}' --header 'Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}'
