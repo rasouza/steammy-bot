@@ -1,6 +1,6 @@
 {
   "name": "steammy-bot",
-  "version": "1.3.3",
+  "version": "1.3.4",
   "description": "Keeps track of your Game platforms' free offers",
   "license": "MIT",
   "main": "build/main.js",

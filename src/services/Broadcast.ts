@@ -5,7 +5,7 @@ import { delay, inject } from 'tsyringe'
 
 import { GamePlatform } from '@/constants'
 import { Schedule, Service } from '@/decorators'
-import { CatalogEpicRepository, CatalogXbox, CatalogXboxRepository, Subscription, SubscriptionRepository } from '@/entities'
+import { CatalogEpic, CatalogEpicRepository, CatalogXbox, CatalogXboxRepository, Subscription, SubscriptionRepository } from '@/entities'
 import { Database, GameEmbed, Logger } from '@/services'
 
 @Service()
@@ -23,6 +23,7 @@ export class Broadcast {
 
 	) {
 		this.xboxRepository = this.db.get(CatalogXbox)
+		this.epicRepository = this.db.get(CatalogEpic)
 		this.subscriptionRepository = this.db.get(Subscription)
 	}
 
