@@ -91,7 +91,7 @@ export class Epic {
 	}
 
 	@Schedule('0 * * * *')
-	async sync() {
+	async syncEpic() {
 		const games = await this.fetchGames()
 
 		this.epicRepository.upsertMany(games)

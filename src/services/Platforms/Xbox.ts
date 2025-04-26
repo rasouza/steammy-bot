@@ -43,7 +43,7 @@ export class Xbox {
 	}
 
 	@Schedule('0 * * * *')
-	async sync() {
+	async syncXbox() {
 		const games = await this.fetchGames()
 		this.xboxRepository.upsertMany(games)
 
