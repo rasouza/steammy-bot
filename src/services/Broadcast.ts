@@ -58,7 +58,11 @@ export class Broadcast {
 
 	private async broadcastEpic() {
 		const games = await this.epicRepository.fetchNotBroadcasted()
-		if (games.length === 0) return
+		if (games.length === 0) {
+			this.logger.console(`No new games to broadcast for ${chalk.bold.green('Epic')}`, 'info')
+
+			return
+		}
 
 		this.logger.console(`Broadcasting ${games.length} new games for ${chalk.bold.green('Epic')}`, 'info')
 
@@ -80,7 +84,11 @@ export class Broadcast {
 
 	private async broadcastXbox() {
 		const games = await this.xboxRepository.fetchNotBroadcasted()
-		if (games.length === 0) return
+		if (games.length === 0) {
+			this.logger.console(`No new games to broadcast for ${chalk.bold.green('Xbox')}`, 'info')
+
+			return
+		}
 
 		this.logger.console(`Broadcasting ${games.length} new games for ${chalk.bold.green('Xbox')}`, 'info')
 
