@@ -28,7 +28,15 @@ export default class SyncCommand {
 		platform: typeof GamePlatform[keyof typeof GamePlatform],
 		interaction: CommandInteraction
 	) {
-		await this[platform].sync()
+		switch (platform) {
+			case 'xbox':
+				await this.xbox.syncXbox()
+				break
+
+			case 'epic':
+				await this.epic.syncEpic()
+				break
+		}
 		interaction.followUp('Game catalog synchronized')
 	}
 
