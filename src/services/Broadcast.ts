@@ -68,8 +68,9 @@ export class Broadcast {
 
 		for (const game of games) {
 			try {
-				await this.send(`New game available on **Epic**`, game, 'epic')
 				game.broadcasted = true
+				this.db.em.persistAndFlush(game)
+				await this.send(`New game available on **Epic**`, game, 'epic')
 			} catch (error: unknown) {
 				if (error instanceof Error) {
 					this.logger.console(error.message, 'error')
@@ -78,8 +79,6 @@ export class Broadcast {
 				continue
 			}
 		}
-
-		await this.db.em.flush()
 	}
 
 	private async broadcastXbox() {
@@ -94,8 +93,9 @@ export class Broadcast {
 
 		for (const game of games) {
 			try {
-				await this.send(`New game available on **Xbox**`, game, 'xbox')
 				game.broadcasted = true
+				this.db.em.persistAndFlush(game)
+				await this.send(`New game available on **Xbox**`, game, 'xbox')
 			} catch (error: unknown) {
 				if (error instanceof Error) {
 					this.logger.console(error.message, 'error')
@@ -104,8 +104,6 @@ export class Broadcast {
 				continue
 			}
 		}
-
-		await this.db.em.flush()
 	}
 
 }
