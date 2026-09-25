@@ -1,71 +1,25 @@
 {
-	"compilerOptions": {
-
-		"target": "es2021",
-		"module": "commonjs",
-		"esModuleInterop": true,
-		"moduleResolution": "node",
-
-		"outDir": "build",
-		"rootDir": "src",
-		"resolveJsonModule": true,
-		
-		"strict": true,
-		"strictPropertyInitialization": false,
-		"allowSyntheticDefaultImports": true,
-		"experimentalDecorators": true,
-		"emitDecoratorMetadata": true,
-		"skipLibCheck": false,
-		"forceConsistentCasingInFileNames": true,
-
-		"baseUrl": ".",
-		"paths": {
-
-			"@/decorators": ["src/utils/decorators"],
-			"@/decorators/*": ["src/plugins/*/utils/decorators"],
-
-			"@/errors": ["src/utils/errors"],
-			"@/errors/*": ["src/plugins/*/utils/errors"],
-
-			"@/entities": ["src/entities"],
-			"@/entities/*": ["src/plugins/*/entities"],
-
-			"@/guards": ["src/guards"],
-			"@/guards/*": ["src/plugins/*/guards"],
-			
-			"@/services": ["src/services"],
-			"@/services/*": ["src/plugins/*/services"],
-
-			"@/i18n": ["src/i18n"],
-			"@/i18n/*": ["src/plugins/*/i18n"],
-
-			"@/configs": ["src/configs"],
-			"@/configs/*": ["src/plugins/*/configs"],
-
-			"@/utils/classes": ["src/utils/classes"],
-			"@/utils/classes/*": ["src/plugins/*/utils/classes"],
-
-			"@/utils/functions": ["src/utils/functions"],
-			"@/utils/functions/*": ["src/plugins/*/utils/functions"],
-
-			"@/api/controllers": ["src/api/controllers"],
-			"@/api/controllers/*": ["src/plugins/*/api/controllers"],
-
-			"@/api/middlewares": ["src/api/middlewares"],
-			"@/api/middlewares/*": ["src/plugins/*/api/middlewares"],
-
-			"@/api/server": ["src/api/server.ts"],
-
-			"@/env": ["src/utils/types/environment.ts"],
-			"@/constants": ["src/utils/types/constants.ts"],
-		}
-	},
-
-	"include": ["src", "**/*.ts", "src/**/*.json"],
-	"exclude": ["build", "node_modules", "tests", "mikro-orm.config.ts", "package.json"],
-	"paths": ["node_modules/*", "src/utils/types/*", "src/plugins/*/utils/types/*"],
-
-	"ts-node": {
-		"require": ["tsconfig-paths/register"]
-	}
+  "compilerOptions": {
+    "module": "commonjs",
+    "declaration": false,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "ES2021",
+    "sourceMap": true,
+    "outDir": "./build",
+    "baseUrl": "./",
+    "incremental": true,
+    "skipLibCheck": true,
+    "strictNullChecks": false,
+    "noImplicitAny": false,
+    "strictBindCallApply": false,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": false,
+    "paths": {
+      "@/*": ["src/*"]
+    }
+  },
+  "include": ["src/**/*"]
 }

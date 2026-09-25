@@ -15,7 +15,7 @@ FROM node:20.11-alpine as dependencies
 
     # install deps
     RUN apk add --no-cache --virtual .build-deps alpine-sdk python3 && \
-        npm ci --silent && \
+        npm ci --ignore-scripts && \
         apk del .build-deps
 
 # ======================
@@ -34,9 +34,6 @@ FROM node:20.11-alpine as builder
     COPY --from=dependencies /app/package.json .
     COPY --from=dependencies /app/package-lock.json .
     COPY --from=dependencies /app/node_modules /app/node_modules
-
-    # install plugin dependencies
-    RUN npm run install:plugins
 
     # build the project
     RUN npm run build
@@ -76,7 +73,7 @@ FROM node:20.11-alpine as runner
     COPY --from=prepare /app/package-lock.json /app/package-lock.json
     COPY --from=prepare /app/node_modules /app/node_modules
 
-    # finaly start the bot
+    # finally start the bot
     CMD ["npm", "run", "start"]
 
     EXPOSE 4000
