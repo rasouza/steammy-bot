@@ -31,19 +31,35 @@ You can use `/unsubscribe <platform>` to stop a channel from receiving announcem
 
 ## Development
 
+Requires **Node.js >= 22.12** (see `.nvmrc`).
+
 ```bash
 # Install dependencies
+# --ignore-scripts works around a crash in necord's own postinstall on Windows.
 npm install --ignore-scripts
 
-# Start in development mode
-npm run dev
+# Start in watch mode
+npm run start:dev
 
-# Build for production
+# Build for production (outputs to dist/)
 npm run build
 
-# Start production server
-npm run start
+# Run the compiled build
+npm run start:prod
 ```
+
+### Scripts
+
+| Script               | Description                            |
+| -------------------- | -------------------------------------- |
+| `npm run start:dev`  | Watch mode with `NODE_ENV=development`  |
+| `npm run build`      | Compile TypeScript to `dist/`          |
+| `npm run start:prod` | Run the compiled `dist/main.js`        |
+| `npm run format`     | Format `src/` and `test/` with Prettier |
+| `npm run lint`       | Lint and autofix with ESLint           |
+| `npm run type:check` | Typecheck without emitting             |
+| `npm test`           | Unit tests (Jest)                      |
+| `npm run test:e2e`   | End-to-end tests (Jest + supertest)    |
 
 ## How to contribute: Adding more platforms
 
