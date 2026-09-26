@@ -10,10 +10,15 @@ export class GameEmbedService {
   build(game: Game): EmbedBuilder {
     const builder = new EmbedBuilder();
     const fields = [];
-    const { title, developer, description, price, size, image } = game;
+    const { title, developer, price, size, image } = game;
 
     builder.setTitle(title);
-    builder.setDescription(this.truncate(description));
+
+    // discord.js rejects an empty description, so only set it when present.
+    const description = this.truncate(game.description);
+    if (description) {
+      builder.setDescription(description);
+    }
 
     if (image) {
       try {
