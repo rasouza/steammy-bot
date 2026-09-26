@@ -1,9 +1,9 @@
 {
     "apps": [
         {
-            "name": "My Discord Bot",
+            "name": "steammy-bot",
             "script": "npm",
-            "args" : "run build:start"
+            "args": "run start:prod"
         }
     ]
 }
