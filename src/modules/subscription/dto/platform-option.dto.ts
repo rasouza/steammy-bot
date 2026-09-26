@@ -1,17 +1,16 @@
-import { StringOption } from 'necord'
-import { GamePlatform, GamePlatformType } from '@/shared/constants'
+import { StringOption } from 'necord';
+import { GamePlatform } from '../../../shared/constants';
+import type { GamePlatformType } from '../../../shared/constants';
 
 export class PlatformOptionDto {
-
-	@StringOption({
-		name: 'platform',
-		description: 'Pick a platform',
-		required: true,
-		choices: [
-			{ name: 'Xbox Game Pass', value: GamePlatform.XBOX },
-			{ name: 'Epic Games', value: GamePlatform.EPIC },
-		],
-	})
-	platform: GamePlatformType
-
+  @StringOption({
+    name: 'platform',
+    description: 'Pick a platform',
+    required: true,
+    choices: [
+      { name: 'Xbox Game Pass', value: GamePlatform.XBOX },
+      { name: 'Epic Games', value: GamePlatform.EPIC },
+    ],
+  })
+  platform: GamePlatformType;
 }

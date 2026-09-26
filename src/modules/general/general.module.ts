@@ -1,7 +1,7 @@
-import { Module } from '@nestjs/common'
-import { GeneralCommands } from './general.commands'
+import { Module } from '@nestjs/common';
+import { GeneralCommands } from './general.commands';
 
 @Module({
-	providers: [GeneralCommands],
+  providers: [GeneralCommands],
 })
 export class GeneralModule {}

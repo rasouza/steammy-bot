@@ -1,45 +1,48 @@
-import { Injectable } from '@nestjs/common'
-import { EmbedBuilder } from 'discord.js'
-import { filesize } from 'filesize'
-import { Game } from '@/shared/types'
+import { Injectable } from '@nestjs/common';
+import { EmbedBuilder } from 'discord.js';
+import { filesize } from 'filesize';
+import { Game } from '../../shared/types';
 
-const MAX_LENGTH = 300
+const MAX_LENGTH = 300;
 
 @Injectable()
 export class GameEmbedService {
+  build(game: Game): EmbedBuilder {
+    const builder = new EmbedBuilder();
+    const fields = [];
+    const { title, developer, description, price, size, image } = game;
 
-	build(game: Game): EmbedBuilder {
-		const builder = new EmbedBuilder()
-		const fields = []
-		const { title, developer, description, price, size, image } = game
+    builder.setTitle(title);
+    builder.setDescription(this.truncate(description));
 
-		builder.setTitle(title)
-		builder.setDescription(this.truncate(description))
-		if (image) {
-			try {
-				builder.setImage(encodeURI(image))
-			} catch {
-				builder.setImage(image)
-			}
-		}
+    if (image) {
+      try {
+        builder.setImage(encodeURI(image));
+      } catch {
+        builder.setImage(image);
+      }
+    }
 
-		if (price) fields.push({ name: 'Price', value: `$${(Number(price) / 100).toFixed(2)}` })
-		if (size) fields.push({ name: 'Size', value: filesize(Number(size)) })
-		if (developer) fields.push({ name: 'Developer', value: developer })
-		if (fields.length > 0) builder.addFields(fields)
+    if (price)
+      fields.push({
+        name: 'Price',
+        value: `$${(Number(price) / 100).toFixed(2)}`,
+      });
+    if (size) fields.push({ name: 'Size', value: filesize(Number(size)) });
+    if (developer) fields.push({ name: 'Developer', value: developer });
+    if (fields.length > 0) builder.addFields(fields);
 
-		builder.setColor(0x00A8FF)
+    builder.setColor(0x00a8ff);
 
-		return builder
-	}
+    return builder;
+  }
 
-	private truncate(text?: string): string {
-		if (!text) return ''
-		if (text.length > MAX_LENGTH) {
-			return `${text.slice(0, MAX_LENGTH)}...`
-		}
+  private truncate(text?: string): string {
+    if (!text) return '';
+    if (text.length > MAX_LENGTH) {
+      return `${text.slice(0, MAX_LENGTH)}...`;
+    }
 
-		return text
-	}
-
+    return text;
+  }
 }
