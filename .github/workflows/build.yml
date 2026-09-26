@@ -19,10 +19,29 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
       - name: Install Node.js dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
+
+      - name: Check formatting
+        run: npx prettier --check "src/**/*.ts" "test/**/*.ts"
+
+      - name: Type check
+        run: npm run type:check
 
       - name: Run linters
-        uses: wearerequired/lint-action@v2
-        with:
-          eslint: true
+        run: npx eslint "{src,apps,libs,test}/**/*.ts"
+
+      - name: Build
+        run: npm run build
+
+      - name: Run unit tests
+        run: npm run test
+
+      - name: Run e2e tests
+        run: npm run test:e2e
