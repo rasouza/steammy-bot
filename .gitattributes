@@ -1,0 +1,10 @@
+# Normalize line endings in the repository.
+#
+# The index stores LF, but `core.autocrlf=true` on Windows was rewriting the
+# working tree to CRLF. `.prettierrc` sets no `endOfLine`, so Prettier defaults
+# to "lf" and `npx prettier --check` failed on every file locally while passing
+# in CI (ubuntu, LF checkout).
+#
+# `text=auto` keeps git's binary auto-detection, so images and other binary
+# assets in assets/ are left alone.
+* text=auto eol=lf
