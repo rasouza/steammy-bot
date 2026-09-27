@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Client, EmbedBuilder } from 'discord.js';
+import { Client, EmbedBuilder, MessageFlags } from 'discord.js';
 import { Context, SlashCommand } from 'necord';
 import type { SlashCommandContext } from 'necord';
 
@@ -18,7 +18,7 @@ export class GeneralCommands {
 
     return interaction.reply({
       content: `🏓 Pong! Roundtrip: **${diff}ms** | WebSocket Heartbeat: **${ping}ms**`,
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
@@ -39,7 +39,7 @@ export class GeneralCommands {
 
     return interaction.reply({
       embeds: [embed],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
@@ -74,7 +74,7 @@ export class GeneralCommands {
 
     return interaction.reply({
       embeds: [embed],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 }

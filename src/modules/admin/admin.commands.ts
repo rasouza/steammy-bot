@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { PermissionFlagsBits } from 'discord.js';
+import { MessageFlags, PermissionFlagsBits } from 'discord.js';
 import { Context, Options, SlashCommand } from 'necord';
 import type { SlashCommandContext } from 'necord';
 import { BroadcastService } from '../broadcast/broadcast.service';
@@ -26,7 +26,7 @@ export class AdminCommands {
     @Context() [interaction]: SlashCommandContext,
     @Options() { platform }: PlatformOptionDto,
   ) {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     try {
       if (platform === GamePlatform.XBOX) {
@@ -55,7 +55,7 @@ export class AdminCommands {
     @Context() [interaction]: SlashCommandContext,
     @Options() { platform }: PlatformOptionDto,
   ) {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     try {
       let count = 0;

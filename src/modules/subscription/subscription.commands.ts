@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ChannelType } from 'discord.js';
+import { ChannelType, MessageFlags } from 'discord.js';
 import { Context, Options, SlashCommand } from 'necord';
 import type { SlashCommandContext } from 'necord';
 import { GamePlatformName } from '../../shared/constants';
@@ -28,7 +28,7 @@ export class SubscriptionCommands {
     if (!guild || !channel || channel.type !== ChannelType.GuildText) {
       return interaction.reply({
         content: 'This command can only be used in guild text channels.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -53,7 +53,7 @@ export class SubscriptionCommands {
 
       return interaction.reply({
         content: 'An error occurred while subscribing.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
   }
@@ -71,7 +71,7 @@ export class SubscriptionCommands {
     if (!guild || !channel || channel.type !== ChannelType.GuildText) {
       return interaction.reply({
         content: 'This command can only be used in guild text channels.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -96,7 +96,7 @@ export class SubscriptionCommands {
 
       return interaction.reply({
         content: 'An error occurred while unsubscribing.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
   }
