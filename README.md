@@ -100,6 +100,27 @@ the TypeORM CLI. The environment is validated at boot with Zod, so a missing or
 malformed variable fails immediately with a clear message instead of a cryptic
 connection error.
 
+### Importing legacy data
+
+The project was originally built on tscord + MikroORM against Supabase. To pull
+that data into the current database, point `LEGACY_SUPABASE_CONNECTION_STRING` at
+the old instance and run:
+
+```bash
+npm run db:import-legacy -- --dry-run   # report row counts, write nothing
+npm run db:import-legacy                # copy in a single transaction
+```
+
+The script reads `catalog_epic`, `catalog_xbox`, `guild` and `subscription`.
+Those four tables are column-for-column identical between the two ORMs, so rows
+are copied verbatim. It verifies that live on both sides before copying, refuses
+to run against a non-empty target unless given `--force`, and only ever issues
+`SELECT`s against the legacy database.
+
+`data`, `image`, `pastebin`, `stat` and `user` are not copied: the TypeORM
+rewrite dropped them and nothing in the app reads them. If you want them later,
+take a copy of the old database before deleting it.
+
 ## How to contribute: Adding more platforms
 
 1. Create a new TypeORM catalog entity (`src/database/entities/catalog-myplatform.entity.ts`).
