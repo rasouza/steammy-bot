@@ -5,7 +5,8 @@ services:
   # ==== Application ====
 
   app:
-    image: ghcr.io/rasouza/steammy-bot:main
+    image: ghcr.io/rasouza/steammy-bot:latest
+    pull_policy: always
     volumes:
         - ./logs/:/app/logs
         - ./assets:/app/assets
