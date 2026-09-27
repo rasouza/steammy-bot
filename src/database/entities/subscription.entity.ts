@@ -8,7 +8,7 @@ import {
 } from 'typeorm';
 import { Guild } from './guild.entity';
 
-@Entity({ name: 'subscription', schema: 'steammy_bot' })
+@Entity({ name: 'subscription' })
 export class Subscription {
   // Discord Channel ID
   @PrimaryColumn({ type: 'varchar', length: 255 })

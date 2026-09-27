@@ -50,21 +50,61 @@ npm run start:prod
 
 ### Scripts
 
-| Script               | Description                            |
-| -------------------- | -------------------------------------- |
-| `npm run start:dev`  | Watch mode with `NODE_ENV=development`  |
-| `npm run build`      | Compile TypeScript to `dist/`          |
-| `npm run start:prod` | Run the compiled `dist/main.js`        |
-| `npm run format`     | Format `src/` and `test/` with Prettier |
-| `npm run lint`       | Lint and autofix with ESLint           |
-| `npm run type:check` | Typecheck without emitting             |
-| `npm test`           | Unit tests (Jest)                      |
-| `npm run test:e2e`   | End-to-end tests (Jest + supertest)    |
+| Script                    | Description                                          |
+| ------------------------- | ---------------------------------------------------- |
+| `npm run start:dev`       | Watch mode with `NODE_ENV=development`               |
+| `npm run build`           | Compile TypeScript to `dist/`                        |
+| `npm run start:prod`      | Run the compiled `dist/main.js`                      |
+| `npm run format`          | Format `src/` and `test/` with Prettier              |
+| `npm run lint`            | Lint and autofix with ESLint                         |
+| `npm run type:check`      | Typecheck without emitting                           |
+| `npm test`                | Unit tests (Jest)                                    |
+| `npm run test:e2e`        | End-to-end tests (Jest + supertest)                  |
+| `npm run db:init`         | Create the `steammy_bot` schema if it does not exist |
+| `npm run migration:generate -- <path>` | Generate a migration from entity changes   |
+| `npm run migration:run`   | Apply pending migrations                             |
+| `npm run migration:revert` | Revert the last applied migration                   |
+| `npm run migration:show`  | List migrations and their applied state              |
+
+## Database
+
+Schema is managed entirely by [TypeORM](https://typeorm.io/) migrations. The
+`synchronize` flag is **not** used, so entities and the database can never
+silently drift apart.
+
+Dev and prod are **separate databases** that both use a schema named
+`steammy_bot`. Only `DATABASE_HOST` and `DATABASE_PASSWORD` differ between
+them, which keeps the schema literal inside generated migrations identical in
+every environment.
+
+Pending migrations are applied automatically on boot (`migrationsRun: true`),
+so a deploy needs no extra step.
+
+### Working with migrations
+
+Run these against a database that is already fully migrated — `migration:generate`
+diffs your entities against the live schema, so a stale database produces a
+wrong migration.
+
+```bash
+# One-time per environment: create the schema
+npm run db:init
+
+# After changing an entity
+npm run migration:generate -- src/database/migrations/AddCatalogColumn
+npm run migration:run
+```
+
+Connection options live in `src/config` and are shared by the Nest module and
+the TypeORM CLI. The environment is validated at boot with Zod, so a missing or
+malformed variable fails immediately with a clear message instead of a cryptic
+connection error.
 
 ## How to contribute: Adding more platforms
 
 1. Create a new TypeORM catalog entity (`src/database/entities/catalog-myplatform.entity.ts`).
-2. Register the entity in `src/database/database.module.ts` and `src/database/entities/index.ts`.
-3. Create a platform service (`src/modules/platforms/myplatform.service.ts`) with a `@Cron()` schedule to sync games.
-4. Register the new platform choice in `src/shared/constants.ts` and `src/modules/subscription/dto/platform-option.dto.ts`.
-5. Add broadcasting logic in `src/modules/broadcast/broadcast.service.ts`.
+2. Register the entity in `src/database/entities/index.ts` and `src/database/data-source-options.ts`.
+3. Generate a migration for it with `npm run migration:generate -- src/database/migrations/AddMyPlatform` and apply it with `npm run migration:run`.
+4. Create a platform service (`src/modules/platforms/myplatform.service.ts`) with a `@Cron()` schedule to sync games.
+5. Register the new platform choice in `src/shared/constants.ts` and `src/modules/subscription/dto/platform-option.dto.ts`.
+6. Add broadcasting logic in `src/modules/broadcast/broadcast.service.ts`.

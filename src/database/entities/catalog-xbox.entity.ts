@@ -6,7 +6,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-@Entity({ name: 'catalog_xbox', schema: 'steammy_bot' })
+@Entity({ name: 'catalog_xbox' })
 export class CatalogXbox {
   @PrimaryColumn({ type: 'varchar', length: 255 })
   id: string;

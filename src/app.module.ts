@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
+
+import { databaseConfig, envSchema } from './config';
 import { DatabaseModule } from './database/database.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { BotModule } from './modules/bot/bot.module';
@@ -15,6 +17,8 @@ import { SubscriptionModule } from './modules/subscription/subscription.module';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+      load: [databaseConfig],
+      validationSchema: envSchema,
     }),
     ScheduleModule.forRoot(),
     DatabaseModule,

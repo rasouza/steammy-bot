@@ -8,7 +8,7 @@ import {
 } from 'typeorm';
 import { Subscription } from './subscription.entity';
 
-@Entity({ name: 'guild', schema: 'steammy_bot' })
+@Entity({ name: 'guild' })
 export class Guild {
   @PrimaryColumn({ type: 'varchar', length: 255 })
   id: string;

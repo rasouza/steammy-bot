@@ -45,3 +45,55 @@ jobs:
 
       - name: Run e2e tests
         run: npm run test:e2e
+
+  migrations:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: steammy_bot
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      BOT_TOKEN: ci-token
+      DATABASE_HOST: localhost
+      DATABASE_PORT: 5432
+      DATABASE_NAME: steammy_bot
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: postgres
+      DATABASE_SSL: "false"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install Node.js dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Create the database schema
+        run: npm run db:init
+
+      - name: Apply migrations
+        run: npm run migration:run
+
+      - name: Re-apply migrations to prove they are idempotent
+        run: npm run migration:run
+
+      - name: Show applied migrations
+        run: npm run migration:show
