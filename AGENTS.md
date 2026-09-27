@@ -78,6 +78,32 @@ pattern. The target is one generic platform lifecycle plus a platform registry,
 so adding a platform means adding a definition and registering it — not editing
 generic code.
 
+## Changing the toolchain
+
+**Read `docs/plans/nest12_esm_toolchain.md` first — it is the maintainer's
+directive for migrating this project to the Nest 12 defaults.** It is a
+**pending** directive: nothing in it is implemented, and the commands above
+still describe the current CommonJS/Jest/ESLint/tsc toolchain accurately. Do
+not assume any part of it has landed.
+
+It plans the move to native ESM plus Vitest, oxlint, tsx, and Rspack. Rspack is
+committed, not optional, and it is not a free swap: the bundle changes the shape
+of `dist/` from a per-file tsc tree to a single `main.js`, which collides with
+TypeORM's runtime migration glob. The plan resolves that with a dedicated
+`tsconfig.migrations.json` and a two-step `build`; until that lands,
+`dist/database/migrations/*.js` is where migrations come from.
+
+Two hazards worth knowing before you touch anything here:
+
+- Every relative import is currently extensionless (68 of them across 29
+  files). Adding `"type": "module"` without appending `.js` — or `/index.js` for
+  the 19 barrel imports — breaks at runtime, not at typecheck.
+- `src/shared/constants` is a **file**, not a barrel directory, despite sitting
+  next to `src/shared/types/`. It takes a plain `.js`, not `/index.js`.
+
+This work is independent of `docs/plans/easy_add_platform.md`; a commit
+containing both is unreviewable.
+
 A bug the plan also fixes: `broadcastEpic`/`broadcastXbox` run
 `game.broadcasted = true; await save()` **before** `send()`, so a failed Discord
 delivery permanently marks a game as broadcast and it is never retried. Do not
