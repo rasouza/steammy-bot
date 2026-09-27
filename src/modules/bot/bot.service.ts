@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ActivityType } from 'discord.js';
+import { ActivityType, Events } from 'discord.js';
 import { Context, On, Once } from 'necord';
 import type { ContextOf } from 'necord';
 import { Repository } from 'typeorm';
@@ -15,8 +15,8 @@ export class BotService {
     private readonly guildRepository: Repository<Guild>,
   ) {}
 
-  @Once('ready')
-  public onReady(@Context() [client]: ContextOf<'ready'>) {
+  @Once(Events.ClientReady)
+  public onReady(@Context() [client]: ContextOf<'clientReady'>) {
     this.logger.log(`Steammy Bot is ready! Logged in as ${client.user.tag}`);
     client.user.setActivity('free games', { type: ActivityType.Watching });
   }
