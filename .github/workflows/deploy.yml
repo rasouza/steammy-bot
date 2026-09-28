@@ -122,9 +122,15 @@ jobs:
       - name: Create multi-arch manifest
         working-directory: /tmp/digests
         run: |
-          docker buildx imagetools create \
-            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '%s@sha256:%s ' "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" $(ls -p | cut -d/ -f2))
+          image="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          args=()
+          while IFS= read -r tag; do
+            args+=(-t "$tag")
+          done < <(jq -cr '.tags[]' <<< "$DOCKER_METADATA_OUTPUT_JSON")
+          for digest_file in *; do
+            args+=("${image}@sha256:${digest_file}")
+          done
+          docker buildx imagetools create "${args[@]}"
 
       - name: Inspect image
         run: |
@@ -134,7 +140,12 @@ jobs:
       - name: Resolve manifest digest
         id: digest
         run: |
-          echo "digest=$(docker buildx imagetools inspect '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.git_tag }}' --format '{{json .Manifest}}' | jq -r '.digest')" >> "$GITHUB_OUTPUT"
+          image="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.git_tag }}"
+          digest="$(docker buildx imagetools inspect "$image" --format '{{json .Manifest}}' | jq -r '.digest // empty')"
+          if [ -z "$digest" ]; then
+            digest="$(docker buildx imagetools inspect "$image" | awk '/^Digest:/{print $2; exit}')"
+          fi
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
 
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v4
