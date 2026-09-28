@@ -12,6 +12,130 @@ const SECTIONS = {
   chore: 'Chores',
 };
 
+const GROUP_ICONS = {
+  Features: '✨',
+  'Bug Fixes': '🐛',
+  'Performance Improvements': '⚡',
+  Reverts: '🗑️',
+  Documentation: '📖',
+  'Code Refactoring': '♻️',
+  Styles: '🎨',
+  Tests: '✅',
+  'Build System': '📦',
+  'Continuous Integration': '⚙️',
+  Chores: '🧹',
+  'Other Changes': '📌',
+};
+
+const GROUP_ORDER = [
+  'Features',
+  'Bug Fixes',
+  'Performance Improvements',
+  'Reverts',
+  'Documentation',
+  'Code Refactoring',
+  'Styles',
+  'Tests',
+  'Build System',
+  'Continuous Integration',
+  'Chores',
+  'Other Changes',
+];
+
+function groupRank(title) {
+  const index = GROUP_ORDER.indexOf(title);
+  return index === -1 ? GROUP_ORDER.length : index;
+}
+
+const MAIN_TEMPLATE = `{{> header}}
+
+{{#each commitGroups}}
+
+{{#if title}}
+### {{lookup @root.icons title}} {{title}}
+
+{{/if}}
+{{#each commits}}
+{{> commit root=@root}}
+{{/each}}
+
+{{/each}}
+{{> footer}}
+{{#if linkCompare}}
+
+{{#if repository}}
+**Full Changelog**: {{#if @root.host}}{{@root.host}}/{{/if}}{{#if @root.owner}}{{@root.owner}}/{{/if}}{{@root.repository}}/compare/{{previousTag}}...{{currentTag}}
+{{else}}
+{{#if @root.repoUrl}}
+**Full Changelog**: {{@root.repoUrl}}/compare/{{previousTag}}...{{currentTag}}
+{{/if}}
+{{/if}}
+{{/if}}
+`;
+
+const COMMIT_PARTIAL = `*{{#if scope}} **{{scope}}:**
+{{~/if}} {{#if subject}}
+  {{~subject}}
+{{~else}}
+  {{~header}}
+{{~/if}}
+
+{{~!-- commit link --}} {{#if @root.linkReferences~}}
+  ([{{shortHash}}](
+  {{~#if @root.repository}}
+    {{~#if @root.host}}
+      {{~@root.host}}/
+    {{~/if}}
+    {{~#if @root.owner}}
+      {{~@root.owner}}/
+    {{~/if}}
+    {{~@root.repository}}
+  {{~else}}
+    {{~@root.repoUrl}}
+  {{~/if~}}
+  /{{@root.commit}}/{{hash}}))
+{{~else}}
+  {{~shortHash}}
+{{~/if}}
+
+{{~!-- commit references --}}
+{{~#if references~}}
+  , closes
+  {{~#each references}} {{#if @root.linkReferences~}}
+    [
+    {{~#if this.owner}}
+      {{~this.owner}}/
+    {{~/if}}
+    {{~this.repository}}#{{this.issue}}](
+    {{~#if @root.repository}}
+      {{~#if @root.host}}
+        {{~@root.host}}/
+      {{~/if}}
+      {{~#if this.repository}}
+        {{~#if this.owner}}
+          {{~this.owner}}/
+        {{~/if}}
+        {{~this.repository}}
+      {{~else}}
+        {{~#if @root.owner}}
+          {{~@root.owner}}/
+        {{~/if}}
+          {{~@root.repository}}
+        {{~/if}}
+    {{~else}}
+      {{~@root.repoUrl}}
+    {{~/if}}/
+    {{~@root.issue}}/{{this.issue}})
+  {{~else}}
+    {{~#if this.owner}}
+      {{~this.owner}}/
+    {{~/if}}
+    {{~this.repository}}#{{this.issue}}
+  {{~/if}}{{/each}}
+{{~/if}}
+
+`;
+
 const PARSER = {
   headerPattern: /^(\w*)(?:\(([\w$@.\-*/ ]*)\))?: (.*)$/,
   headerCorrespondence: ['type', 'scope', 'subject'],
@@ -37,14 +161,14 @@ const PARSER = {
 function transform(commit, context) {
   const notes = (commit.notes || []).map((note) => ({
     ...note,
-    title: 'BREAKING CHANGES',
+    title: '⚠️ BREAKING CHANGES',
   }));
 
   const section = Object.prototype.hasOwnProperty.call(SECTIONS, commit.type)
     ? SECTIONS[commit.type]
     : undefined;
   const type =
-    section || (commit.revert ? 'Reverts' : commit.type || 'Other Changes');
+    section || (commit.revert ? 'Reverts' : 'Other Changes');
 
   const scope = commit.scope === '*' ? '' : commit.scope;
   const shortHash =
@@ -53,6 +177,10 @@ function transform(commit, context) {
       : commit.shortHash;
 
   let subject = commit.subject;
+  if (typeof subject !== 'string') {
+    subject = commit.header;
+  }
+
   const issues = [];
 
   if (typeof subject === 'string') {
@@ -82,8 +210,6 @@ function transform(commit, context) {
         },
       );
     }
-  } else {
-    subject = commit.header;
   }
 
   const references = (commit.references || []).filter(
@@ -97,11 +223,16 @@ export default async function conventionalCommitsPreset() {
   return {
     parser: PARSER,
     writer: {
+      mainTemplate: MAIN_TEMPLATE,
+      commitPartial: COMMIT_PARTIAL,
       transform,
       groupBy: 'type',
-      commitGroupsSort: 'title',
+      commitGroupsSort: (a, b) =>
+        groupRank(a.title) - groupRank(b.title) ||
+        String(a.title).localeCompare(String(b.title)),
       commitsSort: ['scope', 'subject'],
       noteGroupsSort: 'title',
+      finalizeContext: (context) => ({ ...context, icons: GROUP_ICONS }),
     },
   };
 }

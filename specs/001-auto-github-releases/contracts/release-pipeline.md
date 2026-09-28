@@ -1,6 +1,6 @@
 # Contract: Release Pipeline Workflow Interfaces
 
-**Consumers**: `release.yml` (orchestrator), `build.yml` (gate), `deploy.yml` (publisher)
+**Consumers**: `release.yml` (orchestrator), `build.yml` (CI), `deploy.yml` (publisher)
 **Research basis**: D3–D5, D11 in [research.md](../research.md)
 
 The feature is implemented as three workflow interfaces. This contract fixes their boundaries so
@@ -8,13 +8,13 @@ that adding/removing a trigger or step later cannot silently violate FR-006, FR-
 
 ---
 
-## 1. `build.yml` — the gate (quality interface)
+## 1. `build.yml` — CI (quality interface)
 
 | Aspect        | Contract                                                                 |
 |---------------|--------------------------------------------------------------------------|
 | Triggers      | `pull_request`, `workflow_dispatch`, **`workflow_call`**. **No `push: branches: [main]`** (moved into `release.yml` to avoid duplicate main CI — research D3). **No tag triggers.** |
 | Steps         | Unchanged six-step CI sequence + migrations job (constitution IV)         |
-| Output        | Job success == checks passed; consumed by `release.yml` `gate` job        |
+| Output        | Job success == checks passed; consumed by `release.yml` `ci` job         |
 | Changes allowed? | None to step content. Trigger list change as specified above only.      |
 
 ## 2. `release.yml` — orchestrator (new)
@@ -23,12 +23,12 @@ that adding/removing a trigger or step later cannot silently violate FR-006, FR-
 |---------------|----------|
 | Trigger       | `push: branches: [main]` only (covers direct pushes and PR merges)       |
 | Concurrency   | `group: release-main`, `cancel-in-progress: false` (FR-008 — serialized)  |
-| Job graph     | `gate` → `release` → `publish` (`publish` also `needs: gate`)             |
-| Job `gate`    | `uses: ./.github/workflows/build.yml`                                     |
+| Job graph     | `ci` → `release` → `publish` (`publish` also `needs: ci`)                 |
+| Job `ci`      | `uses: ./.github/workflows/build.yml`                                     |
 | Job `release` | checkout `fetch-depth: 0` **and** explicit `git fetch --force --tags` (research D5); runs `cycjimmy/semantic-release-action@v6` with `GITHUB_TOKEN` env |
 | Job outputs   | `release.new_release_published` (`'true'|'false'`), `release.new_release_version`, `release.new_release_git_tag` |
 | Job `publish` | `if: needs.release.outputs.new_release_published == 'true'`; calls `deploy.yml` with `secrets: inherit` and `with.version`/`with.git_tag` |
-| Permissions   | Job-scoped (least privilege): workflow baseline `contents: read`; `release` job elevates to `contents: write`; `publish` job sets `contents: read`, `packages: write`, `attestations: write`, `id-token: write` (job-level `permissions` replaces the workflow-level set, so `contents: read` must be restated). `gate` needs only the baseline. |
+| Permissions   | Job-scoped (least privilege): workflow baseline `contents: read`; `release` job elevates to `contents: write`; `publish` job sets `contents: read`, `packages: write`, `attestations: write`, `id-token: write` (job-level `permissions` replaces the workflow-level set, so `contents: read` must be restated). `ci` needs only the baseline. |
 | Failure rule  | Any stage failing fails the run visibly (FR-009). A run must never create two releases (FR-007). |
 
 ## 3. `deploy.yml` — publisher (narrowed interface)
