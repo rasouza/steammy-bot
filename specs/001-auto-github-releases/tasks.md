@@ -47,9 +47,9 @@ Single repository; all paths relative to repo root. Structure per plan.md:
 
 **Purpose**: Get onto the feature branch with a verified-green baseline and the constitution amendment in hand
 
-- [ ] T001 Create feature branch `001-auto-github-releases` off `main` (currently on `main`; run `git switch -c 001-auto-github-releases`) with the existing uncommitted `specs/` + amended constitution/AGENTS.md carried over
-- [ ] T002 [P] Verify baseline is green: run the constitution Principle IV sequence locally (`npx prettier --check "src/**/*.ts" "test/**/*.ts"` → `npm run type:check` → `npx eslint "{src,apps,libs,test}/**/*.ts"` → `npm run build` → `npm test` → `npm run test:e2e`)
-- [ ] T003 [P] Verify governance artifacts present in tree: `.specify/memory/constitution.md` shows `**Version**: 2.0.0` with the automatic-release Deployment section, and `AGENTS.md` `## Deploy` describes the `release.yml` chain (amended during planning, research D10)
+- [X] T001 Create feature branch `001-auto-github-releases` off `main` (currently on `main`; run `git switch -c 001-auto-github-releases`) with the existing uncommitted `specs/` + amended constitution/AGENTS.md carried over
+- [X] T002 [P] Verify baseline is green: run the constitution Principle IV sequence locally (`npx prettier --check "src/**/*.ts" "test/**/*.ts"` → `npm run type:check` → `npx eslint "{src,apps,libs,test}/**/*.ts"` → `npm run build` → `npm test` → `npm run test:e2e`)
+- [X] T003 [P] Verify governance artifacts present in tree: `.specify/memory/constitution.md` shows `**Version**: 2.0.0` with the automatic-release Deployment section, and `AGENTS.md` `## Deploy` describes the `release.yml` chain (amended during planning, research D10)
 
 ---
 
@@ -59,9 +59,9 @@ Single repository; all paths relative to repo root. Structure per plan.md:
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T004 Create release-engine config `.releaserc.json` per research D1/D2: `branches: ["main"]`, `tagFormat: "v${version}"`, plugins `@semantic-release/commit-analyzer` (with `releaseRules`: `{breaking: true, release: "major"}`, `{type: "feat", release: "minor"}`, `{type: "*", release: "patch"}`, `{message: "*", release: "patch"}` — the message catch-all is mandatory, `{type:"*"}` alone misses typeless merge commits), `@semantic-release/release-notes-generator`, `@semantic-release/github`; NO npm/git plugins (research D8)
-- [ ] T005 Edit `.github/workflows/build.yml`: remove `push: branches: [main]` from `on:`; keep `pull_request`, `workflow_dispatch`, `workflow_call` and all step content byte-identical (contract §1 — step content is frozen by Principle IV)
-- [ ] T006 Create `.github/workflows/release.yml` skeleton: `on: push: branches: [main]`; workflow-level `concurrency: { group: release-main, cancel-in-progress: false }` (FR-008, research D5); workflow-level `permissions: { contents: read }` baseline (jobs elevate per contract §2 — no workflow-wide write grants); job `gate` with `uses: ./.github/workflows/build.yml` (contract §2)
+- [X] T004 Create release-engine config `.releaserc.json` per research D1/D2: `branches: ["main"]`, `tagFormat: "v${version}"`, plugins `@semantic-release/commit-analyzer` (with `releaseRules`: `{breaking: true, release: "major"}`, `{type: "feat", release: "minor"}`, `{type: "*", release: "patch"}`, `{message: "*", release: "patch"}` — the message catch-all is mandatory, `{type:"*"}` alone misses typeless merge commits), `@semantic-release/release-notes-generator`, `@semantic-release/github`; NO npm/git plugins (research D8)
+- [X] T005 Edit `.github/workflows/build.yml`: remove `push: branches: [main]` from `on:`; keep `pull_request`, `workflow_dispatch`, `workflow_call` and all step content byte-identical (contract §1 — step content is frozen by Principle IV)
+- [X] T006 Create `.github/workflows/release.yml` skeleton: `on: push: branches: [main]`; workflow-level `concurrency: { group: release-main, cancel-in-progress: false }` (FR-008, research D5); workflow-level `permissions: { contents: read }` baseline (jobs elevate per contract §2 — no workflow-wide write grants); job `gate` with `uses: ./.github/workflows/build.yml` (contract §2)
 
 **Checkpoint**: Chain skeleton exists; gate runs on main pushes before any release logic
 
@@ -76,8 +76,8 @@ inferred version above the previous release (quickstart S1 release part + S2)
 
 ### Implementation for User Story 1
 
-- [ ] T007 [US1] Add job `release` to `.github/workflows/release.yml` with `needs: gate`: checkout `fetch-depth: 0` **plus** an explicit `git fetch --force --tags` step (missing tags ⇒ duplicate releases, research D5), `actions/setup-node` pinned to `.nvmrc`, then `cycjimmy/semantic-release-action@v6` with `env: GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}` and a step `id:` (contract §2); job-level `permissions: contents: write` (tag push + release creation)
-- [ ] T008 [US1] Expose job outputs on `release` in `.github/workflows/release.yml`: `new_release_published`, `new_release_version`, `new_release_git_tag` from the step id (contract §2 — US3's publish gate consumes these)
+- [X] T007 [US1] Add job `release` to `.github/workflows/release.yml` with `needs: gate`: checkout `fetch-depth: 0` **plus** an explicit `git fetch --force --tags` step (missing tags ⇒ duplicate releases, research D5), `actions/setup-node` pinned to `.nvmrc`, then `cycjimmy/semantic-release-action@v6` with `env: GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}` and a step `id:` (contract §2); job-level `permissions: contents: write` (tag push + release creation)
+- [X] T008 [US1] Expose job outputs on `release` in `.github/workflows/release.yml`: `new_release_published`, `new_release_version`, `new_release_git_tag` from the step id (contract §2 — US3's publish gate consumes these)
 - [ ] T009 [US1] Post-merge validation: run quickstart S1 (release section) and S2 (version inference: `docs:`→patch, `fix:`→patch, `feat:`→minor, `feat!:`→major) using small follow-up PRs; confirm SC-001 (≤5 min after checks pass), SC-002 (zero manual steps), SC-003 (unique increasing versions)
 
 **Checkpoint**: US1 MVP live — every passing merge becomes a release. Note: this chain already *creates* the tag and notes (US2), but does not yet publish images (US3) or gate ordering is verified per US4.
@@ -94,7 +94,7 @@ release and none older; tag resolves to the merge commit (quickstart S1 notes ch
 
 ### Implementation for User Story 2
 
-- [ ] T010 [US2] Verify/tune `@semantic-release/release-notes-generator` settings in `.releaserc.json` so notes are scoped to commits since the previous release only, sourced per the contract `contracts/conventional-commits.md` (FR-005, SC-004); adjust commit-consumer config only — do not touch releaseRules (owned by T004)
+- [X] T010 [US2] Verify/tune `@semantic-release/release-notes-generator` settings in `.releaserc.json` so notes are scoped to commits since the previous release only, sourced per the contract `contracts/conventional-commits.md` (FR-005, SC-004); adjust commit-consumer config only — do not touch releaseRules (owned by T004)
 - [ ] T011 [US2] Post-merge validation: `gh release view --json tagName,targetCommitish,notes` — confirm tag → merge commit (FR-004), notes cover every change since the previous release and nothing earlier (SC-004), across at least two consecutive releases
 
 **Checkpoint**: US2 independently verifiable — releases are self-describing
@@ -111,9 +111,9 @@ origin v9.9.9` → no run, no image, no deploy (quickstart S4 + S6)
 
 ### Implementation for User Story 3
 
-- [ ] T012 [US3] Refactor `.github/workflows/deploy.yml` to `workflow_call` only: delete `on: push: tags` and `on: workflow_dispatch`; add required `workflow_call.inputs` `version` and `git_tag`; rewrite the metadata step's image tags to come from inputs — `latest` (required by `docker-compose.yml:8`), `v<version>`, `<version>`, `sha-<short>` — never from `github.ref` (research D6, contract §3); keep buildx/multi-arch/attest/Coolify steps unchanged
-- [ ] T013 [US3] Add job `publish` to `.github/workflows/release.yml`: `needs: [gate, release]`, `if: needs.release.outputs.new_release_published == 'true'`, `uses: ./.github/workflows/deploy.yml`, `with: { version: …, git_tag: … }` from release outputs, `secrets: inherit`; job permissions `contents: read`, `packages: write`, `attestations: write`, `id-token: write` (contract §2; no new secrets — reuse `COOLIFY_*`, FR-012)
-- [ ] T014 [US3] [P] Confirm the sole-push invariant across the repo: `grep -rn "ghcr\|docker/build-push" .github/workflows/` shows image pushes only inside `deploy.yml`, and no workflow anywhere declares tag or `workflow_dispatch` publish triggers (SC-008, contract cross-cutting invariants)
+- [X] T012 [US3] Refactor `.github/workflows/deploy.yml` to `workflow_call` only: delete `on: push: tags` and `on: workflow_dispatch`; add required `workflow_call.inputs` `version` and `git_tag`; rewrite the metadata step's image tags to come from inputs — `latest` (required by `docker-compose.yml:8`), `v<version>`, `<version>`, `sha-<short>` — never from `github.ref` (research D6, contract §3); keep buildx/multi-arch/attest/Coolify steps unchanged
+- [X] T013 [US3] Add job `publish` to `.github/workflows/release.yml`: `needs: [gate, release]`, `if: needs.release.outputs.new_release_published == 'true'`, `uses: ./.github/workflows/deploy.yml`, `with: { version: …, git_tag: … }` from release outputs, `secrets: inherit`; job permissions `contents: read`, `packages: write`, `attestations: write`, `id-token: write` (contract §2; no new secrets — reuse `COOLIFY_*`, FR-012)
+- [X] T014 [US3] [P] Confirm the sole-push invariant across the repo: `grep -rn "ghcr\|docker/build-push" .github/workflows/` shows image pushes only inside `deploy.yml`, and no workflow anywhere declares tag or `workflow_dispatch` publish triggers (SC-008, contract cross-cutting invariants)
 - [ ] T015 [US3] Post-merge validation: quickstart S4 (manual tag inert), S6 (registry `latest`/version/sha tags all map to releases), and S1 end-to-end (image pushed + production running the change ≤15 min after checks pass — SC-009)
 
 **Checkpoint**: US3 independently verifiable — merge = deploy; hand-pushed tags are dead
@@ -130,7 +130,7 @@ still no duplicate; two rapid merges → two serialized unique releases (quickst
 
 ### Implementation for User Story 4
 
-- [ ] T016 [US4] Audit and enforce chain ordering in `.github/workflows/release.yml`: `release` strictly `needs: gate`, `publish` strictly `needs: [gate, release]` with its `if:` — assert no path exists from a failed gate to release/publish (FR-006); add explicit `if:` guards where implicit `needs` failure propagation is not sufficient
+- [X] T016 [US4] Audit and enforce chain ordering in `.github/workflows/release.yml`: `release` strictly `needs: gate`, `publish` strictly `needs: [gate, release]` with its `if:` — assert no path exists from a failed gate to release/publish (FR-006); add explicit `if:` guards where implicit `needs` failure propagation is not sufficient
 - [ ] T017 [US4] Post-merge validation: quickstart S3 (failing merge ⇒ unchanged `gh release list`, no image, no deploy — SC-005) and SC-007 (failed run identifiable from the Actions run page without raw logs)
 - [ ] T018 [US4] Post-merge validation: quickstart S5 (10 back-to-back merges ⇒ exactly 10 distinct increasing releases via the `release-main` concurrency queue — SC-006/FR-008) plus FR-007 retry check: re-run a failed `publish` job and confirm no second release/tag appears for the same change
 
@@ -142,10 +142,10 @@ still no duplicate; two rapid merges → two serialized unique releases (quickst
 
 **Purpose**: Docs sweep, full-scenario pass, and the governance re-check
 
-- [ ] T019 [P] Sweep documentation for stale tag-push deploy instructions: `README.md` (Deploy/Releases sections), `docs/` — align wording with the new chain; `AGENTS.md` and constitution already amended (verify only)
+- [X] T019 [P] Sweep documentation for stale tag-push deploy instructions: `README.md` (Deploy/Releases sections), `docs/` — align wording with the new chain; `AGENTS.md` and constitution already amended (verify only)
 - [ ] T020 Run the complete quickstart.md suite S1–S7 post-merge and record each result against SC-001…SC-009 (quickstart.md "Pass criteria")
-- [ ] T021 Final Definition of Done: run the constitution Principle IV six-step sequence locally on the final tree (same commands as T002) — all six must pass
-- [ ] T022 [P] Re-check `plan.md` "Constitution Check" against the shipped workflows (the plan mandates a post-Phase-1 re-check): confirm §Deployment text, `release.yml`, `build.yml`, and `deploy.yml` are mutually consistent — no tag/manual publish path anywhere
+- [X] T021 Final Definition of Done: run the constitution Principle IV six-step sequence locally on the final tree (same commands as T002) — all six must pass
+- [X] T022 [P] Re-check `plan.md` "Constitution Check" against the shipped workflows (the plan mandates a post-Phase-1 re-check): confirm §Deployment text, `release.yml`, `build.yml`, and `deploy.yml` are mutually consistent — no tag/manual publish path anywhere
 
 ---
 
