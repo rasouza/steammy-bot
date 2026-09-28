@@ -135,9 +135,15 @@ Rationale: an uncollected spec is worse than no spec, because it manufactures fa
 
 **Deployment**
 
-- Releases are cut by pushing a `v*.*.*` tag. `deploy.yml` reuses `build.yml`, builds a
-  multi-arch (`linux/amd64`, `linux/arm64`) image, pushes to `ghcr.io/<repo>` with a provenance
-  attestation, and pings a Coolify webhook. There is no npm publish step.
+- Releases are cut automatically: a merge to `main` whose gate (Principle IV) passes publishes the
+  GitHub Release, with the version inferred from the merged change. Hand-pushed `v*.*.*` tags are
+  not a release mechanism and MUST NOT publish anything.
+- The release chain is the sole path that publishes: `deploy.yml` is `workflow_call`-only — no
+  tag-push trigger, no manual dispatch — and is invoked by the release workflow after the gate,
+  where it builds a multi-arch (`linux/amd64`, `linux/arm64`) image, pushes to `ghcr.io/<repo>`
+  with a provenance attestation, and pings a Coolify webhook. `build.yml` no longer runs on push
+  to `main`; it runs as the gate inside that chain and keeps its PR/dispatch triggers. There is no
+  npm publish step.
 - The Dockerfile never copies `.env`; `docker-compose.yml` injects variables explicitly and
   bind-mounts `assets/`. `.env.prod` is gitignored. Migrations run at container boot, so deploys
   have no separate migrate step. Secrets MUST NOT be committed.
@@ -192,4 +198,4 @@ Compliance review: the six CI steps in Principle IV are the mechanical floor. Th
 checks in "Compliance review expectations" — new platform branching, delivery ordering, and
 partial-gate passes — are not automatable and MUST be verified by a human reviewer.
 
-**Version**: 1.0.0 | **Ratified**: 2026-09-27 | **Last Amended**: 2026-09-27
+**Version**: 2.0.0 | **Ratified**: 2026-09-27 | **Last Amended**: 2026-09-28

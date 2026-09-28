@@ -1,0 +1,26 @@
+{
+  "branches": ["main"],
+  "tagFormat": "v${version}",
+  "plugins": [
+    [
+      "@semantic-release/commit-analyzer",
+      {
+        "config": "./scripts/conventional-commits-preset.mjs",
+        "releaseRules": [
+          { "breaking": true, "release": "major" },
+          { "type": "feat", "release": "minor" },
+          { "type": "*", "release": "patch" },
+          { "header": "**", "release": "patch" },
+          { "message": "{*,**}", "release": "patch" }
+        ]
+      }
+    ],
+    [
+      "@semantic-release/release-notes-generator",
+      {
+        "config": "./scripts/conventional-commits-preset.mjs"
+      }
+    ],
+    "@semantic-release/github"
+  ]
+}

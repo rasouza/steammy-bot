@@ -1,0 +1,30 @@
+# Keeps the Docker build context small and prevents local state from
+# leaking into image builds. The Dockerfile COPYs only package.json,
+# package-lock.json, src/, nest-cli.json, tsconfig*.json — nothing
+# below is needed to build the image.
+
+.git
+.github
+.idea
+.vscode
+
+node_modules
+dist
+build
+coverage
+test
+specs
+docs
+scripts
+*.tsbuildinfo
+*.log
+logs
+
+.env
+.env.*
+*.pem
+*.key
+
+Dockerfile
+docker-compose.yml
+.dockerignore
