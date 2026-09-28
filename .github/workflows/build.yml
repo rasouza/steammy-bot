@@ -11,6 +11,7 @@ on:
 
 jobs:
   build:
+    name: Build and Test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -44,6 +45,7 @@ jobs:
         run: npm run test:e2e
 
   migrations:
+    name: Database Migrations
     runs-on: ubuntu-latest
 
     services:

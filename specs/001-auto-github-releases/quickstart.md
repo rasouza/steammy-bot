@@ -17,7 +17,7 @@ requirements/SC so a pass here means the feature is done, not just "wired up".
 ## S1 — Happy path: merge → release → image → production (FR-001, FR-010, SC-001, SC-009)
 
 1. Open a PR with a single `fix: …` commit; merge it into `main`.
-2. Watch the **Release** workflow: `gate` → `release` → `publish` all green.
+2. Watch the **Release** workflow: `ci` → `release` → `publish` all green.
 3. Check results:
 
 ```bash
@@ -46,7 +46,7 @@ Repeat S1's merge with commits of each type, in order: `docs: …`, then `fix: �
 gh release list --limit 1          # unchanged from before the merge
 ```
 
-**Expected**: `gate` fails; `release`/`publish` never run; no release, no image tag, no deploy.
+**Expected**: `ci` fails; `release`/`publish` never run; no release, no image tag, no deploy.
 
 ## S4 — Hand-pushed tag is inert (FR-011, SC-008)
 

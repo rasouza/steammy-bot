@@ -144,9 +144,10 @@ preserve that ordering if you are implementing the plan.
 
 ## Deploy
 
-Merges to `main` deploy themselves. `release.yml` chains the gate (`build.yml` via
-`workflow_call`) → semantic-release (version inferred from the change; creates the
-`v*.*.*` tag, GitHub Release, and notes) → `deploy.yml` (`workflow_call` only), which
+Merges to `main` deploy themselves. `release.yml` chains `ci` (the `build.yml` workflow via
+`workflow_call`) → `release` (semantic-release; version inferred from the change; creates the
+`v*.*.*` tag, GitHub Release, and notes) → `publish` (calls `deploy.yml` via `workflow_call`),
+which
 builds a multi-arch (`linux/amd64`, `linux/arm64`) image, pushes to `ghcr.io/<repo>`
 with a provenance attestation, and pings a Coolify webhook. Hand-pushed tags and
 manual dispatches trigger nothing: `deploy.yml` has no tag or `workflow_dispatch`
