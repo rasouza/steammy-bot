@@ -38,7 +38,7 @@ that adding/removing a trigger or step later cannot silently violate FR-006, FR-
 | Triggers      | **`workflow_call` only.** `push: tags` and `workflow_dispatch` are **removed** (FR-011, SC-008, research D4). |
 | Inputs        | `version` (e.g. `3.0.1`), `git_tag` (e.g. `v3.0.1`) — required            |
 | Secrets       | `COOLIFY_WEBHOOK`, `COOLIFY_TOKEN` (via `secrets: inherit` — no new secrets, FR-012) |
-| Steps         | Unchanged: checkout → ghcr login → metadata → buildx → multi-arch push → attest → Coolify ping |
+| Steps         | Parallel matrix (one runner per platform: `ubuntu-latest`, `ubuntu-24.04-arm`) pushes each arch **by digest** → digest artifacts → `publish` job assembles the multi-arch manifest (`buildx imagetools create`), attests it, then POSTs the Coolify webhook |
 | Image tags    | `latest` (required by `docker-compose.yml:8`), `v<version>`, `<version>`, `sha-<short>` — built from inputs, **not** from `github.ref` (research D6) |
 | Invariant     | This is the **only** place in the repository that pushes to the container registry (FR-011, SC-008) |
 
