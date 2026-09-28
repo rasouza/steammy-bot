@@ -144,9 +144,14 @@ preserve that ordering if you are implementing the plan.
 
 ## Deploy
 
-Push a `v*.*.*` tag. `deploy.yml` reuses `build.yml`, then builds a multi-arch
-(`linux/amd64`, `linux/arm64`) image, pushes to `ghcr.io/<repo>` with a
-provenance attestation, and pings a Coolify webhook. There is no npm publish step.
+Merges to `main` deploy themselves. `release.yml` chains the gate (`build.yml` via
+`workflow_call`) → semantic-release (version inferred from the change; creates the
+`v*.*.*` tag, GitHub Release, and notes) → `deploy.yml` (`workflow_call` only), which
+builds a multi-arch (`linux/amd64`, `linux/arm64`) image, pushes to `ghcr.io/<repo>`
+with a provenance attestation, and pings a Coolify webhook. Hand-pushed tags and
+manual dispatches trigger nothing: `deploy.yml` has no tag or `workflow_dispatch`
+triggers, and `build.yml` no longer runs on push to `main` (it keeps its PR/dispatch
+triggers). There is no npm publish step.
 
 The Dockerfile never copies `.env`; `docker-compose.yml` injects variables
 explicitly and bind-mounts `assets/`. `.env.prod` is gitignored. Migrations run
