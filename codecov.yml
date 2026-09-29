@@ -1,0 +1,14 @@
+# Codecov configuration.
+#
+# Coverage is reported but never enforced while the baseline is low: every
+# status is informational, so no PR can be blocked by a coverage number.
+# Once coverage stabilizes, flip `informational: false` and tighten targets —
+# ratchet style: thresholds only ever go up.
+coverage:
+  status:
+    project:
+      default:
+        informational: true
+    patch:
+      default:
+        informational: true
