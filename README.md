@@ -56,15 +56,24 @@ npm run start:prod
 | `npm run build`           | Compile TypeScript to `dist/`                        |
 | `npm run start:prod`      | Run the compiled `dist/main.js`                      |
 | `npm run format`          | Format `src/` and `test/` with Prettier              |
-| `npm run lint`            | Lint and autofix with ESLint                         |
+| `npm run lint`            | Type-aware lint with oxlint (read-only)              |
 | `npm run type:check`      | Typecheck without emitting                           |
-| `npm test`                | Unit tests (Jest)                                    |
-| `npm run test:e2e`        | End-to-end tests (Jest + supertest)                  |
+| `npm test`                | Unit tests (Vitest)                                  |
+| `npm run test:e2e`        | End-to-end tests (Vitest + supertest)                |
 | `npm run db:init`         | Create the `steammy_bot` schema if it does not exist |
 | `npm run migration:generate -- <path>` | Generate a migration from entity changes   |
 | `npm run migration:run`   | Apply pending migrations                             |
 | `npm run migration:revert` | Revert the last applied migration                   |
 | `npm run migration:show`  | List migrations and their applied state              |
+
+TypeORM's CLI and `db:init` run from source through `tsx`, so migrations work
+without a separate compile step. The CI gate runs, in this exact order:
+`prettier --check` → `type:check` → `lint` → `build` → `test` → `test:e2e`.
+
+> **Testing note**: Vitest transpiles with esbuild, which does not emit
+> constructor-injection metadata (`design:paramtypes`). The current tests never
+> boot a constructor-injected class; a future test that must do so needs explicit
+> `@Inject(...)` decorators or an SWC transform plugin.
 
 ## Database
 

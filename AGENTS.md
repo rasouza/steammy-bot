@@ -11,28 +11,29 @@ CI (`.github/workflows/build.yml`) runs these in order — run all of them befor
 ```bash
 npx prettier --check "src/**/*.ts" "test/**/*.ts"
 npm run type:check
-npx eslint "{src,apps,libs,test}/**/*.ts"   # no --fix
+npm run lint
 npm run build
 npm test
 npm run test:e2e
 ```
 
-- `npm run lint` is **not** the CI command: it passes `--fix` and rewrites your
-  files. CI runs eslint read-only, so an uncommitted autofix is still a failure.
+- `npm run lint` is the CI lint command: type-aware oxlint (`--type-aware`),
+  read-only — it never rewrites files. `npm run format` is the writer.
 - `npm run format` writes Prettier output over `src/` and `test/`.
 - `npm install --ignore-scripts` is required. necord's postinstall crashes on
   Windows; CI uses `npm ci --ignore-scripts` on Linux too.
 - Node: `.nvmrc` pins `24.21.0`, `engines` requires `>=24.15.0`. The README's
   "Node >= 22.12" is stale — trust `.nvmrc`.
 - Line endings: `.gitattributes` forces `eol=lf`. If your editor or a tool
-  rewrites files to CRLF, `prettier --check` fails on every file while eslint
-  still passes (its prettier rule uses `endOfLine: 'auto'`). Fix the line
-  endings, not the Prettier config.
+  rewrites files to CRLF, `prettier --check` fails on every file while `lint`
+  still passes (oxlint does not check formatting). Fix the line endings, not
+  the Prettier config.
 
 ## Tests
 
-- Unit specs are colocated in `src/**/*.spec.ts`. Jest's `rootDir` is `src`, so
-  a spec under `test/` is invisible to `npm test`.
+- Unit specs are colocated in `src/**/*.spec.ts`. The unit suite includes only
+  `**/*.spec.ts`, so a spec under `test/` is invisible to `npm test`, and the
+  e2e suite includes only `**/*.e2e-spec.ts`.
 - E2E specs are `test/**/*.e2e-spec.ts` (`npm run test:e2e`).
 - Focus one: `npm test -- game-embed` (path) or `npm test -- -t "name"`.
 - `tsconfig.build.json` excludes `**/*spec.ts`, so specs never reach `dist/` —
@@ -41,8 +42,8 @@ npm run test:e2e
 - Unit specs construct services directly (`new GameEmbedService()`), no Nest
   testing module. E2E uses `Test.createTestingModule` with a single module, so
   it needs neither a database nor a Discord token.
-- `ts-node` runs `transpileOnly`, so `npm run typeorm` and `npm run db:init` do
-  not typecheck. Run `type:check` separately.
+- `tsx` transpiles without typechecking, so `npm run typeorm` and
+  `npm run db:init` do not typecheck. Run `type:check` separately.
 
 ## Database
 
@@ -80,23 +81,21 @@ generic code.
 
 ## Changing the toolchain
 
-**Read `docs/plans/nest12_esm_toolchain.md` first — it is the maintainer's
-directive for migrating this project to the Nest 12 defaults.** It is a
-**pending** directive: nothing in it is implemented, and the commands above
-still describe the current CommonJS/Jest/ESLint/tsc toolchain accurately. Do
-not assume any part of it has landed.
-
-It plans the move to native ESM plus Vitest, oxlint, and tsx. The builder
-stays on plain `tsc`: Rspack was evaluated and rejected on 2026-09-29
-(decision recorded in `specs/002-nest12-esm-toolchain/spec.md`), so there is
-no bundler, no `tsconfig.migrations.json`, and no two-step `build` —
+**`docs/plans/nest12_esm_toolchain.md` records the Nest 12 migration.** It has
+been implemented (branch `002-nest12-esm-toolchain`): the tree is native ESM
+(`"type": "module"`), tested with Vitest, linted with type-aware oxlint, and
+the TypeORM CLI runs through `tsx`. The builder stayed on plain `tsc`:
+Rspack was evaluated and rejected on 2026-09-29 (decision recorded in
+`specs/002-nest12-esm-toolchain/spec.md`), so there is no bundler, no
+`tsconfig.migrations.json`, and no two-step `build` —
 `dist/database/migrations/*.js` keeps coming from the standard build.
 
 Two hazards worth knowing before you touch anything here:
 
-- Every relative import is currently extensionless (68 of them across 29
-  files). Adding `"type": "module"` without appending `.js` — or `/index.js` for
-  the 19 barrel imports — breaks at runtime, not at typecheck.
+- Every relative import carries an explicit extension — `.js` for concrete
+  files, `/index.js` for the 19 barrels (69 specifiers across 29 files). Keep
+  them that way: an extensionless relative import breaks at runtime, not at
+  typecheck.
 - `src/shared/constants` is a **file**, not a barrel directory, despite sitting
   next to `src/shared/types/`. It takes a plain `.js`, not `/index.js`.
 
@@ -113,12 +112,11 @@ preserve that ordering if you are implementing the plan.
 - `tsconfig.json` sets `strict: false` but enables `strictNullChecks`,
   `noImplicitAny`, and `strictBindCallApply` individually. Neither fully strict
   nor fully loose — don't assume either.
-- `module`/`moduleResolution` are `nodenext` while ESLint declares
-  `sourceType: 'commonjs'`. Don't "fix" this without checking `npm run build`.
-- ESLint uses `recommendedTypeChecked` with `projectService`, so lint is
-  type-aware and slow. `no-unsafe-*` are warnings, not errors, because
-  `object-mapper`'s mapping schema is untyped. 22 warnings on a clean tree is
-  normal; do not try to clear them.
+- oxlint runs type-aware through `oxlint-tsgolint` (the `--type-aware` flag on
+  `npm run lint`); `tsc` (`npm run type:check`) remains the type authority.
+  `no-unsafe-*` are warnings, not errors, because `object-mapper`'s mapping
+  schema is untyped. 22 warnings on a clean tree is normal; do not try to
+  clear them.
 - Necord: there is no manual slash-command registration anywhere in `src/` and
   none is needed. Handlers come from `@SlashCommand()` on classes listed in a
   module's `providers`, using `@Context()` and `@Options()` with a DTO class for
