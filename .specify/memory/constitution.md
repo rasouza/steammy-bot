@@ -167,6 +167,18 @@ Rationale: an uncollected spec is worse than no spec, because it manufactures fa
 
 ## Development Workflow and Quality Gates
 
+**Issue tracking**
+
+- Linear is the single tracker of record (team `Steammy Bot`, project `steammy-bot`). Planned
+  work MUST be recorded as an `STE-x` issue before it becomes a branch.
+- Feature branches MUST carry the `STE-x` key — Linear's suggested `gitBranchName` already
+  does — so PR linking and branch-driven status transitions flow through Linear's native
+  GitHub integration.
+- The same work MUST NOT be tracked in GitHub Issues alongside Linear: two trackers drift.
+  The speckit `after_tasks` hook pushes `tasks.md` tasks as Linear subtasks; the
+  GitHub-issues variant (`speckit.taskstoissues`) MUST NOT run for the same `tasks.md`.
+  Operational wiring lives in AGENTS.md.
+
 1. Confirm the target platform and whether `docs/plans/easy_add_platform.md` applies. For platform
    work, drive the change through the Spec Kit workflow rather than hand-implementing the plan.
 2. Branch from `main`. Keep commits atomic: a commit MUST contain one logical change, and a
@@ -185,6 +197,8 @@ Compliance review expectations:
 - Reviewers MUST reject changes that pass a subset of the CI gate.
 - Reviewers MUST reject new `if (platform === ...)` branching in generic services.
 - Reviewers MUST confirm no `broadcasted` flag is persisted before a successful send.
+- Reviewers MUST reject work that bypasses the tracker of record: a feature branch with no
+  `STE-x` issue, or the same `tasks.md` mirrored into GitHub Issues while Linear holds it.
 - Adding a principle, or relaxing one of the non-negotiable rules, is a MAJOR amendment and
   requires explicit maintainer sign-off.
 
@@ -215,4 +229,4 @@ Compliance review: the six CI steps in Principle IV are the mechanical floor. Th
 checks in "Compliance review expectations" — new platform branching, delivery ordering, and
 partial-gate passes — are not automatable and MUST be verified by a human reviewer.
 
-**Version**: 3.0.1 | **Ratified**: 2026-09-27 | **Last Amended**: 2026-09-29
+**Version**: 3.1.0 | **Ratified**: 2026-09-27 | **Last Amended**: 2026-09-29
