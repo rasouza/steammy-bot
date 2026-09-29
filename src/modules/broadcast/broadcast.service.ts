@@ -6,6 +6,7 @@ import { Repository } from 'typeorm';
 import { Subscription } from '../../database/entities/index.js';
 import type { GamePlatformType } from '../../shared/constants.js';
 import type { Game } from '../../shared/types/index.js';
+import type { SendOutcome } from '../platforms/platform.types.js';
 import { GameEmbedService } from './game-embed.service.js';
 
 /**
@@ -28,13 +29,15 @@ export class BroadcastService {
     message: string,
     game: Game,
     platform: GamePlatformType,
-  ): Promise<void> {
+  ): Promise<SendOutcome> {
     const subscriptions = await this.subscriptionRepository.find({
       where: { platform },
       relations: { guild: true },
     });
 
     const embed = this.embed.build(game);
+    const subscribers = subscriptions.length;
+    let delivered = 0;
 
     for (const subscription of subscriptions) {
       // Subscriptions of guilds the bot has been removed from survive in the
@@ -58,6 +61,7 @@ export class BroadcastService {
             content: message,
             embeds: [embed],
           });
+          delivered++;
         }
       } catch (error) {
         this.logger.warn(
@@ -65,5 +69,9 @@ export class BroadcastService {
         );
       }
     }
+
+    // One failed channel among many never throws (A-004); the caller decides
+    // what to mark based on these counts (contracts §4 / spec FR-010).
+    return { delivered, subscribers };
   }
 }

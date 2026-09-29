@@ -3,7 +3,7 @@ import { GamePlatform } from '../../shared/constants.js';
 import type { GamePlatformType } from '../../shared/constants.js';
 import type { Game } from '../../shared/types/index.js';
 import { GenericPlatform } from './generic-platform.js';
-import type { PlatformDefinition } from './platform.types.js';
+import type { PlatformDefinition, SendOutcome } from './platform.types.js';
 
 interface FakeSource {
   id: string;
@@ -33,13 +33,17 @@ function buildHarness() {
   };
   const broadcast = {
     send: vi.fn<
-      (message: string, game: Game, platform: GamePlatformType) => Promise<void>
+      (
+        message: string,
+        game: Game,
+        platform: GamePlatformType,
+      ) => Promise<SendOutcome>
     >(),
   };
   repository.saveAll.mockResolvedValue(undefined);
   repository.findPending.mockResolvedValue([]);
   repository.markBroadcasted.mockResolvedValue(undefined);
-  broadcast.send.mockResolvedValue(undefined);
+  broadcast.send.mockResolvedValue({ delivered: 1, subscribers: 1 });
 
   const platform = new GenericPlatform(
     definition,
@@ -53,12 +57,15 @@ function buildHarness() {
 }
 
 describe('GenericPlatform', () => {
-  let logs: { log: string[]; error: string[] };
+  let logs: { log: string[]; warn: string[]; error: string[] };
 
   beforeEach(() => {
-    logs = { log: [], error: [] };
+    logs = { log: [], warn: [], error: [] };
     vi.spyOn(Logger.prototype, 'log').mockImplementation((m: unknown) => {
       logs.log.push(String(m));
+    });
+    vi.spyOn(Logger.prototype, 'warn').mockImplementation((m: unknown) => {
+      logs.warn.push(String(m));
     });
     vi.spyOn(Logger.prototype, 'error').mockImplementation((m: unknown) => {
       logs.error.push(String(m));
@@ -135,7 +142,7 @@ describe('GenericPlatform', () => {
       repository.findPending.mockResolvedValue([broken, healthy]);
       broadcast.send
         .mockRejectedValueOnce(new Error('channel gone'))
-        .mockResolvedValueOnce(undefined);
+        .mockResolvedValueOnce({ delivered: 1, subscribers: 1 });
 
       const announced = await platform.broadcastPending();
 
@@ -153,6 +160,58 @@ describe('GenericPlatform', () => {
       expect(broadcast.send).not.toHaveBeenCalled();
       expect(repository.markBroadcasted).not.toHaveBeenCalled();
       expect(announced).toBe(0);
+    });
+
+    it('leaves the game pending when every delivery fails (FR-010)', async () => {
+      const { platform, repository, broadcast } = buildHarness();
+      const pending = [game('x')];
+      repository.findPending.mockResolvedValue(pending);
+      broadcast.send.mockResolvedValue({ delivered: 0, subscribers: 3 });
+
+      const announced = await platform.broadcastPending();
+
+      expect(repository.markBroadcasted).not.toHaveBeenCalled();
+      expect(announced).toBe(0);
+      expect(logs.warn.join('\n')).toContain('Game x');
+    });
+
+    it('announces a retried game exactly once after delivery recovers', async () => {
+      const { platform, repository, broadcast } = buildHarness();
+      const pending = [game('x')];
+      repository.findPending.mockResolvedValue(pending);
+      broadcast.send.mockResolvedValueOnce({ delivered: 0, subscribers: 2 });
+
+      expect(await platform.broadcastPending()).toBe(0);
+      expect(repository.markBroadcasted).not.toHaveBeenCalled();
+
+      // Delivery recovered; the next pass finds the game still pending.
+      broadcast.send.mockResolvedValueOnce({ delivered: 2, subscribers: 2 });
+
+      expect(await platform.broadcastPending()).toBe(1);
+      expect(repository.markBroadcasted).toHaveBeenCalledTimes(1);
+      expect(repository.markBroadcasted).toHaveBeenCalledWith(pending[0]);
+    });
+
+    it('marks when at least one channel received the game (A-004)', async () => {
+      const { platform, repository, broadcast } = buildHarness();
+      repository.findPending.mockResolvedValue([game('x')]);
+      broadcast.send.mockResolvedValue({ delivered: 1, subscribers: 4 });
+
+      const announced = await platform.broadcastPending();
+
+      expect(repository.markBroadcasted).toHaveBeenCalledTimes(1);
+      expect(announced).toBe(1);
+    });
+
+    it('marks when nobody subscribes so the queue stays bounded (A-005)', async () => {
+      const { platform, repository, broadcast } = buildHarness();
+      repository.findPending.mockResolvedValue([game('x')]);
+      broadcast.send.mockResolvedValue({ delivered: 0, subscribers: 0 });
+
+      const announced = await platform.broadcastPending();
+
+      expect(repository.markBroadcasted).toHaveBeenCalledTimes(1);
+      expect(announced).toBe(1);
     });
   });
 });

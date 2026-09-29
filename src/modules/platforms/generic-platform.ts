@@ -3,8 +3,8 @@ import chalk from 'chalk';
 import { GamePlatformName } from '../../shared/constants.js';
 import type { GamePlatformType } from '../../shared/constants.js';
 import type { Game } from '../../shared/types/index.js';
-import type { BroadcastService } from '../broadcast/broadcast.service.js';
 import type {
+  BroadcastPort,
   PlatformApi,
   PlatformDefinition,
   PlatformMapper,
@@ -32,7 +32,7 @@ export class GenericPlatform<
     private readonly api: PlatformApi<TSource>,
     private readonly mapper: PlatformMapper<TSource, TGame>,
     private readonly repository: PlatformRepository<TGame>,
-    private readonly broadcast: Pick<BroadcastService, 'send'>,
+    private readonly broadcast: BroadcastPort<TGame>,
   ) {}
 
   get type(): GamePlatformType {
@@ -79,15 +79,24 @@ export class GenericPlatform<
     let announced = 0;
     for (const game of games) {
       try {
-        // Constitution II: delivery first, durable state second. A game is
-        // only recorded as announced after send() resolved successfully.
-        await this.broadcast.send(
+        // Constitution II / spec FR-010: delivery first, durable state second.
+        // Mark only when at least one channel received the game, or when
+        // nobody subscribes at all (A-005) so the queue stays bounded —
+        // otherwise leave it pending for the next pass.
+        const { delivered, subscribers } = await this.broadcast.send(
           this.definition.message,
           game,
           this.definition.type,
         );
-        await this.repository.markBroadcasted(game);
-        announced++;
+
+        if (delivered > 0 || subscribers === 0) {
+          await this.repository.markBroadcasted(game);
+          announced++;
+        } else {
+          this.logger.warn(
+            `Delivery failed for ${name} game ${game.title} (${delivered}/${subscribers} channels received it); leaving it pending for the next pass`,
+          );
+        }
       } catch (error) {
         this.logger.error(
           `Error broadcasting ${name} game ${game.title}: ${error instanceof Error ? error.message : error}`,

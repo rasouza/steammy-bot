@@ -108,13 +108,15 @@ describe('BroadcastService', () => {
     ]);
     channels.set('live-guild-channel', textChannel('deals'));
 
-    await service.send(XBOX_MESSAGE, game, GamePlatform.XBOX);
+    const outcome = await service.send(XBOX_MESSAGE, game, GamePlatform.XBOX);
 
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(fetch).toHaveBeenCalledWith('live-guild-channel');
     expect(fetch).not.toHaveBeenCalledWith('left-guild-channel');
     expect(logs.warn).toEqual([]);
     expect(logs.debug.join('\n')).toContain('left-guild-channel');
+    // Orphan rows still count as resolved subscribers (contracts §4).
+    expect(outcome).toEqual({ delivered: 1, subscribers: 2 });
   });
 
   it('sends the broadcast to channels of guilds that are still served', async () => {
@@ -124,7 +126,7 @@ describe('BroadcastService', () => {
     const channel = textChannel('deals');
     channels.set('live-channel', channel);
 
-    await service.send(XBOX_MESSAGE, game, GamePlatform.XBOX);
+    const outcome = await service.send(XBOX_MESSAGE, game, GamePlatform.XBOX);
 
     expect(channel.send).toHaveBeenCalledTimes(1);
     expect(channel.send).toHaveBeenCalledWith({
@@ -132,6 +134,7 @@ describe('BroadcastService', () => {
       embeds: [expect.anything()],
     });
     expect(logs.warn).toEqual([]);
+    expect(outcome).toEqual({ delivered: 1, subscribers: 1 });
   });
 
   it('still warns when a live guild channel cannot be fetched', async () => {
@@ -139,12 +142,49 @@ describe('BroadcastService', () => {
       subscriptionRow('dead-channel', GamePlatform.XBOX, 'guild-3', false),
     ]);
 
-    await service.send(XBOX_MESSAGE, game, GamePlatform.XBOX);
+    const outcome = await service.send(XBOX_MESSAGE, game, GamePlatform.XBOX);
 
     expect(logs.warn).toContain(
       'Could not send broadcast to channel dead-channel: Unknown Channel',
     );
     expect(logs.debug).toEqual([]);
     expect(logs.error).toEqual([]);
+    expect(outcome).toEqual({ delivered: 0, subscribers: 1 });
+  });
+
+  it('counts partial delivery without throwing (A-004)', async () => {
+    const { service, channels } = buildHarness([
+      subscriptionRow('good-channel', GamePlatform.XBOX, 'guild-1', false),
+      subscriptionRow('broken-channel', GamePlatform.XBOX, 'guild-2', false),
+    ]);
+    channels.set('good-channel', textChannel('deals'));
+
+    const outcome = await service.send(XBOX_MESSAGE, game, GamePlatform.XBOX);
+
+    expect(outcome).toEqual({ delivered: 1, subscribers: 2 });
+    expect(logs.warn).toContain(
+      'Could not send broadcast to channel broken-channel: Unknown Channel',
+    );
+  });
+
+  it('reports total failure when no channel accepts the message', async () => {
+    const { service } = buildHarness([
+      subscriptionRow('dead-1', GamePlatform.XBOX, 'guild-1', false),
+      subscriptionRow('dead-2', GamePlatform.XBOX, 'guild-2', false),
+    ]);
+
+    const outcome = await service.send(XBOX_MESSAGE, game, GamePlatform.XBOX);
+
+    expect(outcome).toEqual({ delivered: 0, subscribers: 2 });
+    expect(logs.warn).toHaveLength(2);
+  });
+
+  it('reports zero subscribers when nobody targets the platform', async () => {
+    const { service, fetch } = buildHarness([]);
+
+    const outcome = await service.send(XBOX_MESSAGE, game, GamePlatform.XBOX);
+
+    expect(outcome).toEqual({ delivered: 0, subscribers: 0 });
+    expect(fetch).not.toHaveBeenCalled();
   });
 });
