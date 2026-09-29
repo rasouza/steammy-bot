@@ -151,7 +151,12 @@ but produce no release, so the `publish` job's
 `new_release_published == 'true'` guard skips the build and deploy. Do **not**
 reintroduce catch-all release rules (`"type": "*"`, `"header": "**"`,
 `"message": "{*,**}"`) — they made every merge cut a patch release and redeploy
-an unchanged bot. `release.yml` chains `ci` (the `build.yml` workflow via
+an unchanged bot. Dependabot (`/.github/dependabot.yml`) opens grouped weekly
+npm PRs and monthly GitHub Actions/Docker PRs as `chore(deps…)` commits — the
+scoped `deps*` rule in `.releaserc.json` is what makes those merges release a
+patch and deploy, while plain `chore` merges do not. Remove neither half
+without the other, and do not add Renovate alongside it (duplicate PRs).
+`release.yml` chains `ci` (the `build.yml` workflow via
 `workflow_call`) → `release` (semantic-release; version inferred from the change; creates the
 `v*.*.*` tag, GitHub Release, and notes) → `publish` (calls `deploy.yml` via `workflow_call`),
 which
