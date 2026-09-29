@@ -35,8 +35,8 @@ Polish retires it). `import type` for type-only imports under `verbatimModuleSyn
 
 **Purpose**: Confirm a green baseline before touching the architecture
 
-- [ ] T001 Confirm the working branch and clean tree; rename it to carry the Linear key per AGENTS.md (`git branch -m STE-1-003-easy-add-platform`) so the after_tasks Linear hook and GitHub integration resolve parent issue STE-1 instead of falling back to the project
-- [ ] T002 Install dependencies with `npm ci --ignore-scripts` and run the full six-step CI gate as baseline (`npx prettier --check "src/**/*.ts" "test/**/*.ts"` → `npm run type:check` → `npm run lint` → `npm run build` → `npm run test:cov` → `npm run test:e2e`) — confirm green before any refactor
+- [X] T001 Confirm the working branch and clean tree; rename it to carry the Linear key per AGENTS.md (`git branch -m STE-1-003-easy-add-platform`) so the after_tasks Linear hook and GitHub integration resolve parent issue STE-1 instead of falling back to the project — created fresh as `STE-1-easy-add-platform` (no `003-easy-add-platform` existed to rename; matches the spec's recorded branch name), tree clean off latest main `ffa0648`
+- [X] T002 Install dependencies with `npm ci --ignore-scripts` and run the full six-step CI gate as baseline (`npx prettier --check "src/**/*.ts" "test/**/*.ts"` → `npm run type:check` → `npm run lint` → `npm run build` → `npm run test:cov` → `npm run test:e2e`) — confirm green before any refactor — ✅ green at `ffa0648` (9 unit + 1 e2e, 0 lint errors)
 
 ---
 

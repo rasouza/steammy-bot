@@ -19,9 +19,9 @@ interface PlatformApi<TSource> {
 }
 // Implemented by EpicApi (EpicApiGame[]), XboxApi (XboxApiGame[]).
 
-// PlatformMapper — translate: native shape → common Game model, no persistence
+// PlatformMapper — translate: native shape → common game model, no persistence
 interface PlatformMapper<TSource, TGame> {
-  toGame(source: TSource): TGame;
+  toGame(source: TSource): TGame | null;   // null = source does not qualify (never persisted)
 }
 // Implemented by EpicMapper (EpicApiGame → EpicGame), XboxMapper (XboxApiGame → Game).
 
