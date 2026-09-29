@@ -13,13 +13,17 @@ npx prettier --check "src/**/*.ts" "test/**/*.ts"
 npm run type:check
 npm run lint
 npm run build
-npm test
+npm run test:cov
 npm run test:e2e
 ```
 
 - `npm run lint` is the CI lint command: type-aware oxlint (`--type-aware`),
   read-only — it never rewrites files. `npm run format` is the writer.
 - `npm run format` writes Prettier output over `src/` and `test/`.
+- CI runs unit tests as `npm run test:cov` and uploads `coverage/lcov.info`
+  to Codecov. Uploads are informational — `fail_ci_if_error: false` plus
+  `codecov.yml` statuses keep CI green and unblocked regardless; the step
+  only reports once the `CODECOV_TOKEN` secret is set.
 - `npm install --ignore-scripts` is required. necord's postinstall crashes on
   Windows; CI uses `npm ci --ignore-scripts` on Linux too.
 - Node: `.nvmrc` pins `24.21.0`; `engines` sets the floor at `>=24.15.0`.
@@ -36,7 +40,7 @@ npm run test:e2e
 - E2E specs are `test/**/*.e2e-spec.ts` (`npm run test:e2e`).
 - Focus one: `npm test -- game-embed` (path) or `npm test -- -t "name"`.
 - `tsconfig.build.json` excludes `**/*spec.ts`, so specs never reach `dist/` —
-  but `tsc --noEmit -p tsconfig.json` *does* typecheck them. `type:check` is the
+  but `tsc --noEmit -p tsconfig.json` _does_ typecheck them. `type:check` is the
   only gate for spec files.
 - Unit specs construct services directly (`new GameEmbedService()`), no Nest
   testing module. E2E uses `Test.createTestingModule` with a single module, so
@@ -51,7 +55,7 @@ npm run test:e2e
   migrations is identical in every environment. Do not make it configurable.
 - `synchronize` is never used; schema changes go through migrations only.
 - `npm run db:init` is a prerequisite, not a convenience: TypeORM will not
-  create the Postgres schema, and it creates the `migrations` table *inside*
+  create the Postgres schema, and it creates the `migrations` table _inside_
   that schema. Run it once per database before any `migration:run`.
 - `npm run migration:generate` diffs entities against the **live** database. Run
   it against a fully migrated DB or it emits a wrong migration.
@@ -59,7 +63,7 @@ npm run test:e2e
   auto-migrates on boot. The TypeORM CLI does not.
 
 **A new entity must be registered twice**: in the `src/database/entities/index.ts`
-barrel *and* in the `entities` array in `src/database/data-source-options.ts`.
+barrel _and_ in the `entities` array in `src/database/data-source-options.ts`.
 Miss the array and the entity is invisible to both Nest and the CLI.
 
 ## Adding a platform
@@ -184,5 +188,5 @@ commands resolve the parent issue from the **`STE-x` key in the branch name**
 and fall back to the `steammy-bot` project — never guess an issue. PR linking
 and branch-driven transitions come from Linear's native GitHub integration, so
 name feature branches with the `STE-x` key. `/speckit.taskstoissues` creates
-*GitHub* issues instead; do not run it alongside `taskstolinear` for the same
+_GitHub_ issues instead; do not run it alongside `taskstolinear` for the same
 `tasks.md` — the two trackers will drift.

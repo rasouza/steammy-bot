@@ -9,6 +9,9 @@ on:
   # allow the workflow to be re-used in other workflows
   workflow_call:
 
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Build and Test
@@ -52,7 +55,14 @@ jobs:
           fi
 
       - name: Run unit tests
-        run: npm run test
+        run: npm run test:cov
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v7
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info
+          fail_ci_if_error: false
 
       - name: Run e2e tests
         run: npm run test:e2e
@@ -83,7 +93,7 @@ jobs:
       DATABASE_NAME: steammy_bot
       DATABASE_USER: postgres
       DATABASE_PASSWORD: postgres
-      DATABASE_SSL: "false"
+      DATABASE_SSL: 'false'
 
     steps:
       - name: Checkout repository

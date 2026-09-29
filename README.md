@@ -21,6 +21,7 @@ Steammy is a **Discord** bot built on **NestJS**, **[Necord](https://necord.org/
 You can use `/unsubscribe <platform>` to stop a channel from receiving announcements.
 
 ### Available Commands
+
 - `/subscribe <platform>` - Subscribe a channel to game news (`xbox`, `epic`)
 - `/unsubscribe <platform>` - Unsubscribe a channel from game news
 - `/ping` - Check bot latency
@@ -50,25 +51,28 @@ npm run start:prod
 
 ### Scripts
 
-| Script                    | Description                                          |
-| ------------------------- | ---------------------------------------------------- |
-| `npm run start:dev`       | Watch mode with `NODE_ENV=development`               |
-| `npm run build`           | Compile TypeScript to `dist/`                        |
-| `npm run start:prod`      | Run the compiled `dist/main.js`                      |
-| `npm run format`          | Format `src/` and `test/` with Prettier              |
-| `npm run lint`            | Type-aware lint with oxlint (read-only)              |
-| `npm run type:check`      | Typecheck without emitting                           |
-| `npm test`                | Unit tests (Vitest)                                  |
-| `npm run test:e2e`        | End-to-end tests (Vitest + supertest)                |
-| `npm run db:init`         | Create the `steammy_bot` schema if it does not exist |
-| `npm run migration:generate -- <path>` | Generate a migration from entity changes   |
-| `npm run migration:run`   | Apply pending migrations                             |
-| `npm run migration:revert` | Revert the last applied migration                   |
-| `npm run migration:show`  | List migrations and their applied state              |
+| Script                                 | Description                                             |
+| -------------------------------------- | ------------------------------------------------------- |
+| `npm run start:dev`                    | Watch mode with `NODE_ENV=development`                  |
+| `npm run build`                        | Compile TypeScript to `dist/`                           |
+| `npm run start:prod`                   | Run the compiled `dist/main.js`                         |
+| `npm run format`                       | Format `src/` and `test/` with Prettier                 |
+| `npm run lint`                         | Type-aware lint with oxlint (read-only)                 |
+| `npm run type:check`                   | Typecheck without emitting                              |
+| `npm test`                             | Unit tests (Vitest)                                     |
+| `npm run test:cov`                     | Unit tests with coverage report (CI uploads to Codecov) |
+| `npm run test:e2e`                     | End-to-end tests (Vitest + supertest)                   |
+| `npm run db:init`                      | Create the `steammy_bot` schema if it does not exist    |
+| `npm run migration:generate -- <path>` | Generate a migration from entity changes                |
+| `npm run migration:run`                | Apply pending migrations                                |
+| `npm run migration:revert`             | Revert the last applied migration                       |
+| `npm run migration:show`               | List migrations and their applied state                 |
 
 TypeORM's CLI and `db:init` run from source through `tsx`, so migrations work
 without a separate compile step. The CI gate runs, in this exact order:
-`prettier --check` → `type:check` → `lint` → `build` → `test` → `test:e2e`.
+`prettier --check` → `type:check` → `lint` → `build` → `test:cov` →
+`test:e2e`. Unit-test coverage is uploaded to Codecov as an informational
+report — it never blocks a merge.
 
 > **Testing note**: Vitest transpiles with esbuild, which does not emit
 > constructor-injection metadata (`design:paramtypes`). The current tests never
