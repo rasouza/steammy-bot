@@ -37,7 +37,7 @@ npm run test:e2e
 
 ```bash
 npm test -- generic-platform      # lifecycle: sync, announce success, failure-not-marked, empty queue
-npm test -- criteria              # Epic 4-case eligibility + Xbox rule (exact spec pattern)
+npm test -- repository            # Epic 4-case eligibility + Xbox rule (exact spec pattern)
 npm test -- scheduler             # one storefront throws → remaining storefronts still run
 npm test -- broadcast             # retry ordering: send-before-mark; total failure stays pending
 ```
