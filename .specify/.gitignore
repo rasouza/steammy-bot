@@ -7,3 +7,7 @@ feature.json
 
 # Per-machine extension config overrides.
 extensions/*/local-config.yml
+
+# Extension catalog download cache — regenerated on every `specify extension
+# search`, so committing it would only churn.
+extensions/.cache/

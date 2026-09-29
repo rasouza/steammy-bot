@@ -174,6 +174,19 @@ through `/speckit.constitution` → `.specify` → `.plan` → `.tasks` →
 scripts are bash (`--script sh`) and need `bash`, `git`, and `jq` on PATH — keep
 them that way rather than porting them to PowerShell.
 
+**Installed extensions** (`specify extension list`; sources in
+`.specify/extensions/<id>/`, commands materialized into `.opencode/commands/`):
+`bug` provides `/speckit.bug.assess` → `.fix` → `.test`, a per-bug triage loop
+writing `.specify/bugs/<slug>/{assessment,fix,test}.md`; `assess` provides
+`/speckit.assess.intake` → `research` → `define` → `shape` → `decide`, writing
+`.specify/assessments/<slug>/`, where a *go* verdict hands off to
+`/speckit.specify` and a *kill* closes the idea. Neither registers hooks, so the
+Linear block below is unaffected. Beware: `specify extension add/update`
+rewrites `.specify/extensions.yml` — it strips the comment header and reflows
+the hook block — so restore the original content (keeping only the appended
+`installed:` / `settings:` keys) instead of committing the CLI's formatting.
+`.specify/extensions/.cache/` is a download cache and is gitignored.
+
 **Linear is the tracker of record.** `.specify/extensions.yml` wires the
 lifecycle to the Linear MCP: `after_tasks` → `/speckit.taskstolinear` (pushes
 `tasks.md` tasks as subtasks of the feature's `STE-x` issue, deduping by
