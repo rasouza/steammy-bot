@@ -31,7 +31,7 @@ You can use `/unsubscribe <platform>` to stop a channel from receiving announcem
 
 ## Development
 
-Requires **Node.js >= 22.12** (see `.nvmrc`).
+Requires **Node.js >= 24.15.0** (see `.nvmrc`).
 
 ```bash
 # Install dependencies
