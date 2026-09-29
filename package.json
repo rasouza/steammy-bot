@@ -39,7 +39,7 @@
     "discord-api-types": "^0.37.99",
     "discord.js": "^14.27.0",
     "dotenv": "^18.0.4",
-    "filesize": "^10.1.6",
+    "filesize": "^11.0.24",
     "necord": "^7.0.0",
     "object-mapper": "^6.2.0",
     "pg": "^8.13.1",
