@@ -93,7 +93,7 @@ Rspack was evaluated and rejected on 2026-09-29 (decision recorded in
 Two hazards worth knowing before you touch anything here:
 
 - Every relative import carries an explicit extension — `.js` for concrete
-  files, `/index.js` for the 19 barrels (69 specifiers across 29 files). Keep
+  files, `/index.js` for the 19 barrels (70 specifiers across 29 files). Keep
   them that way: an extensionless relative import breaks at runtime, not at
   typecheck.
 - `src/shared/constants` is a **file**, not a barrel directory, despite sitting

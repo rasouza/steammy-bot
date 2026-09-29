@@ -48,7 +48,7 @@ directed that it adopt the new defaults rather than continue to diverge.
 
 Two independent gaps are in scope: the *toolchain* (test runner, linter, TS runner) and the
 *module system*. The toolchain swap is mechanical. The ESM migration is not: it touches
-**68 import specifiers across 29 of the repository's 37 TypeScript files**.
+**69 import specifiers across 29 of the repository's 37 TypeScript files**.
 
 ---
 
@@ -72,10 +72,10 @@ Two independent gaps are in scope: the *toolchain* (test runner, linter, TS runn
 
 | Metric | Count |
 |---|---|
-| Relative `from`-clauses | 68 |
-| …written **without** a file extension | **68 (100%)** |
+| Relative `from`-clauses | 69 |
+| …written **without** a file extension | **69 (100%)** |
 | …written with any extension | 0 |
-| …resolving to a concrete `.ts` file | 49 |
+| …resolving to a concrete `.ts` file | 50 |
 | …resolving to a barrel `index.ts` | 19 |
 | Files containing at least one relative import | 29 of 37 |
 | Relative specifiers that resolve to nothing today | 0 |
@@ -119,8 +119,8 @@ entry points: `src/main.ts`, `src/database/data-source.ts`,
 exports. Its compiled `index.js` will be an empty ESM module. Any *value* import from it is a
 hard `SyntaxError: The requested module does not provide an export named ...` at link time.
 
-15 symbols across **12 import statements** in 8 files must become `import type`. The list below
-is the authoritative one, produced by running the check this phase is about:
+15 symbols across **9 import statements** in 8 files must become type-only imports. The list
+below is the authoritative one, produced by running the check this phase is about:
 
 ```bash
 npx tsc --noEmit --verbatimModuleSyntax -p tsconfig.json 2>&1 | grep 'error TS1484'
@@ -128,7 +128,7 @@ npx tsc --noEmit --verbatimModuleSyntax -p tsconfig.json 2>&1 | grep 'error TS14
 
 `TS1484` is *"is a type and must be imported using a type-only import when 'verbatimModuleSyntax'
 is enabled"*. It is emitted per **symbol**, not per statement, which is why 15 symbols occupy
-only 12 statements — `xbox.service.ts:9` alone carries three. Reuse that command rather than
+only 9 statements — `xbox.service.ts:9` alone carries three. Reuse that command rather than
 re-deriving the list by hand; it cannot drift from reality.
 
 | File | Line | Symbols |
@@ -143,11 +143,13 @@ re-deriving the list by hand; it cannot drift from reality.
 | `test/health.e2e-spec.ts` | 1 | `INestApplication` |
 
 Seven statements already use `import type` and need no change; they are simply not in this list.
-After this phase the tree has 19 type-only import statements in total.
+After this phase the tree has 16 type-only import statements in total.
 
-Note the two `src/modules/platforms` services: `epic.service.ts` spans four separate
-statements at 10-13 while `xbox.service.ts` packs the same three symbols onto one line at 9.
-Converting these is a per-symbol judgement, not a find-and-replace.
+Note the two `src/modules/platforms` services: `epic.service.ts` puts its four symbols on one
+multi-line statement (9-14) and `xbox.service.ts` its three on one at 9-13, while
+`broadcast.service.ts` needs two statements — one of them an inline `type` specifier beside the
+value import of `GamePlatform`. Converting these is a per-symbol judgement, not a
+find-and-replace.
 
 `QueryRunner` and `MigrationInterface` are a second hazard: `typeorm`'s hand-maintained ESM
 entry `typeorm/index.mjs` is a 208-name allow-list and **does not export either**.
@@ -491,7 +493,7 @@ exactly where `outDir` says.
 
 # Phase 4 — ESM specifiers
 
-Append `.js` to all 68 relative specifiers across 29 files. The 19 barrel imports also need
+Append `.js` to all 69 relative specifiers across 29 files. The 19 barrel imports also need
 `/index.js`:
 
 - `src/config/index.js` — 4 sites
@@ -501,7 +503,7 @@ Append `.js` to all 68 relative specifiers across 29 files. The 19 barrel import
 This phase is self-verifying: `npm run type:check` reports every missed specifier as TS2307.
 Do not hand-audit; let the compiler produce the list and work from it.
 
-Two barrel files re-export from concrete files and are themselves included in the 68:
+Two barrel files re-export from concrete files and are themselves included in the 69:
 `src/config/index.ts` (4) and `src/database/entities/index.ts` (4).
 
 Again, remember `src/shared/constants` is a file (5 sites) and takes a plain `.js`.
@@ -510,7 +512,7 @@ Again, remember `src/shared/constants` is a file (5 sites) and takes a plain `.j
 
 # Phase 5 — `import type`
 
-Convert the 15 symbols in the 12 statements tabulated under "Type-only imports". The
+Convert the 15 symbols in the 9 statements tabulated under "Type-only imports". The
 `tsc --verbatimModuleSyntax` command in that section regenerates the list, so re-run it rather
 than trusting this table if the two have drifted.
 

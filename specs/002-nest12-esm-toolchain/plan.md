@@ -7,7 +7,7 @@
 ## Summary
 
 Migrate Steammy's toolchain to the Nest 12 ESM defaults with zero runtime behavior change:
-native ESM end to end (`"type": "module"`, all 68 relative specifiers made explicit, 15
+native ESM end to end (`"type": "module"`, all 69 relative specifiers made explicit, 15
 type-only symbols marked, `import.meta.dirname` replacing `__dirname`), Jest → Vitest with two
 configurations and strict suite boundaries, ESLint → oxlint with type-aware coverage preserved,
 ts-node → tsx for the TypeORM CLI and `db:init`, plus declaring `dotenv`, updating CI/docs, and
@@ -49,10 +49,10 @@ FR-008/009/010 (migrations emitted by the single standard build, standalone-load
 = failed build), FR-012 (envSchema passthrough, no `NODE_ENV` default, hardcoded schema,
 `loadEnv()` split preserved), SC-009 (scratch resources only).
 
-**Scale/Scope**: 37 TypeScript files (36 under `src/`, 1 under `test/`); 68 relative import
-specifiers across 29 files (49 concrete — including the 5 `src/shared/constants` sites, which
+**Scale/Scope**: 37 TypeScript files (36 under `src/`, 1 under `test/`); 69 relative import
+specifiers across 29 files (50 concrete — including the 5 `src/shared/constants` sites, which
 take a plain `.js` — plus 19 barrel imports: `src/config` 4, `src/database/entities` 10,
-`src/shared/types` 5); 15 type-only symbols in 12 statements; 2 test specs; 1 existing
+`src/shared/types` 5); 15 type-only symbols in 9 statements; 2 test specs; 1 existing
 migration. No NEEDS CLARIFICATION — all open questions were resolved in
 `/speckit.clarify` (2026-09-29) and by reading the installed packages and the live
 `nestjs/schematics` `ts-esm` scaffold templates.

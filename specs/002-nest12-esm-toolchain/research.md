@@ -105,11 +105,11 @@ scripts before running (slow feedback, wrong for a dev CLI).
 
 ## R6 — ESM specifier and type-only strategy
 
-**Decision**: Append `.js` to all 68 relative specifiers (49 concrete files) and `/index.js`
+**Decision**: Append `.js` to all 69 relative specifiers (50 concrete specifiers) and `/index.js`
 to the 19 barrel imports — with the trap that `src/shared/constants` is a **file**, not a
 barrel, and takes a plain `.js` at 5 sites (19 barrels = config 4, entities 10, types 5 →
 `.js` for constants, `/index.js` for the rest). Set `verbatimModuleSyntax: true`. Convert the
-15 type-only symbols in 12 statements, enumerated by
+15 type-only symbols in 9 statements, enumerated by
 `tsc --noEmit --verbatimModuleSyntax 2>&1 | grep TS1484`.
 
 **Rationale**: Native ESM requires explicit extensions and explicit `/index.js` for directory
@@ -173,7 +173,7 @@ these work under Node's CJS-ESM interop in the common case; failures surface as 
 errors in verification, not typecheck.
 
 **Rationale**: No typecheck catches CJS/ESM interop breakage (spec edge case); the list comes
-from the import audit (68 specifiers) and from the plan's *Runtime interop — watch list*
+from the import audit (69 specifiers) and from the plan's *Runtime interop — watch list*
 table.
 
 **Alternatives considered**: Preemptively wrapping imports in `createRequire` (adds churn with
@@ -195,6 +195,27 @@ be chosen silently is why the bump type is deferred to the maintainer.
 **Alternatives considered**: Amend in this command (rejected — premature); skip the amendment
 (rejected — FR-017 is a requirement); choose MAJOR silently (rejected — constitution
 governance rule).
+
+---
+
+## R11 — Eager import cycles under ESM (found during implementation)
+
+**Finding**: Not anticipated by R1–R10 or the spec: `subscription.entity.ts` and
+`guild.entity.ts` import each other eagerly. Under CommonJS, tsc's generated `design:type`
+metadata for `guild: Guild` silently evaluated to `undefined` while the cycle resolved, and
+TypeORM never consumed it — the relation type comes from the lazy `@ManyToOne` arrow. Under
+native ESM the same metadata throws `ReferenceError: Cannot access 'Guild' before
+initialization` at class definition, because no evaluation order exists for an eager↔eager
+cycle.
+
+**Resolution** (commit `06ac1e3`, a disclosed deviation outside the mechanical codemod set):
+`subscription.entity.ts` keeps `import type { Guild }` for the annotation and adds
+`import * as guildEntity`, dereferenced only inside the lazy arrow (`() => guildEntity.Guild`)
+after both modules have initialized. The entity's inline comment records the reasoning.
+
+**Lesson**: an entity cycle that worked under CJS can still fail under ESM through decorator
+metadata even when the relation itself is lazy. Value-crossing import cycles between entities
+MUST be broken with `import type` plus a namespace deref, or avoided.
 
 ---
 

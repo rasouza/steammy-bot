@@ -58,10 +58,10 @@ determines its edit; a misclassification is a defect with a specific failure sig
 
 | Class | Count | Edit | If wrong |
 |---|---|---|---|
-| Concrete value import | 49 sites (of 68) | append `.js` | TS2307 at typecheck (loud) |
-| …of which `src/shared/constants` (a **file**, not a barrel) | 5 of those 49 | plain `.js` — **never** `/index.js` | TS2307 at typecheck (loud) |
+| Concrete value import | 50 sites (of 69) | append `.js` | TS2307 at typecheck (loud) |
+| …of which `src/shared/constants` (a **file**, not a barrel) | 5 of those 50 | plain `.js` — **never** `/index.js` | TS2307 at typecheck (loud) |
 | Barrel (directory) import | 19 sites: config 4, entities 10, types 5 | append `/index.js` | TS2307 at typecheck (loud) |
-| Type-only import | 15 symbols / 12 statements | mark `import type` (TS1484-driven) | link-time `SyntaxError` at first boot / module load — typecheck stays **green** (silent) |
+| Type-only import | 15 symbols / 9 statements | mark `import type` (TS1484-driven) | link-time `SyntaxError` at first boot / module load — typecheck stays **green** (silent) |
 
 The two silent-risk rows are why `verbatimModuleSyntax: true` is non-negotiable (Clarifications
 Q3) and why phases 4–6 must land together (FR-013).
