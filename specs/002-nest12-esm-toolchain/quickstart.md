@@ -84,7 +84,7 @@ Migrations run at container boot — no separate migrate step.
 ```bash
 git diff main -- src/database/migrations/          # expected: ONLY the FR-002 `import type` line
 git diff main -- src/config/env.schema.ts src/database/data-source.ts src/database/database.module.ts   # expected: no semantic change (FR-012)
-git diff main -- src/broadcast/ test/              # expected: specifier / import type edits only — no logic, ordering, or test-behavior changes
+git diff main -- src/modules/broadcast/ test/              # expected: specifier / import type edits only — no logic, ordering, or test-behavior changes
 ```
 
 Expected: 0 migration files added; the sole migration edit is the `import type` line; 0 schema

@@ -228,3 +228,11 @@ Task: "T031 delete stale build/ tree if present"
   (SC-009)
 - If any plan fact proves wrong against installed packages, correct the plan and state the
   correction — never work around it silently (spec Assumptions)
+
+---
+
+## Phase 7: Convergence
+
+- [X] T037 Fix the §5 diff-path typo in `specs/002-nest12-esm-toolchain/quickstart.md`
+  (`src/broadcast/` → `src/modules/broadcast/`) so the zero-behavior-delta check runs against
+  the real directory per US1/AC4 (partial)
