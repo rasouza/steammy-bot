@@ -38,6 +38,19 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Assert compiled migrations contain no import statements
+        run: |
+          shopt -s nullglob
+          files=(dist/database/migrations/*.js)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No compiled migrations found in dist/database/migrations"
+            exit 1
+          fi
+          if grep -nE "^[[:space:]]*import[[:space:]{]" "${files[@]}"; then
+            echo "Compiled migrations must not contain import statements"
+            exit 1
+          fi
+
       - name: Run unit tests
         run: npm run test
 
