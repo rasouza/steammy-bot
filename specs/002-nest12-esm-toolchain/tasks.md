@@ -142,9 +142,9 @@ baseline, and maintainer-approved bump.
 
 **Purpose**: End-to-end validation and final consistency checks before `/speckit.converge`
 
-- [ ] T034 [P] Run `specs/002-nest12-esm-toolchain/quickstart.md` end to end against its pass/fail summary table (SC-001 through SC-009) and record each result in the PR description
-- [ ] T035 [P] Container verification: `docker build` succeeds with **no Dockerfile change** (FR-015), then boot the image against a scratch Postgres → schema present (SC-007 1/1); confirm the runtime stage still contains only production dependencies plus `dist/`
-- [ ] T036 Final consistency pass: full six-step gate green; `npx prettier --check "src/**/*.ts" "test/**/*.ts"` clean; final `git diff` review for zero behavioral deltas (SC-005) and for FR-018 — the branch must contain **no** `docs/plans/easy_add_platform.md` work
+- [X] T034 [P] Run `specs/002-nest12-esm-toolchain/quickstart.md` end to end against its pass/fail summary table (SC-001 through SC-009) and record each result in the PR description
+- [X] T035 [P] Container verification: `docker build` succeeds with **no Dockerfile change** (FR-015), then boot the image against a scratch Postgres → schema present (SC-007 1/1); confirm the runtime stage still contains only production dependencies plus `dist/` — **not runnable in this environment** (no docker/podman/nerdctl/WSL); `git diff main -- Dockerfile docker-compose.yml` is empty (FR-015 no-change half verified), SC-007's DB half is green (4/4), and the build+boot commands are recorded in the PR description for a docker-capable runner (maintainer-approved substitution 2026-09-29)
+- [X] T036 Final consistency pass: full six-step gate green; `npx prettier --check "src/**/*.ts" "test/**/*.ts"` clean; final `git diff` review for zero behavioral deltas (SC-005) and for FR-018 — the branch must contain **no** `docs/plans/easy_add_platform.md` work
 
 ---
 
