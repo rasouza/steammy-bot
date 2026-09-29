@@ -11,7 +11,8 @@ export interface Game {
 export interface EpicGame extends Game {
   offer_start_at: Date;
   offer_end_at: Date;
-  offer: {
+  /** Transient mapping detail — not an entity column; stripped before persisting. */
+  offer?: {
     discount?: number;
     upcoming: boolean;
   };

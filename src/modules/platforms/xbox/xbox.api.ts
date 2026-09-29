@@ -1,70 +1,30 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron } from '@nestjs/schedule';
-import { InjectRepository } from '@nestjs/typeorm';
 import axios from 'axios';
 import chalk from 'chalk';
-import { merge } from 'object-mapper';
-import { Repository } from 'typeorm';
-import { CatalogXbox } from '../../database/entities/index.js';
 import type {
-  Game,
   XboxApiGame,
   XboxCatalogIdResponse,
-} from '../../shared/types/index.js';
+} from '../../../shared/types/index.js';
+import type { PlatformApi } from '../platform.types.js';
 
-const MAPPER_SCHEMA = {
-  StoreId: 'id',
-  ProductTitle: 'title',
-  DeveloperName: 'developer',
-  'ImageHero.URI': 'image',
-  'Price.MSRP': {
-    key: 'price',
-    transform: (value: string) =>
-      Math.round(Number(value?.slice(1)) * 100) || null,
-  },
-  ApproximateSizeInBytes: 'size',
-  ProductDescription: 'description',
-};
-
+/**
+ * Fetch step for Xbox (moved from `xbox.service.ts`): id-list first, then
+ * product enrichment. Returns native API rows — mapping lives in
+ * {@link XboxMapper}.
+ */
 @Injectable()
-export class XboxService {
-  private readonly logger = new Logger(XboxService.name);
+export class XboxApi implements PlatformApi<XboxApiGame> {
+  private readonly logger = new Logger(XboxApi.name);
   private readonly apiUrl = 'https://catalog.gamepass.com';
   private readonly gameTypeId = 'fdd9e2a7-0fee-49f6-ad69-4354098401ff';
   private readonly language = 'en-US';
   private readonly market = 'US';
   private readonly hydration = 'MobileDetailsForConsole';
 
-  constructor(
-    @InjectRepository(CatalogXbox)
-    private readonly xboxRepository: Repository<CatalogXbox>,
-  ) {}
-
-  async fetchGames(): Promise<Game[]> {
+  async fetch(): Promise<XboxApiGame[]> {
     const gameIds = await this.fetchAllIds();
-    const gameList = await this.enrichGameCatalog(gameIds);
 
-    this.logger.log(
-      `Fetched ${gameList.length} games from ${chalk.bold.green('Xbox Game Pass')}`,
-    );
-
-    return gameList.map((game) => merge(game, {} as Game, MAPPER_SCHEMA));
-  }
-
-  @Cron('0 * * * *')
-  async syncXbox(): Promise<void> {
-    try {
-      const games = await this.fetchGames();
-
-      if (games.length > 0) {
-        await this.xboxRepository.upsert(games, ['id']);
-        this.logger.log(`Upserted ${games.length} games into Xbox catalog`);
-      }
-    } catch (error) {
-      this.logger.error(
-        `Failed to sync Xbox Game Pass: ${error instanceof Error ? error.message : error}`,
-      );
-    }
+    return this.enrichGameCatalog(gameIds);
   }
 
   private async fetchAllIds(): Promise<string[]> {
