@@ -50,6 +50,10 @@ and they are never retried — permanent, silent data loss.
   migrations is byte-identical in every environment. It MUST NOT become configurable.
 - Nest sets `migrationsRun: true` and auto-migrates on boot; the TypeORM CLI does not. This
   split is intentional.
+- Migrations are delivered by the standard `npm run build`: the plain `tsc` builder emits
+  `dist/database/migrations/*.js`, with no bundler and no separate migrations build. CI MUST
+  assert that the compiled migrations exist and contain no import statements — a migration that
+  needs a runtime import is not self-contained.
 
 Rationale: a migration that differs per environment is a migration that breaks production.
 
@@ -59,35 +63,43 @@ Work is not complete until the full CI sequence passes locally, in this order:
 
 1. `npx prettier --check "src/**/*.ts" "test/**/*.ts"`
 2. `npm run type:check`
-3. `npx eslint "{src,apps,libs,test}/**/*.ts"`
+3. `npm run lint`
 4. `npm run build`
 5. `npm test`
 6. `npm run test:e2e`
 
-- `npm run lint` MUST NOT be used as a verification step. It passes `--fix` and rewrites files,
-  while CI runs eslint read-only, so an uncommitted autofix is still a CI failure.
-- `ts-node` runs `transpileOnly`, so `npm run typeorm` and `npm run db:init` do not typecheck.
-  `npm run type:check` is the only gate that typechecks spec files and TypeORM scripts.
-- ESLint's `no-unsafe-*` rules are warnings, not errors, because `object-mapper`'s mapping schema
-  is untyped. A clean tree yields 22 warnings and exit code 0. These MUST NOT be "fixed" by
-  casting the untyped schema; 0 errors is the bar.
-- The eslint glob MUST stay quoted. Unquoted, bash brace-expands it to `apps/**` and `libs/**`,
-  which do not exist, and eslint exits non-zero on the unmatched patterns.
+- `npm run lint` is type-aware oxlint (`oxlint --type-aware src/ test/`). It MUST NOT be given
+  `--fix` in any verification context; files are rewritten only by `npm run format` (Prettier
+  over `src/` and `test/`), so an unformatted or lint-violating file fails the gate rather than
+  being silently repaired.
+- `tsx` transpiles without typechecking, so `npm run typeorm` and `npm run db:init` do not
+  typecheck. `npm run type:check` is the only gate that typechecks spec files and TypeORM
+  scripts, and it remains the type authority — `tsgolint` targets TypeScript 7 through the Go
+  port while this repository is on TypeScript 6, so the two are not interchangeable.
+- oxlint's `no-unsafe-*` rules are warnings, not errors, because `object-mapper`'s mapping
+  schema is untyped. A clean tree yields 22 warnings and exit code 0 (re-measured under oxlint).
+  These MUST NOT be "fixed" by casting the untyped schema; 0 errors is the bar.
 
-Rationale: each step has a documented local-vs-CI divergence, so a change that looks green on
-one Windows workstation can still fail CI on Linux.
+Rationale: checkers never write and writers never gate, so local habits (autofix, transpile-only
+CLIs) cannot masquerade as a passing gate — and the Windows-vs-Linux divergence that remains,
+line endings, is pinned by `.gitattributes` and caught by step 1.
 
-### V. Tests Live Where Jest Can Find Them
+### V. Tests Live Where the Include Globs Can Find Them
 
 Unit specs are colocated as `src/**/*.spec.ts`. End-to-end specs live in `test/**/*.e2e-spec.ts`.
 
-- Jest's `rootDir` is `src`, so a unit spec placed under `test/` is never collected by `npm test`
-  and will silently appear to pass while executing nothing.
+- The unit suite includes only `**/*.spec.ts`; the e2e suite includes only `**/*.e2e-spec.ts`.
+  A spec outside its suite's include glob is never collected and will silently appear to pass
+  while executing nothing. The two suites MUST stay disjoint — zero cross-suite specs — and
+  neither suite may collect files from `dist/`, `build/`, or `node_modules/`.
 - Unit specs construct services directly (`new GameEmbedService()`); no Nest testing module.
   E2E specs use `Test.createTestingModule` with a single module and require neither a database
   nor a Discord token.
 - `tsconfig.build.json` excludes `**/*spec.ts` so specs never reach `dist/`, but
   `tsc --noEmit -p tsconfig.json` does typecheck them.
+- Vitest transpiles with esbuild, which emits no `design:paramtypes` decorator metadata. The
+  current specs never boot a constructor-injected class; a spec that must do so requires explicit
+  `@Inject(...)` decorators or a transform plugin — never a weaker metadata guarantee.
 
 Rationale: an uncollected spec is worse than no spec, because it manufactures false confidence.
 
@@ -99,8 +111,13 @@ Rationale: an uncollected spec is worse than no spec, because it manufactures fa
   stale and MUST NOT be treated as authoritative.
 - Installs MUST use `--ignore-scripts` (`npm ci --ignore-scripts`). necord's postinstall crashes
   on Windows; CI uses the same flag on Linux.
-- Stack is NestJS + Necord + discord.js + TypeORM + PostgreSQL. Additions to it are a
-  constitution-level decision, not an implementation detail.
+- The repository is native ESM (`"type": "module"`): relative imports carry explicit `.js`
+  (or `/index.js`) extensions, and `import type` marks type-only imports under
+  `verbatimModuleSyntax`.
+- Stack is NestJS + Necord + discord.js + TypeORM + PostgreSQL, tested with Vitest, linted with
+  type-aware oxlint (`oxlint` + `oxlint-tsgolint`), with `tsx` driving the TypeORM CLI and
+  `db:init`. This amendment adopts those three as constitution-level toolchain additions;
+  further additions remain a constitution-level decision, not an implementation detail.
 
 **Framework conventions that must not be "corrected"**
 
@@ -112,8 +129,6 @@ Rationale: an uncollected spec is worse than no spec, because it manufactures fa
   `@Options()` plus a DTO class for options.
 - discord.js `Client` is injectable anywhere without importing `BotModule`; Necord provides it
   globally. Adding a `BotModule` import to wire it up is unnecessary coupling.
-- `module`/`moduleResolution` are `nodenext` while ESLint declares `sourceType: 'commonjs'`. This
-  MUST NOT be "fixed" without confirming `npm run build` still passes.
 - `dotenv` is imported by `src/database/data-source.ts` and
   `src/database/scripts/create-schema.ts` but is not a declared dependency; it resolves only
   because `@nestjs/config` and `typeorm` hoist it. Any change touching those files MUST add
@@ -130,8 +145,8 @@ Rationale: an uncollected spec is worse than no spec, because it manufactures fa
 **Repository hygiene**
 
 - `.gitattributes` forces `eol=lf`. If a tool rewrites files to CRLF, `prettier --check` fails on
-  every file while eslint still passes, because eslint's prettier rule uses `endOfLine: 'auto'`.
-  The fix is the line endings, not the Prettier config.
+  every file while `npm run lint` still passes, because oxlint does not check formatting. The fix
+  is the line endings, not the Prettier config.
 
 **Deployment**
 
@@ -198,4 +213,4 @@ Compliance review: the six CI steps in Principle IV are the mechanical floor. Th
 checks in "Compliance review expectations" — new platform branching, delivery ordering, and
 partial-gate passes — are not automatable and MUST be verified by a human reviewer.
 
-**Version**: 2.0.0 | **Ratified**: 2026-09-27 | **Last Amended**: 2026-09-28
+**Version**: 3.0.0 | **Ratified**: 2026-09-27 | **Last Amended**: 2026-09-29
