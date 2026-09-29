@@ -1,11 +1,8 @@
 import type { Provider } from '@nestjs/common';
-import { GamePlatform } from '../../shared/constants.js';
-import type {
-  EpicApiGame,
-  EpicGame,
-  Game,
-  XboxApiGame,
-} from '../../shared/types/index.js';
+import { GamePlatform } from './platform.constants.js';
+import type { EpicApiGame, EpicGame } from './epic/epic.types.js';
+import type { Game } from './platform.types.js';
+import type { XboxApiGame } from './xbox/xbox.types.js';
 import { EpicApi } from './epic/epic.api.js';
 import { EpicMapper } from './epic/epic.mapper.js';
 import { EpicRepository } from './epic/epic.repository.js';

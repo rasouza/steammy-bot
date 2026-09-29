@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CatalogXbox } from '../../../database/entities/index.js';
-import type { Game } from '../../../shared/types/index.js';
+import type { Game } from '../platform.types.js';
 import type { PlatformRepository } from '../platform.types.js';
 
 /**

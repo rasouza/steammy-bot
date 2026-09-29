@@ -1,12 +1,10 @@
-export interface Game {
-  id: string;
-  title: string;
-  developer?: string | null;
-  description: string;
-  image?: string | null;
-  price?: number | null;
-  size?: number | null;
-}
+import type { Game } from '../platform.types.js';
+
+/**
+ * Epic-only in-memory shapes, moved out of the retired shared types folder (research
+ * R11): the common game model, native API DTOs, and the storefront-specific
+ * extension the mapper produces.
+ */
 
 export interface EpicGame extends Game {
   offer_start_at: Date;
@@ -17,8 +15,6 @@ export interface EpicGame extends Game {
     upcoming: boolean;
   };
 }
-
-export type XboxGame = Game;
 
 export interface EpicApiImage {
   type: string;
@@ -67,38 +63,4 @@ export interface FreeGamesPromotionApiResponse {
       };
     };
   };
-}
-
-export type XboxCatalogIdResponse =
-  | {
-      siglId: string;
-      title: string;
-      description: string;
-      requiresShuffling: string;
-      imageUrl: string;
-    }
-  | {
-      id: string;
-    };
-
-export interface XboxApiImage {
-  URI: string;
-  Width: number;
-  Height: number;
-}
-
-export interface XboxApiPrice {
-  MSRP: string;
-  SalesPrice: string;
-  IsFree: boolean;
-}
-
-export interface XboxApiGame {
-  StoreId: string;
-  ProductTitle: string;
-  DeveloperName: string;
-  ImageHero: XboxApiImage;
-  Price: XboxApiPrice;
-  ApproximateSizeInBytes: number;
-  ProductDescription: string;
 }

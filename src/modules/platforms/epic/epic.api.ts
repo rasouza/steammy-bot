@@ -3,7 +3,7 @@ import axios from 'axios';
 import type {
   EpicApiGame,
   FreeGamesPromotionApiResponse,
-} from '../../../shared/types/index.js';
+} from './epic.types.js';
 import type { PlatformApi } from '../platform.types.js';
 
 /**

@@ -38,7 +38,10 @@ export class PlatformScheduler {
     // Kill switch (spec FR-013, research R4): unset or 'true' announces;
     // only an explicit false skips the pass — a missing variable must
     // never mute production. The sync pass deliberately ignores this flag.
-    const enabled = this.config.get('BROADCAST_ENABLED', true);
+    const enabled = this.config.get<boolean | string>(
+      'BROADCAST_ENABLED',
+      true,
+    );
     if (enabled === false || enabled === 'false') {
       this.logger.log(
         'Announcement pass disabled (BROADCAST_ENABLED); skipping.',

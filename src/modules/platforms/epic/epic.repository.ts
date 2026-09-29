@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { CatalogEpic } from '../../../database/entities/index.js';
-import type { EpicGame } from '../../../shared/types/index.js';
+import type { EpicGame } from './epic.types.js';
 import type { PlatformRepository } from '../platform.types.js';
 
 /**

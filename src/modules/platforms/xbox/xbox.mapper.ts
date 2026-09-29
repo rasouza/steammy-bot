@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { merge } from 'object-mapper';
-import type { Game, XboxApiGame } from '../../../shared/types/index.js';
+import type { Game } from '../platform.types.js';
+import type { XboxApiGame } from './xbox.types.js';
 import type { PlatformMapper } from '../platform.types.js';
 
 const MAPPER_SCHEMA = {

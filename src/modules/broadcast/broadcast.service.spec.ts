@@ -3,8 +3,11 @@ import { ChannelType } from 'discord.js';
 import type { Client } from 'discord.js';
 import type { Repository } from 'typeorm';
 import type { Guild, Subscription } from '../../database/entities/index.js';
-import { GamePlatform, type GamePlatformType } from '../../shared/constants.js';
-import type { Game } from '../../shared/types/index.js';
+import {
+  GamePlatform,
+  type GamePlatformType,
+} from '../platforms/platform.constants.js';
+import type { Game } from '../platforms/platform.types.js';
 import { BroadcastService } from './broadcast.service.js';
 import { GameEmbedService } from './game-embed.service.js';
 

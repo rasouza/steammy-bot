@@ -1,4 +1,4 @@
-import type { GamePlatformType } from '../../shared/constants.js';
+import type { GamePlatformType } from './platform.constants.js';
 
 /** Injection token for `PlatformRuntime[]` — every registered storefront (contracts §3). */
 export const PLATFORM_REGISTRY: unique symbol = Symbol('PLATFORM_REGISTRY');

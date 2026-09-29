@@ -1,4 +1,4 @@
-import { GamePlatform, GamePlatformName } from '../../shared/constants.js';
+import { GamePlatform, GamePlatformName } from './platform.constants.js';
 import { EPIC_PLATFORM, XBOX_PLATFORM } from './platform.registry.js';
 
 /**

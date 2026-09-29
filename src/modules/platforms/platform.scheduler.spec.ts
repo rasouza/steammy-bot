@@ -1,7 +1,7 @@
 import { Logger } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
-import { GamePlatform } from '../../shared/constants.js';
-import type { GamePlatformType } from '../../shared/constants.js';
+import { GamePlatform } from './platform.constants.js';
+import type { GamePlatformType } from './platform.constants.js';
 import { PlatformScheduler } from './platform.scheduler.js';
 
 function fakeRuntime(type: GamePlatformType) {
@@ -15,7 +15,9 @@ function fakeRuntime(type: GamePlatformType) {
 /** `undefined` simulates an unset BROADCAST_ENABLED, which must stay safe. */
 function fakeConfig(broadcastEnabled: boolean | undefined): ConfigService {
   return {
-    get: vi.fn().mockReturnValue(broadcastEnabled),
+    get: vi
+      .fn<(...args: unknown[]) => boolean | undefined>()
+      .mockReturnValue(broadcastEnabled),
   } as unknown as ConfigService;
 }
 

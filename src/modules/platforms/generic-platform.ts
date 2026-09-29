@@ -1,8 +1,8 @@
 import { Logger } from '@nestjs/common';
 import chalk from 'chalk';
-import { GamePlatformName } from '../../shared/constants.js';
-import type { GamePlatformType } from '../../shared/constants.js';
-import type { Game } from '../../shared/types/index.js';
+import { GamePlatformName } from './platform.constants.js';
+import type { GamePlatformType } from './platform.constants.js';
+import type { Game } from './platform.types.js';
 import type {
   BroadcastPort,
   PlatformApi,

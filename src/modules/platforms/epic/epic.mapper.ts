@@ -1,5 +1,5 @@
 import { merge } from 'object-mapper';
-import type { EpicApiGame, EpicGame } from '../../../shared/types/index.js';
+import type { EpicApiGame, EpicGame } from './epic.types.js';
 import type { PlatformMapper } from '../platform.types.js';
 
 const isDeveloper = (item: any) => item.key === 'developerName';

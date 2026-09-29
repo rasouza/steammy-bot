@@ -8,7 +8,22 @@
  */
 
 import type { Type } from '@nestjs/common';
-import type { GamePlatformType } from '../../shared/constants.js';
+import type { GamePlatformType } from './platform.constants.js';
+
+/**
+ * Common game model — the contracts' `TGame` (the producer side owns the
+ * model; moved from the retired shared types folder, research R11). `broadcasted` is
+ * deliberately absent: mappers never see announcement state (spec FR-001).
+ */
+export interface Game {
+  id: string;
+  title: string;
+  developer?: string | null;
+  description: string;
+  image?: string | null;
+  price?: number | null;
+  size?: number | null;
+}
 
 /** Fetch — returns the platform's NATIVE shape, never an entity. */
 export interface PlatformApi<TSource> {

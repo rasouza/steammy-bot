@@ -1,5 +1,5 @@
 import type { Provider } from '@nestjs/common';
-import type { Game } from '../../shared/types/index.js';
+import type { Game } from './platform.types.js';
 import { BroadcastService } from '../broadcast/broadcast.service.js';
 import { GenericPlatform } from './generic-platform.js';
 import { platformToken } from './platform.tokens.js';
