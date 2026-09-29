@@ -144,7 +144,14 @@ preserve that ordering if you are implementing the plan.
 
 ## Deploy
 
-Merges to `main` deploy themselves. `release.yml` chains `ci` (the `build.yml` workflow via
+Merges to `main` deploy themselves **when the change is releasable**.
+`.releaserc.json` releases only on `feat` (minor), `fix`/`perf`/`revert`
+(patch), and breaking changes (major); `chore`/`docs`/`ci`/`test` merges run CI
+but produce no release, so the `publish` job's
+`new_release_published == 'true'` guard skips the build and deploy. Do **not**
+reintroduce catch-all release rules (`"type": "*"`, `"header": "**"`,
+`"message": "{*,**}"`) — they made every merge cut a patch release and redeploy
+an unchanged bot. `release.yml` chains `ci` (the `build.yml` workflow via
 `workflow_call`) → `release` (semantic-release; version inferred from the change; creates the
 `v*.*.*` tag, GitHub Release, and notes) → `publish` (calls `deploy.yml` via `workflow_call`),
 which
