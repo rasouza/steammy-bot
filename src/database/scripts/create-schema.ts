@@ -3,8 +3,8 @@ import 'reflect-metadata';
 import { config as loadEnv } from 'dotenv';
 import { DataSource } from 'typeorm';
 
-import { databaseConfig } from '../../config';
-import { loadDataSourceOptions } from '../data-source-options';
+import { databaseConfig } from '../../config/index.js';
+import { loadDataSourceOptions } from '../data-source-options.js';
 
 loadEnv({ quiet: true });
 

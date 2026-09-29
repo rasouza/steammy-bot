@@ -2,11 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { MessageFlags, PermissionFlagsBits } from 'discord.js';
 import { Context, Options, SlashCommand } from 'necord';
 import type { SlashCommandContext } from 'necord';
-import { BroadcastService } from '../broadcast/broadcast.service';
-import { EpicService } from '../platforms/epic.service';
-import { XboxService } from '../platforms/xbox.service';
-import { PlatformOptionDto } from '../subscription/dto/platform-option.dto';
-import { GamePlatform, GamePlatformName } from '../../shared/constants';
+import { BroadcastService } from '../broadcast/broadcast.service.js';
+import { EpicService } from '../platforms/epic.service.js';
+import { XboxService } from '../platforms/xbox.service.js';
+import { PlatformOptionDto } from '../subscription/dto/platform-option.dto.js';
+import { GamePlatform, GamePlatformName } from '../../shared/constants.js';
 
 @Injectable()
 export class AdminCommands {

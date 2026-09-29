@@ -6,7 +6,7 @@ import {
   PrimaryColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Subscription } from './subscription.entity';
+import { Subscription } from './subscription.entity.js';
 
 @Entity({ name: 'guild' })
 export class Guild {

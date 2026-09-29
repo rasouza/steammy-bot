@@ -1,6 +1,6 @@
 import { registerAs } from '@nestjs/config';
 
-import { databaseSchema, type DatabaseEnv } from './env.schema';
+import { databaseSchema, type DatabaseEnv } from './env.schema.js';
 
 export interface DatabaseConfig {
   type: 'postgres';

@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Guild, Subscription } from '../../database/entities';
-import { SubscriptionCommands } from './subscription.commands';
-import { SubscriptionService } from './subscription.service';
+import { Guild, Subscription } from '../../database/entities/index.js';
+import { SubscriptionCommands } from './subscription.commands.js';
+import { SubscriptionService } from './subscription.service.js';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Subscription, Guild])],

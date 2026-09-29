@@ -2,15 +2,15 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 
-import { databaseConfig, envSchema } from './config';
-import { DatabaseModule } from './database/database.module';
-import { AdminModule } from './modules/admin/admin.module';
-import { BotModule } from './modules/bot/bot.module';
-import { BroadcastModule } from './modules/broadcast/broadcast.module';
-import { GeneralModule } from './modules/general/general.module';
-import { HealthModule } from './modules/health/health.module';
-import { PlatformsModule } from './modules/platforms/platforms.module';
-import { SubscriptionModule } from './modules/subscription/subscription.module';
+import { databaseConfig, envSchema } from './config/index.js';
+import { DatabaseModule } from './database/database.module.js';
+import { AdminModule } from './modules/admin/admin.module.js';
+import { BotModule } from './modules/bot/bot.module.js';
+import { BroadcastModule } from './modules/broadcast/broadcast.module.js';
+import { GeneralModule } from './modules/general/general.module.js';
+import { HealthModule } from './modules/health/health.module.js';
+import { PlatformsModule } from './modules/platforms/platforms.module.js';
+import { SubscriptionModule } from './modules/subscription/subscription.module.js';
 
 @Module({
   imports: [

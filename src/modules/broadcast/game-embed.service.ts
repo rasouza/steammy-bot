@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { EmbedBuilder } from 'discord.js';
 import { filesize } from 'filesize';
-import { Game } from '../../shared/types';
+import type { Game } from '../../shared/types/index.js';
 
 const MAX_LENGTH = 300;
 

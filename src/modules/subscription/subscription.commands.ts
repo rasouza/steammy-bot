@@ -2,13 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { ChannelType, MessageFlags } from 'discord.js';
 import { Context, Options, SlashCommand } from 'necord';
 import type { SlashCommandContext } from 'necord';
-import { GamePlatformName } from '../../shared/constants';
-import { PlatformOptionDto } from './dto/platform-option.dto';
+import { GamePlatformName } from '../../shared/constants.js';
+import { PlatformOptionDto } from './dto/platform-option.dto.js';
 import {
   SubscriptionAlreadyExistsError,
   SubscriptionNotFoundError,
   SubscriptionService,
-} from './subscription.service';
+} from './subscription.service.js';
 
 @Injectable()
 export class SubscriptionCommands {

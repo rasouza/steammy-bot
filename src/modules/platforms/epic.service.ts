@@ -5,13 +5,13 @@ import axios from 'axios';
 import chalk from 'chalk';
 import { merge } from 'object-mapper';
 import { Repository } from 'typeorm';
-import { CatalogEpic } from '../../database/entities';
-import {
+import { CatalogEpic } from '../../database/entities/index.js';
+import type {
   EpicApiGame,
   EpicGame,
   FreeGamesPromotionApiResponse,
   Game,
-} from '../../shared/types';
+} from '../../shared/types/index.js';
 
 const isDeveloper = (item: any) => item.key === 'developerName';
 const isThumbnail = (item: any) => item.type === 'Thumbnail';

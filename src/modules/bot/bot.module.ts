@@ -3,8 +3,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { GatewayIntentBits } from 'discord.js';
 import { NecordModule } from 'necord';
-import { Guild } from '../../database/entities';
-import { BotService } from './bot.service';
+import { Guild } from '../../database/entities/index.js';
+import { BotService } from './bot.service.js';
 
 @Module({
   imports: [

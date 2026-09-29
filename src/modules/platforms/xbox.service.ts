@@ -5,8 +5,12 @@ import axios from 'axios';
 import chalk from 'chalk';
 import { merge } from 'object-mapper';
 import { Repository } from 'typeorm';
-import { CatalogXbox } from '../../database/entities';
-import { Game, XboxApiGame, XboxCatalogIdResponse } from '../../shared/types';
+import { CatalogXbox } from '../../database/entities/index.js';
+import type {
+  Game,
+  XboxApiGame,
+  XboxCatalogIdResponse,
+} from '../../shared/types/index.js';
 
 const MAPPER_SCHEMA = {
   StoreId: 'id',

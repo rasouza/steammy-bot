@@ -8,10 +8,10 @@ import {
   CatalogEpic,
   CatalogXbox,
   Subscription,
-} from '../../database/entities';
-import { GamePlatform, GamePlatformType } from '../../shared/constants';
-import { Game } from '../../shared/types';
-import { GameEmbedService } from './game-embed.service';
+} from '../../database/entities/index.js';
+import { GamePlatform, type GamePlatformType } from '../../shared/constants.js';
+import type { Game } from '../../shared/types/index.js';
+import { GameEmbedService } from './game-embed.service.js';
 
 @Injectable()
 export class BroadcastService {
