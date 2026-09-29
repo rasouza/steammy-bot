@@ -1,5 +1,9 @@
 # Steammy Bot — Nest 12 Toolchain and ESM Migration Plan
 
+**Revised**: 2026-09-29 — builder decision: stay on the scaffold-default `tsc`; Rspack is
+rejected and every Rspack-specific design in this document has been removed. The decision and
+its rationale are recorded in `specs/002-nest12-esm-toolchain/spec.md` (Clarifications).
+
 ## Objective
 
 Move Steammy from the pre-Nest-12 toolchain to the defaults that `@nestjs/schematics@12`
@@ -11,12 +15,17 @@ Specifically:
 2. Replace Jest + ts-jest with Vitest.
 3. Replace ESLint + typescript-eslint with oxlint, keeping type-aware coverage.
 4. Replace ts-node with tsx for the TypeORM CLI and `db:init`.
-5. Migrate the build from tsc to Rspack, as the third Nest 12 default.
+5. Keep the build on `tsc`, the single-app default that `nest new` scaffolds (no `builder`
+   key).
 
-Rspack is **in scope and committed**, not a question left open. It is not a free swap: it changes
-the shape of `dist/` from a per-file tsc tree to a single bundle, which collides with TypeORM's
-runtime migration loading. Phase 0 is the design for resolving that collision, and Phase 0.3
-verifies it. Neither is optional, and neither is a decision gate.
+**Builder decision (resolved 2026-09-29 at clarification).** Rspack was the original fifth goal
+and is now **rejected**: at this repository's scale it offers no meaningful build-time win, and
+it changes the shape of `dist/` from a per-file tsc tree to a single bundle that omits
+glob-loaded TypeORM migrations — a silent unmigrated-database failure mode that would otherwise
+demand a second compilation pass, a permanent CI guard, and a documented output-directory quirk.
+The `ts-esm` scaffold's `nest-cli.json` carries no `builder` key, so plain `tsc` is the actual
+fresh-project default. Phase 0 records this decision and the migration-delivery guard it keeps;
+everything else in this plan is unchanged.
 
 This is a **tooling** migration. It MUST NOT change runtime behavior, the database schema,
 Discord behavior, or the broadcast lifecycle.
@@ -176,22 +185,21 @@ violation. Phase 2 fixes it.
 
 ```text
 package.json   "type": "module"
-               build: nest build && tsc -p tsconfig.migrations.json
+               build: nest build
 
 tsconfig.json  types: ["node", "vitest/globals"]
                verbatimModuleSyntax: true
                (no "ts-node" block)
 
-tsconfig.migrations.json   the second compiler: dist/migrations only
-
-nest-cli.json  compilerOptions.builder: "rspack"
+nest-cli.json  (no "builder" key — default tsc, as scaffolded)
+               compilerOptions.deleteOutDir: true
 
 src/**         every relative specifier ends in .js (or /index.js)
                every type-only import marked `import type`
                import.meta.dirname in place of __dirname
 
-dist/          main.js                      (Rspack bundle, all deps external)
-               migrations/*.js             (narrow tsc pass, zero imports)
+dist/          per-file tsc tree (as today)
+               database/migrations/*.js    (emitted by the same build, zero imports)
 
 vitest.config.ts         unit specs
 vitest.config.e2e.ts     e2e specs
@@ -212,8 +220,10 @@ Reference for every target file: the templates shipped inside the already-instal
 
 These are not preferences. A change that violates one is not a valid implementation of this plan.
 
-1. **No runtime behavior change.** No schema change, no migration added or edited, no Discord
-   behavior change, no broadcast ordering change.
+1. **No runtime behavior change.** No schema change, no migration added; the only permitted
+   migration edit is the one-line `import type` marking that `verbatimModuleSyntax` forces on
+   the migration file (no SQL, no class logic, no ordering change); no Discord behavior change,
+   no broadcast ordering change.
 2. **Do not touch broadcast logic.** The `broadcasted`-before-`send()` defect is real and is
    governed by the constitution's Principle II, but fixing it is **not** this plan. Do not
    "fix it while you are in there."
@@ -222,111 +232,74 @@ These are not preferences. A change that violates one is not a valid implementat
 4. **`envSchema` MUST stay `.passthrough()`** and `NODE_ENV` MUST keep having no default.
 5. **The TypeORM CLI entrypoints MUST keep calling `loadEnv()` themselves.** They run outside
    Nest; the Nest path loads `.env` via `ConfigModule`. Do not unify them.
-6. **Migrations MUST reach the running application.** Under Rspack, `dist/` is a bundle, so the
-   migrations directory MUST be produced by the dedicated `tsc` pass in Phase 0. A build that
-   produces no loadable migration is a failed build, not a partial success. See Phase 0.
+6. **Migrations MUST reach the running application.** The standard build MUST emit
+   `dist/database/migrations/*.js`; a build that produces no loadable migration is a failed
+   build, not a partial success, even when every tool exits 0. Assert it locally and in CI —
+   see Phase 0.
 7. **Every phase MUST leave the full CI gate green** (see Verification Gates) before the next
    begins. A partially-migrated tree does not get committed as a checkpoint.
 
 ---
 
-# Phase 0 — Rspack build, and the migration-delivery problem it creates
+# Phase 0 — Builder decision (resolved: stay on `tsc`)
 
-Rspack is adopted. This phase exists because the swap is **not** a config change: it changes the
-shape of `dist/`, and Steammy loads TypeORM migrations from `dist/` at runtime.
+This phase was originally the Rspack migration-delivery design. The maintainer resolved it at
+clarification on 2026-09-29 (recorded in `specs/002-nest12-esm-toolchain/spec.md`): **keep the
+scaffold-default `tsc` builder.** The single-bundle collision that motivated a second
+compilation pass no longer exists. This section remains as the record of the decision and the
+one property the rest of the plan must keep preserving: migrations reach the running
+application.
 
-## 0.1 What Rspack preserves
+## 0.1 Why Rspack was rejected
 
-Read directly out of the installed `@nestjs/cli@12.0.7`.
+Rspack is the **monorepo** default upstream, not the single-app default. Read from the
+installed `@nestjs/cli`: `get-builder.js:14` defaults to `'tsc'`; the `ts-esm` scaffold
+template's `nest-cli.json` has no `builder` key; only the monorepo-only `nest g library`
+schematic injects `builder: 'rspack'`. Adopting it here would have been a deliberate departure
+from `nest new` output.
 
-**Decorator metadata survives.** `lib/compiler/defaults/rspack-defaults.js` configures
-`builtin:swc-loader` with:
+The costs it would have imposed on this repository, all verified rather than assumed:
 
-```js
-jsc: {
-  parser: { syntax: 'typescript', decorators: true },
-  transform: { legacyDecorator: true, decoratorMetadata: true },
-}
-```
+- A Rspack bundle contains only modules reachable from the entry, and
+  `src/database/migrations/1790514243494-InitSchema.ts` is imported by nothing. Under a
+  bundle the migration glob would find nothing, `migrationsRun: true` would apply **zero**
+  migrations, and the app would start against a nonexistent schema — no error, no crash, just
+  no tables.
+- Resolving that would have required a second compiler (`tsconfig.migrations.json`), a
+  mandatory build order, a permanent CI guard, a Dockerfile change, and a README entry.
+- The Rspack builder also ignores `outDir`, writing to its own `dist` default while deletion
+  honors the configured value — a latent divergence to document forever.
+- Decorator metadata would have survived (`builtin:swc-loader` sets `decoratorMetadata:
+  true`) and dependencies stay external — but those were table stakes, not wins. At 37
+  TypeScript files the build-time difference is negligible.
 
-Nest constructor DI keeps working. (An earlier draft of this plan claimed tsc was safer here.
-That claim was wrong and is withdrawn.)
+Under plain `tsc`, none of that machinery exists and none of those failure modes apply.
 
-**The ESM output is correct.** When `package.json` has `"type": "module"`,
-`rspackDefaultsFactory` enables `experiments.outputModule`, `topLevelAwait`,
-`output.library.type: 'module'`, `chunkFormat: 'module'`, `chunkLoading: 'import'`,
-`externals: [nodeExternals({ importType: 'module' })]` with node builtins forced to
-`module`-type externals, `type: 'javascript/esm'` on the TS rule, and
-`resolve.extensionAlias: { '.js': ['.ts', '.js'] }`.
+## 0.2 What the standard build delivers for free
 
-**Dependencies stay external.** `webpack-node-externals` keeps every `node_modules` package
-external, so `dist/main.js` imports them at runtime from `node_modules` exactly as the tsc build
-did. The Docker `npm prune --omit=dev` story is unchanged.
-
-## 0.2 The collision
-
-`src/database/migrations/1790514243494-InitSchema.ts` is imported by nothing. TypeORM loads it
-at runtime via the glob at `src/database/data-source-options.ts:13`:
+The migration file is loaded at runtime via the glob at
+`src/database/data-source-options.ts:13`:
 
 ```ts
 export const migrationsGlob = join(__dirname, 'migrations', '*.{ts,js}');
 ```
 
-A Rspack bundle contains only modules reachable from the entry. Migrations are not reachable.
-Under tsc, `dist/database/migrations/*.js` existed next to the compiled
-`data-source-options.js`. Under Rspack there is a single `dist/main.js`, `import.meta.dirname`
-resolves to `dist/`, and the glob finds nothing — so `migrationsRun: true` in
-`src/database/database.module.ts` would apply **zero migrations** and the app would start
-against a nonexistent schema. No error, no crash, just no tables.
-
-Nest's `assets` mechanism does not rescue this. `assetsManager.copyAssets` copies files
-*verbatim*, so `assets` would place `.ts` sources in `dist/migrations/`, which production cannot
-load without a TypeScript loader in the runtime image.
-
-## 0.3 The resolution: a dedicated migrations build
-
-Emit compiled migrations with a second, narrow `tsc` invocation.
-
-New `tsconfig.migrations.json`:
-
-```json
-{
-  "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "outDir": "./dist/migrations",
-    "rootDir": "./src/database/migrations",
-    "declaration": false,
-    "sourceMap": false
-  },
-  "include": ["src/database/migrations/**/*.ts"]
-}
-```
-
-And `build` becomes:
-
-```text
-nest build && tsc -p tsconfig.migrations.json
-```
-
-**Order is mandatory.** `nest build` has `deleteOutDir: true`, and
-`deleteOutDirIfEnabled` removes `outDir` recursively at the start of every build. The migration
-pass MUST run second or its output is deleted.
-
-### Why this works, and why the glob does not need to change
-
-After Phase 5 the migration file's only import is `import type`, which `verbatimModuleSyntax`
-erases completely. The emitted `dist/migrations/1790514243494-InitSchema.js` is therefore a
-standalone ESM module with zero imports.
-
-The existing glob then resolves correctly in all three runtime contexts, unchanged:
+Under tsc the compiled `dist/database/migrations/*.js` sits next to the compiled
+`data-source-options.js`, so `import.meta.dirname` (Phase 6) resolves to `dist/database` and
+the glob finds the migrations — the property the Rspack design had to engineer is the default
+here. The glob resolves correctly in all three runtime contexts, unchanged:
 
 | Context | `import.meta.dirname` | Glob resolves to | Loaded by |
 |---|---|---|---|
 | `tsx` from source (`db:init`, TypeORM CLI) | `src/database` | `src/database/migrations/*.ts` | tsx ESM hook |
-| Built with Rspack (`node dist/main`) | `dist` | `dist/migrations/*.js` | TypeORM dynamic `import()` |
-| (`nest start` in watch) | `dist` | `dist/migrations/*.js` | TypeORM dynamic `import()` |
+| Built (`node dist/main`) | `dist/database` | `dist/database/migrations/*.js` | TypeORM dynamic `import()` |
+| (`nest start` in watch) | `dist/database` | `dist/database/migrations/*.js` | TypeORM dynamic `import()` |
 
-### Why TypeORM can load an ESM migration
+Nest's `assets` mechanism must NOT be used as a substitute for compiling migrations: it copies
+files *verbatim* and would place `.ts` sources in `dist/`, which production cannot load without
+a TypeScript runtime. Migrations are emitted by the build; never copied.
+
+## 0.3 Why TypeORM can load an ESM migration
 
 `typeorm@0.3.31`'s `util/ImportUtils.js` `importOrRequireFile` inspects the file extension, then
 walks up to the nearest `package.json`. For `.js` and `.ts`:
@@ -345,35 +318,25 @@ else if (extension === "js" || extension === "ts") {
 
 With `"type": "module"` in the root `package.json`, migrations load via dynamic `import()`
 (`Function("return filePath => import(filePath)")`, deliberately not transpiled to `require`).
-The nearest `package.json` for both `src/database/migrations/*.ts` and `dist/migrations/*.js` is
-the repository root, so both take the ESM branch. This is verified, not assumed — it is the
-single fact the whole design rests on, and it is why this phase is not optional.
+The nearest `package.json` for both `src/database/migrations/*.ts` and
+`dist/database/migrations/*.js` is the repository root, so both take the ESM branch. This is
+verified, not assumed — it is the single fact the whole ESM migration story rests on.
 
 `util/DirectoryExportedClassesLoader.js` then scans the imported module's exports for migration
 classes. `InitSchema1790514243494` is a named export, so it is found.
 
-## 0.4 One Rspack quirk to document
-
-**The Rspack builder ignores `outDir`.** `rspackDefaultsFactory` never sets `output.path`, and
-`build.action.js` passes `tsOptions` through only for `sourceMap`. Rspack therefore writes to its
-own default, `<cwd>/dist`, regardless of what `tsconfig.build.json` says.
-
-That coincides with `outDir: "./dist"` here, and `deleteOutDirIfEnabled` still deletes
-`tsOptions.outDir || 'dist'`, so delete and write agree. But if anyone changes `outDir` in
-`tsconfig.build.json`, the deletion and the Rspack write will silently diverge. Record this in
-`README.md`; do not "fix" it by passing a custom Rspack config.
-
-## 0.5 Verification for this phase
+## 0.4 Verification for this phase
 
 All of the following MUST be observed, not assumed:
 
 1. `npm run build` exits 0.
-2. `dist/main.js` exists and is a single file.
-3. `dist/migrations/1790514243494-InitSchema.js` exists and has **no** `import` statement.
-4. `node -e "import('./dist/main.js')"`-style boot against a scratch Postgres creates
-   `steammy_bot` and applies the migration.
+2. `dist/main.js` exists, alongside the per-file tree including
+   `dist/database/migrations/1790514243494-InitSchema.js`.
+3. `dist/database/migrations/1790514243494-InitSchema.js` exists and has **no** `import`
+   statement (Phase 5 erased the type-only imports).
+4. A boot against a scratch Postgres creates `steammy_bot` and applies the migration.
 5. `npm run db:init` then `npm run migration:run` twice both succeed from source via tsx.
-6. `npm run test:e2e` still passes — the bundle must not break the health endpoint.
+6. `npm run test:e2e` still passes.
 7. `docker build` + container boot; the schema exists afterwards.
 
 If step 3 or 4 fails, **stop and escalate.** Do not work around it by copying `.ts` files with
@@ -390,7 +353,7 @@ Add `"type": "module"`.
 
 | Script | New value | Note |
 |---|---|---|
-| `build` | `nest build && tsc -p tsconfig.migrations.json` | **order is mandatory**, see Phase 0.3 |
+| `build` | `nest build` | unchanged — single standard compiler (builder decision, Phase 0) |
 | `lint` | `oxlint --type-aware src/ test/` | |
 | `test` | `vitest run` | |
 | `test:watch` | `vitest` | |
@@ -407,30 +370,20 @@ Unchanged: `format`, `start`, `start:dev`, `start:debug`, `start:prod`, `type:ch
 
 `start:prod` stays `node dist/main`. Node resolves a CLI entry point with extension fallback
 even when the resolved file is ESM, which is why the Nest template ships that exact string.
-Under Rspack this now resolves to the bundle. Confirm it in Phase 0.5; fall back to
-`node dist/main.js` if it does not.
+Confirm it in Phase 0.4; fall back to `node dist/main.js` if it does not.
 
 ## Dependencies
 
 - **Add** `dotenv`. See "Pre-existing violation" above.
-- **Add devDeps:** `vitest`, `@vitest/coverage-v8`, `oxlint`, `oxlint-tsgolint`, `tsx`,
-  `@rspack/core`, `webpack-node-externals`, `tsconfig-paths-webpack-plugin`.
+- **Add devDeps:** `vitest`, `@vitest/coverage-v8`, `oxlint`, `oxlint-tsgolint`, `tsx`.
 - **Remove devDeps:** `jest`, `ts-jest`, `@types/jest`, `@eslint/eslintrc`, `@eslint/js`,
   `eslint`, `eslint-config-prettier`, `eslint-plugin-prettier`, `typescript-eslint`, `ts-node`,
-  `tsconfig-paths`.
+  `tsconfig-paths`, and `globals` (used only by `eslint.config.mjs` — confirm with a grep
+  first; tasks T021 guards this).
 
-The three bundler packages are **not** optional. `rspackDefaultsFactory` calls `loadRspackDeps()`
-unconditionally and `require`s all three at the top; if any is missing the build throws with an
-install suggestion naming the actual package.
-
-`@rspack/core` MUST satisfy the CLI's optional peer range `^1.7.7 || ^2.1.10`.
-
-`fork-ts-checker-webpack-plugin` is **deliberately omitted.** `rspack-defaults.js` adds it inside
-a `try`/`catch` and skips it when absent, so omitting it means `nest build` does not typecheck.
-That is acceptable precisely because `npm run type:check` (`tsc --noEmit`) already runs as a
-mandatory CI step, and the Rspack config would otherwise run a second typecheck over the same
-files. Do not add it without a reason; if it is ever added, note that `nest build` becomes
-slower and `tsconfig.build.tsbuildinfo` behavior may change.
+No bundler packages are added — the builder stays `tsc` (Phase 0). `nest build` continues to
+typecheck via the CLI's own tsc pass, and `npm run type:check` remains the mandatory CI gate
+that also covers spec files.
 
 `cross-env` is **kept**. The Nest template drops it, but `data-source-options.ts:47` gates
 TypeORM logging on `process.env.NODE_ENV === 'development'` and that must keep working.
@@ -449,9 +402,10 @@ Plain Vitest, no SWC plugin. `globals: true`, `root: './'`, `include: ['**/*.spe
 
 Two required details:
 
-1. `include: ['**/*.spec.ts']` **also matches `health.e2e-spec.ts`**. Without an explicit
-   `exclude`, `npm test` silently runs the e2e suite. Add
-   `exclude: ['**/*.e2e-spec.ts', '**/node_modules/**', '**/dist/**', '**/build/**']`.
+1. Keep an explicit `exclude`: `exclude: ['**/*.e2e-spec.ts', '**/node_modules/**',
+   '**/dist/**', '**/build/**']`. The current e2e name `health.e2e-spec.ts` does **not** match
+   `**/*.spec.ts` (its suffix is `-spec.ts`), but the exclude defends the isolation invariant
+   (SC-004) against a future `*.e2e.spec.ts` name and costs nothing.
 2. `root: './'` scans the whole repo, so `dist/` and the stale gitignored `build/` tree MUST be
    excluded.
 
@@ -492,7 +446,8 @@ removes the CRLF blind spot the constitution records.
 
 ## `nest-cli.json`
 
-Set the builder:
+No `builder` key — this matches the `ts-esm` scaffold template and keeps the default `tsc`
+builder (builder decision, Objective and Phase 0):
 
 ```json
 {
@@ -500,21 +455,16 @@ Set the builder:
   "collection": "@nestjs/schematics",
   "sourceRoot": "src",
   "compilerOptions": {
-    "builder": "rspack",
     "deleteOutDir": true
   }
 }
 ```
 
-`deleteOutDir: true` MUST stay. It is what guarantees `dist/migrations` is not stale from a
-previous build, and it is why the `build` script's ordering is mandatory.
+`deleteOutDir: true` MUST stay. It is what guarantees `dist/database/migrations` is not stale
+from a previous build.
 
-Do not add `assets`. It would place `.ts` sources in `dist/migrations/`, which production cannot
-load. See Phase 0.2.
-
-## `tsconfig.migrations.json`
-
-New file, exactly as specified in Phase 0.3. It is the only place the second compiler appears.
+Do not add `assets`. Migrations MUST be compiled by the build, never copied in as `.ts`
+sources. See Phase 0.2.
 
 ## `tsconfig.json`
 
@@ -534,9 +484,8 @@ Turning the flag on converts a runtime failure into a typecheck failure.
 `.prettierrc`, `tsconfig.build.json`, `pm2.config.json`, `docker-compose.yml`, `.gitattributes`.
 
 `tsconfig.build.json` keeps `outDir: ./dist`, `rootDir: ./src`, `incremental: true`, and
-`exclude: [..., "**/*spec.ts"]`. Note that under Rspack the CLI reads this file for `sourceMap`
-and for the `deleteOutDir` target, but the Rspack **output location** comes from the bundler
-default, not from `outDir` — see Phase 0.4.
+`exclude: [..., "**/*spec.ts"]`. It is honored as written — the standard `tsc` build writes
+exactly where `outDir` says.
 
 ---
 
@@ -576,11 +525,10 @@ splitting the statement, so the module is still loaded exactly once.
 `src/database/data-source-options.ts:13` → `import.meta.dirname`. Stable on Node 24; legal
 under `module: nodenext` once `"type": "module"` is set.
 
-Update the JSDoc at lines 9-12. The property it documents still holds, and this is the load-bearing
-assumption of the whole Rspack design: the glob must resolve to whichever directory holds the
-loadable migrations at run time. Under Rspack that is `dist/migrations`, **not**
-`dist/database/migrations`, because the bundle sits at `dist/main.js`. See the table in
-Phase 0.3 for all three contexts.
+Update the JSDoc at lines 9-12. The property it documents still holds, and this is the
+load-bearing assumption of the whole migration: the glob must resolve to whichever directory
+holds the loadable migrations at run time — `src/database/migrations` when running from source,
+`dist/database/migrations` in every built context. See the table in Phase 0.2.
 
 The glob expression itself is **unchanged**. Do not "fix" it to point at a hardcoded `dist` path;
 that would break the `tsx`-from-source path used by `db:init` and the TypeORM CLI.
@@ -591,25 +539,21 @@ that would break the `tsx`-from-source path used by `db:init` and the TypeORM CL
 
 ## `Dockerfile`
 
-**The builder stage MUST copy `tsconfig.migrations.json`.** It currently copies only `src`,
-`nest-cli.json`, `tsconfig.json`, and `tsconfig.build.json`. Without the new file, `npm run build`
-inside the image fails at the `tsc -p tsconfig.migrations.json` step, and the image never gets
-past build. Add it alongside the other tsconfig copies.
-
-Nothing else changes: the `prepare` stage still copies `dist` (now `main.js` plus
-`migrations/`), and `npm prune --omit=dev` still works because the bundle keeps every dependency
-external.
+**The Dockerfile needs no change.** It already copies `src`, `nest-cli.json`, `tsconfig.json`,
+and `tsconfig.build.json` — with the builder decision there is no new configuration file to
+copy. The `prepare` stage still copies `dist` (the per-file tree, including
+`database/migrations/`), and `npm prune --omit=dev` works exactly as before.
 
 ## `.github/workflows/build.yml`
 
-- Replace the bare `npx eslint "{src,apps,libs,test}/**/*.ts"` step (line 38) with
+- Replace the bare `npx eslint "{src,apps,libs,test}/**/*.ts"` step (line 36) with
   `npm run lint`. The `prettier --check` and `type:check` steps stay and now carry the
   formatting and type guarantees ESLint used to provide.
 - `npm test` and `npm run test:e2e` steps keep their names; both now run Vitest.
-- The `migrations` job gains a step asserting that `dist/migrations/*.js` exists after
+- The `migrations` job gains a step asserting that `dist/database/migrations/*.js` exists after
   `npm run build` in the `build` job, and that at least one emitted migration contains no
-  `import` statement. This is the cheap CI guard for the Rspack regression described in
-  Phase 0.2 — a missing migrations directory is otherwise a silent production failure.
+  `import` statement. This is the cheap CI guard for the silent-failure case in "The one thing
+  not to get wrong" — a missing migrations directory is otherwise a silent production failure.
 - The `migrations` job's `db:init` / `migration:run` steps now exercise the **tsx** path, not
   tsc. That is intentional: it is the same code path a developer runs locally, and it validates
   the ESM migration loading that `importOrRequireFile` performs.
@@ -619,9 +563,6 @@ external.
 Update the command table at lines 59-62 to name oxlint and Vitest, and add a line recording the
 decorator-metadata constraint documented under "Accepted Trade-offs" so it is not rediscovered
 the hard way.
-
-Also document the Rspack `outDir` quirk from Phase 0.4, because it is the kind of thing that
-looks like a bug the first time someone changes `outDir`.
 
 ---
 
@@ -645,13 +586,13 @@ Plus, against a scratch Postgres — never production:
 10. `docker build` + container boot, confirming `"type": "module"` survives `npm prune --omit=dev`
     and that `start:prod` resolves `dist/main`
 
-And the Rspack-specific assertions from Phase 0.5, which are the ones most likely to be skipped
-because every tool exits 0 even when they fail:
+And the migration-delivery assertions from Phase 0.4, which are the ones most likely to be
+skipped because every tool can exit 0 even when they fail:
 
-11. `dist/main.js` exists **and** `dist/migrations/*.js` exists
-12. No file in `dist/migrations/` contains an `import` statement
+11. `dist/database/migrations/*.js` exists after `npm run build`
+12. No file in `dist/database/migrations/` contains an `import` statement
 13. A boot against an empty database creates the schema — this is the only assertion that
-    actually proves the Rspack migration design works
+    actually proves migrations reach the running application
 
 ## Runtime interop to watch
 
@@ -702,31 +643,21 @@ dependencies of ..."*. The fix is explicit `@Inject(...)` on each parameter, or 
 This is a known, accepted limitation. It MUST be documented in `README.md` (Phase 7) so it is
 discovered as a documented constraint rather than an unexplained failure.
 
-## Two compilers, deliberately
+## Builder stays `tsc` — Rspack rejected
 
-Rspack bundles the application; a narrow `tsc` invocation compiles the migrations. That is a
-deliberate trade, not an oversight: TypeORM loads migrations by glob at run time, and a bundler
-has no reason to emit files that nothing imports.
-
-The cost is real and should not be glossed over. `npm run build` is two steps, `build` is no
-longer a single `nest build`, and schema correctness on every deploy depends on a hand-rolled
-second step plus the CI guard added in Phase 7. The mitigation is that the second step is
-narrow, deterministic, and asserted in CI.
-
-The alternative — a single compiler — requires either dropping `migrationsRun` (which breaks
-the constitution's Principle III and the container-boot migration story) or hand-rolling an
-asset pipeline that copies uncompilable `.ts` sources. Both are worse.
-
-## Rspack is not the standard-app default
-
-For the record, because it will look surprising: Rspack is the **monorepo** default upstream, not
-the single-app default. `get-builder.js:14` defaults to `'tsc'`; the `ts-esm` scaffold template's
-`nest-cli.json` has no `builder` key; only `library.factory.js:195-196` (the monorepo-only
-`nest g library` schematic) injects `builder: 'rspack'`; and
+Recorded here so the choice is never re-opened by accident. Rspack is the **monorepo** default
+upstream, not the single-app default: `get-builder.js:14` defaults to `'tsc'`, the `ts-esm`
+scaffold template's `nest-cli.json` has no `builder` key, only `library.factory.js:195-196`
+(the monorepo-only `nest g library` schematic) injects `builder: 'rspack'`, and
 `upgrade/steps/cli-config.step.js` rewrites `builder` only for projects already on webpack.
 
-So adopting it here is a deliberate choice to align with the full Nest 12 direction rather than
-the literal `nest new` output. That choice is the maintainer's, and the maintainer has made it.
+It was evaluated on 2026-09-29 and rejected for this repository: at 37 TypeScript files the
+build-time win is negligible, while a bundle omits glob-loaded migrations — requiring a second
+compilation pass, a permanent CI guard, a Dockerfile change, and a documented `outDir`
+divergence to prevent a silent unmigrated-database failure. Staying on `tsc` is also the
+literal fresh-`nest new` default, which is the stated goal of this migration. The full
+reasoning is Phase 0.1; the decision is recorded in
+`specs/002-nest12-esm-toolchain/spec.md` (Clarifications).
 
 ## `cross-env` retained
 
@@ -742,8 +673,10 @@ them.
 # Constitution Impact
 
 **This plan conflicts with the ratified constitution and cannot be merged until the constitution
-is amended.** `.specify/memory/constitution.md` is at v1.0.0 and explicitly supersedes informal
-practice, README claims, and habitual convention.
+is amended.** `.specify/memory/constitution.md` is at **v2.0.0** (last amended 2026-09-28;
+earlier drafts of this plan cited v1.0.0 — every conflict listed below was re-verified as still
+present in the 2.0.0 text on 2026-09-29) and explicitly supersedes informal practice, README
+claims, and habitual convention.
 
 ## Required amendments
 
@@ -755,10 +688,10 @@ practice, README claims, and habitual convention.
 | Principle IV, bullet 4 | The quoted-glob caution is about eslint's brace expansion and **ceases to apply** once the glob is gone. |
 | Principle IV, bullet 5 | `ts-node` runs `transpileOnly`, so the TypeORM CLI does not typecheck. Moot under `tsx`. |
 | **Principle V** | Titled *"Tests Live Where Jest Can Find Them"*. The **name itself** is runner-specific. The rule's substance — colocate unit specs, e2e specs under `test/`, an uncollected spec is worse than none — survives and MUST be preserved, but the title and the `rootDir: "src"` mechanics do not. |
-| Principle III | States "Nest sets `migrationsRun: true` and auto-migrates on boot." Still true, but the mechanism now depends on a second build step. The principle MUST gain a clause that Rspack does not emit migrations and that `dist/migrations` is produced by `tsconfig.migrations.json`. |
+| Principle III | States "Nest sets `migrationsRun: true` and auto-migrates on boot." Still true, and the mechanism is unchanged under `tsc` — the standard build emits `dist/database/migrations/`. While amending, it SHOULD gain a clause that under native ESM TypeORM loads migrations via dynamic `import()` (nearest `package.json` with `type: "module"`), and that CI asserts the migrations directory exists after a build. |
 | Technical Constraints | "`module`/`moduleResolution` are `nodenext` while ESLint declares `sourceType: 'commonjs'`. This MUST NOT be 'fixed'" — moot once `eslint.config.mjs` is deleted. |
 | Technical Constraints | The `dotenv` violation — **resolved** by this plan. |
-| Technical Constraints, Runtime and toolchain | "Stack is NestJS + Necord + discord.js + TypeORM + PostgreSQL. Additions to it are a constitution-level decision." Rspack, Vitest, oxlint and tsx are additions and so are squarely in scope for this amendment. |
+| Technical Constraints, Runtime and toolchain | "Stack is NestJS + Necord + discord.js + TypeORM + PostgreSQL. Additions to it are a constitution-level decision." Vitest, oxlint and tsx are additions and so are squarely in scope for this amendment (the builder stays `tsc`, which is not an addition). |
 | Technical Constraints, Repository hygiene | Notes eslint's prettier rule used `endOfLine: 'auto'`, which is why CRLF broke `prettier --check` but not eslint. With the rule gone, the LF hazard is now visible to both tools. The `.gitattributes` `eol=lf` requirement becomes load-bearing rather than incidental. |
 
 ## Bump type — decided on the feature branch, not here
@@ -779,7 +712,7 @@ branch that implements this, not on the branch that documents it.**
 **This plan does not amend the constitution and MUST NOT.** The reasoning matters:
 
 - The constitution describes the state of the code. On a documentation-only branch nothing is
-  implemented, so there is nothing to justify an amendment, and 1.0.0 remains a true statement
+  implemented, so there is nothing to justify an amendment, and 2.0.0 remains a true statement
   about the tree as it stands.
 - Amending early would make the constitution *false on `main`* — mandating `npm run lint`
   (oxlint) against a codebase whose CI still runs `npx eslint`. Your governance section says
@@ -791,14 +724,14 @@ branch that implements this, not on the branch that documents it.**
 
 **Correct sequencing.** On the feature branch: `/speckit.specify` → `/speckit.clarify` →
 `/speckit.plan` (sourcing this document) → `/speckit.analyze`. That analyze run is *expected* to
-report the Principle IV/V conflicts as CRITICAL against 1.0.0, and its output is the
-authoritative checklist for what 2.0.0 must cover — better than hand-deriving it. Then
-`/speckit.constitution` writes 2.0.0 as a **separate commit in the same branch**, followed by
+report the Principle IV/V conflicts as CRITICAL against 2.0.0, and its output is the
+authoritative checklist for what 3.0.0 must cover — better than hand-deriving it. Then
+`/speckit.constitution` writes 3.0.0 as a **separate commit in the same branch**, followed by
 `/speckit.tasks` → `/speckit.checklist` → `/speckit.implement` → `/speckit.converge`. One PR, so
 the constitution and the code it describes become true at the same instant.
 
 Recorded recommendation, for the maintainer to ratify or override at that time: **MAJOR
-(2.0.0)**, on the grounds that Principle V's title names Jest and Principle IV's five bullets
+(3.0.0)**, on the grounds that Principle V's title names Jest and Principle IV's five bullets
 are redefined, either of which satisfies "redefining a principle" independently.
 
 ## AGENTS.md
@@ -816,28 +749,28 @@ Phases are ordered so that each leaves a working, green tree.
 
 | Phase | Depends on | Reversible independently |
 |---|---|---|
-| 0 — Rspack build + migrations pass | — | yes |
-| 2 — `package.json` | 0 | yes |
+| 0 — Builder decision + migration-delivery guard | — | yes |
+| 2 — `package.json` | — | yes |
 | 3 — Config files | 2 | yes |
 | 4 — ESM specifiers | 3 | yes |
 | 5 — `import type` | 4 | yes |
 | 6 — `__dirname` | 5 | yes |
-| 7 — CI, Dockerfile, docs | 6 | yes |
+| 7 — CI, docs | 6 | yes |
 | — Constitution amendment | 7 | separate change; see "Constitution Impact" |
 
-Phase 0 is sequenced first only so that the Rspack risk is retired before the other 68 import
-edits land. It could equally be done last; what it MUST NOT do is land after Phase 7 without the
-CI guard.
+Phase 0 now records the resolved builder decision and the migration-delivery guard; it is
+sequenced first because that guard — compiled migrations present after every build — is the
+invariant the rest of the migration must never break.
 
 Phases 4-6 are interdependent: appending `.js` without adding `import type` produces a build
 that typechecks under `verbatimModuleSyntax` and fails at runtime, and vice versa. Expect to
 land them together. Do not commit a tree where `.js` specifiers are added but `verbatimModuleSyntax`
 is off and Phase 5 is incomplete.
 
-Phase 5 has a hard dependency on Phase 0.3: the migrations build is only clean because
-`import type` is fully erased from the emitted migration. If a migration ever gains a real value
-import, `dist/migrations/*.js` will carry an `import` statement and must be re-checked against
-Node's resolution rules.
+Phase 5 has a hard dependency on Phase 0.3: the emitted migration is only clean because
+`import type` is fully erased from it. If a migration ever gains a real value import,
+`dist/database/migrations/*.js` will carry an `import` statement and must be re-checked against
+Node's resolution rules — including typeorm's ESM allow-list.
 
 ---
 
@@ -846,9 +779,10 @@ Node's resolution rules.
 The entire migration is a single revertable branch. No schema change, no data change, no
 external state. Reverting the branch restores the CommonJS toolchain exactly.
 
-**Before deploying, verify against a scratch database that `dist/migrations/*.js` is present and
-that a container boot creates the schema.** This is the one failure mode in this plan that
-produces no error and no crash — the app starts happily against a database with no tables, and
+**Before deploying, verify against a scratch database that `dist/database/migrations/*.js` is
+present and that a container boot creates the schema.** This is the one failure mode in this
+plan that produces no error and no crash — the app starts happily against a database with no
+tables, and
 the first symptom is a bot that silently stops announcing games. That is the shape of the
 existing `broadcasted`-before-`send()` defect in a new costume, and it deserves the same
 suspicion.
@@ -913,18 +847,17 @@ The migration is complete only when all of these are true.
 - [ ] `db:init` and both `migration:run` invocations succeed against a scratch Postgres.
 - [ ] A fresh boot applies migrations.
 
-### Builder
+### Build
 
-- [ ] `nest-cli.json` sets `compilerOptions.builder: "rspack"` and keeps `deleteOutDir: true`.
-- [ ] `@rspack/core` satisfies `^1.7.7 || ^2.1.10`; `webpack-node-externals` and
-      `tsconfig-paths-webpack-plugin` are declared devDeps.
-- [ ] `tsconfig.migrations.json` exists and emits to `dist/migrations`.
-- [ ] `build` is `nest build && tsc -p tsconfig.migrations.json`, in that order.
-- [ ] `npm run build` produces `dist/main.js` **and** `dist/migrations/*.js`.
+- [ ] `nest-cli.json` has **no** `builder` key and keeps `deleteOutDir: true`.
+- [ ] `build` is a single `nest build`; no second compilation pass exists anywhere.
+- [ ] No bundler devDeps (`@rspack/core`, `webpack-node-externals`, `tsconfig-paths-webpack-plugin`)
+      were added; no `tsconfig.migrations.json` exists; no `assets` entry was added to
+      `nest-cli.json`.
+- [ ] `npm run build` produces a `dist/` tree that includes `dist/database/migrations/*.js`.
 - [ ] No emitted migration contains an `import` statement.
 - [ ] A fresh boot applies migrations, so `steammy_bot` exists afterward.
-- [ ] No `assets` entry was added to `nest-cli.json`.
-- [ ] The Dockerfile copies `tsconfig.migrations.json` and the image builds and boots.
+- [ ] The Dockerfile is unchanged (no new config to copy) and the image builds and boots.
 - [ ] CI asserts the migrations directory exists after a build.
 
 ### Docs and governance
@@ -944,14 +877,12 @@ conclusions here are non-obvious and were established by reading installed packa
 by convention:
 
 - the exact Vitest/Oxlint/tsconfig target values, which are in
-  `node_modules/@nestjs/schematics/dist/lib/application/files/ts-esm/`;
-- that Rspack preserves decorator metadata, and that it is a monorepo default;
-- that Rspack emits a single bundle that does **not** contain migrations, and that this is why
-  `tsconfig.migrations.json` exists;
+  `node_modules/@nestjs/schematics/dist/lib/application/files/ts-esm/` (re-verified against
+  `nestjs/schematics` master on 2026-09-29: `nest-cli.json` ships no `builder` key — plain `tsc`
+  is the single-app default);
 - that `typeorm@0.3.31` loads ESM migrations via dynamic `import()` when the nearest
-  `package.json` has `type: "module"` (`util/ImportUtils.js`), which is the fact the whole
-  two-compiler design rests on;
-- that the Rspack builder ignores `outDir` and always writes to its own `dist` default;
+  `package.json` has `type: "module"` (`util/ImportUtils.js`), which is the fact the ESM
+  migration story rests on;
 - that `import type` is mandatory rather than stylistic, because `shared/types/index.ts` has no
   runtime exports and `typeorm`'s ESM entry omits `QueryRunner`;
 - that tsx and Vitest are single-file transforms that cannot elide type-only imports, which is
@@ -972,7 +903,7 @@ A build that silently produces no migrations is worse than a build that fails. T
 start, connect to Postgres, log no error, and simply never announce another game. There is no
 alert and no crash — just a bot that goes quiet.
 
-Therefore: if `dist/migrations/*.js` is not present after `npm run build`, **the build failed**,
-even though every tool exited 0. That is why Phase 0.5 step 3 is an explicit check and why Phase 7
-adds a CI guard for it. Do not let a "green" CI run be the evidence that migrations exist; check
-the directory.
+Therefore: if `dist/database/migrations/*.js` is not present after `npm run build`, **the build
+failed**, even though every tool exited 0. That is why Phase 0.4 step 3 is an explicit check and
+why Phase 7 adds a CI guard for it. Do not let a "green" CI run be the evidence that migrations
+exist; check the directory.

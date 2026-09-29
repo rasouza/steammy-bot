@@ -86,12 +86,11 @@ directive for migrating this project to the Nest 12 defaults.** It is a
 still describe the current CommonJS/Jest/ESLint/tsc toolchain accurately. Do
 not assume any part of it has landed.
 
-It plans the move to native ESM plus Vitest, oxlint, tsx, and Rspack. Rspack is
-committed, not optional, and it is not a free swap: the bundle changes the shape
-of `dist/` from a per-file tsc tree to a single `main.js`, which collides with
-TypeORM's runtime migration glob. The plan resolves that with a dedicated
-`tsconfig.migrations.json` and a two-step `build`; until that lands,
-`dist/database/migrations/*.js` is where migrations come from.
+It plans the move to native ESM plus Vitest, oxlint, and tsx. The builder
+stays on plain `tsc`: Rspack was evaluated and rejected on 2026-09-29
+(decision recorded in `specs/002-nest12-esm-toolchain/spec.md`), so there is
+no bundler, no `tsconfig.migrations.json`, and no two-step `build` —
+`dist/database/migrations/*.js` keeps coming from the standard build.
 
 Two hazards worth knowing before you touch anything here:
 
