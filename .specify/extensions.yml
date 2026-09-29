@@ -1,0 +1,57 @@
+# Spec Kit extension hooks — Linear integration for the speckit lifecycle.
+#
+# Every .opencode/commands/speckit.*.md command checks this file before and
+# after its phase. Hook entry fields:
+#
+#   extension     Display name of the extension providing the hook.
+#   command       Command id plus arguments; dispatched as `/{command}`.
+#   description   Shown when the hook is optional.
+#   prompt        Extra instructions shown alongside an optional hook.
+#   optional      false → the command MUST dispatch it (EXECUTE_COMMAND)
+#                        and wait for the result before continuing.
+#                 true  → shown as a suggestion the agent may run.
+#   enabled       false disables the entry without deleting it. Omit = enabled.
+#   condition     Left empty on purpose: the command files defer expression
+#                 evaluation to the HookExecutor.
+#
+# Linear is the tracker of record for this repo. PR linking and branch-based
+# status transitions come from Linear's native GitHub integration — that
+# requires the feature branch to carry the STE-x key (Linear's suggested
+# branch name already does). These hooks cover everything the GitHub
+# integration cannot see: tasks.md generation and speckit phase progress.
+#
+# Do NOT also register speckit.taskstoissues for the same tasks.md — that
+# creates GitHub issues and the two trackers will drift.
+
+hooks:
+  after_tasks:
+    - extension: linear
+      command: speckit.taskstolinear
+      description: Push generated tasks.md tasks to Linear as subtasks of the current feature issue.
+      prompt: >-
+        Resolve the parent from the current branch's STE-x key; fall back to
+        the steammy-bot project. Dedupe by task ID before creating anything.
+      optional: false
+
+  before_implement:
+    - extension: linear
+      command: speckit.linear-status started
+      description: Move the feature's Linear issue to In Progress when implementation starts.
+      prompt: parent issue only; do not touch subtask statuses.
+      optional: false
+
+  after_implement:
+    - extension: linear
+      command: speckit.linear-status implemented
+      description: Sync tasks.md checkboxes onto Linear subtasks and comment the remaining open tasks.
+      prompt: checked → Done; uncheck a subtask that was wrongly marked Done; leave everything else untouched.
+      optional: false
+
+  after_converge:
+    - extension: linear
+      command: speckit.linear-status converged
+      description: Post convergence gate results on the Linear issue; close it only when every task is checked.
+      prompt: >-
+        Include the gate summary from the convergence report in the comment.
+        Open tasks remaining → leave the issue In Progress, do not complete it.
+      optional: false

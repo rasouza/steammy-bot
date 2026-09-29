@@ -1,0 +1,45 @@
+# Dependabot version updates for steammy-bot.
+#
+# Release tie-in (see .releaserc.json): PRs are committed as `chore(deps…)`
+# via prefix + scope, and the `{ "type": "chore", "scope": "deps*" }` rule
+# turns those merges into a patch release + deploy — dependency bumps change
+# the Docker image, so they must ship. Plain `chore` merges still do not.
+#
+# Never pair this with Renovate: both would open PRs for the same updates.
+version: 2
+updates:
+  # npm dependencies — grouped so the type-aware CI runs once per week,
+  # not once per dependency. Majors stay in individual PRs by design:
+  # they need a human look before they ship.
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      npm-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
+    commit-message:
+      prefix: chore
+      include: scope
+
+  # GitHub Actions used by build.yml / release.yml / deploy.yml.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: chore
+      include: scope
+
+  # Dockerfile base images.
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: chore
+      include: scope
