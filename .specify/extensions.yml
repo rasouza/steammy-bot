@@ -55,3 +55,10 @@ hooks:
         Include the gate summary from the convergence report in the comment.
         Open tasks remaining → leave the issue In Progress, do not complete it.
       optional: false
+
+installed:
+  - assess
+  - bug
+
+settings:
+  auto_execute_hooks: true
