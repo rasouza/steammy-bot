@@ -107,8 +107,10 @@ Rationale: an uncollected spec is worse than no spec, because it manufactures fa
 
 **Runtime and toolchain**
 
-- Node `.nvmrc` pins `24.21.0`; `engines` requires `>=24.15.0`. The README's "Node >= 22.12" is
-  stale and MUST NOT be treated as authoritative.
+- Node `.nvmrc` pins `24.21.0` and `engines` requires `>=24.15.0`; the README MUST state the same
+  floor, and all three MUST be updated together when it changes. The README claimed `>=22.12` for
+  months after the bump — a stale install hint strands contributors on the wrong runtime, which is
+  why agreement is asserted here rather than assumed.
 - Installs MUST use `--ignore-scripts` (`npm ci --ignore-scripts`). necord's postinstall crashes
   on Windows; CI uses the same flag on Linux.
 - The repository is native ESM (`"type": "module"`): relative imports carry explicit `.js`
@@ -213,4 +215,4 @@ Compliance review: the six CI steps in Principle IV are the mechanical floor. Th
 checks in "Compliance review expectations" — new platform branching, delivery ordering, and
 partial-gate passes — are not automatable and MUST be verified by a human reviewer.
 
-**Version**: 3.0.0 | **Ratified**: 2026-09-27 | **Last Amended**: 2026-09-29
+**Version**: 3.0.1 | **Ratified**: 2026-09-27 | **Last Amended**: 2026-09-29

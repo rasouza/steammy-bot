@@ -22,8 +22,7 @@ npm run test:e2e
 - `npm run format` writes Prettier output over `src/` and `test/`.
 - `npm install --ignore-scripts` is required. necord's postinstall crashes on
   Windows; CI uses `npm ci --ignore-scripts` on Linux too.
-- Node: `.nvmrc` pins `24.21.0`, `engines` requires `>=24.15.0`. The README's
-  "Node >= 22.12" is stale — trust `.nvmrc`.
+- Node: `.nvmrc` pins `24.21.0`; `engines` sets the floor at `>=24.15.0`.
 - Line endings: `.gitattributes` forces `eol=lf`. If your editor or a tool
   rewrites files to CRLF, `prettier --check` fails on every file while `lint`
   still passes (oxlint does not check formatting). Fix the line endings, not
@@ -82,7 +81,7 @@ generic code.
 ## Changing the toolchain
 
 **`docs/plans/nest12_esm_toolchain.md` records the Nest 12 migration.** It has
-been implemented (branch `002-nest12-esm-toolchain`): the tree is native ESM
+been implemented and merged in PR #20: the tree is native ESM
 (`"type": "module"`), tested with Vitest, linted with type-aware oxlint, and
 the TypeORM CLI runs through `tsx`. The builder stayed on plain `tsc`:
 Rspack was evaluated and rejected on 2026-09-29 (decision recorded in
