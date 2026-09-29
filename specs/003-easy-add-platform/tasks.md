@@ -144,10 +144,10 @@ requires production credentials (spec FR-013, A-007, research R4)
 **Independent Test**: Start locally with `BROADCAST_ENABLED=false` and no production credentials
 → boots, sync runs, zero Discord messages, no flag changes (quickstart §4)
 
-- [ ] T033 [P] [US4] Add `BROADCAST_ENABLED` to `src/config/env.schema.ts` using the existing `booleanish` helper (`'true'|'false'`) but **default `'true'`** (production-safe per R4 — a `false` default would mute announcements on the next deploy); keep `envSchema` `.passthrough()` and leave `NODE_ENV` untouched
-- [ ] T034 [US4] Gate the announce pass in `src/modules/platforms/platform.scheduler.ts` on the flag via `ConfigService`: disabled → skip the pass entirely (no `send`, no `markBroadcasted`); sync pass unaffected (A-007) (depends: T033)
-- [ ] T035 [US4] Flag spec in `src/modules/platforms/platform.scheduler.spec.ts` — flag false → no runtime's `broadcastPending` invoked and nothing marked; flag true (or default) → full pass; sync pass runs in both states (depends: T034)
-- [ ] T036 [P] [US4] Document `BROADCAST_ENABLED` in `.env.example` — default `true`, set `false` for local development; deliberately NOT added to `docker-compose.yml`'s environment list (an unset list entry delivers an empty string that rejects validation — research R4)
+- [X] T033 [P] [US4] Add `BROADCAST_ENABLED` to `src/config/env.schema.ts` using the existing `booleanish` helper (`'true'|'false'`) but **default `'true'`** (production-safe per R4 — a `false` default would mute announcements on the next deploy); keep `envSchema` `.passthrough()` and leave `NODE_ENV` untouched
+- [X] T034 [US4] Gate the announce pass in `src/modules/platforms/platform.scheduler.ts` on the flag via `ConfigService`: disabled → skip the pass entirely (no `send`, no `markBroadcasted`); sync pass unaffected (A-007) (depends: T033)
+- [X] T035 [US4] Flag spec in `src/modules/platforms/platform.scheduler.spec.ts` — flag false → no runtime's `broadcastPending` invoked and nothing marked; flag true (or default) → full pass; sync pass runs in both states (depends: T034)
+- [X] T036 [P] [US4] Document `BROADCAST_ENABLED` in `.env.example` — default `true`, set `false` for local development; deliberately NOT added to `docker-compose.yml`'s environment list (an unset list entry delivers an empty string that rejects validation — research R4)
 
 **Checkpoint**: Local verification possible with zero production credentials; production behavior unchanged by default
 

@@ -1,4 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
 import { PLATFORM_REGISTRY } from './platform.tokens.js';
 import type { PlatformRuntime } from './platform.types.js';
@@ -16,6 +17,7 @@ export class PlatformScheduler {
 
   constructor(
     @Inject(PLATFORM_REGISTRY) private readonly registry: PlatformRuntime[],
+    private readonly config: ConfigService,
   ) {}
 
   @Cron('0 * * * *')
@@ -33,6 +35,17 @@ export class PlatformScheduler {
 
   @Cron('10 * * * *')
   async broadcastAll(): Promise<number> {
+    // Kill switch (spec FR-013, research R4): unset or 'true' announces;
+    // only an explicit false skips the pass — a missing variable must
+    // never mute production. The sync pass deliberately ignores this flag.
+    const enabled = this.config.get('BROADCAST_ENABLED', true);
+    if (enabled === false || enabled === 'false') {
+      this.logger.log(
+        'Announcement pass disabled (BROADCAST_ENABLED); skipping.',
+      );
+      return 0;
+    }
+
     let total = 0;
 
     for (const platform of this.registry) {
