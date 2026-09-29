@@ -1,6 +1,6 @@
 import { StringOption } from 'necord';
-import { GamePlatform } from '../../../shared/constants';
-import type { GamePlatformType } from '../../../shared/constants';
+import { GamePlatform } from '../../../shared/constants.js';
+import type { GamePlatformType } from '../../../shared/constants.js';
 
 export class PlatformOptionDto {
   @StringOption({

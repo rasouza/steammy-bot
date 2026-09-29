@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
-import { BroadcastModule } from '../broadcast/broadcast.module';
-import { PlatformsModule } from '../platforms/platforms.module';
-import { AdminCommands } from './admin.commands';
+import { BroadcastModule } from '../broadcast/broadcast.module.js';
+import { PlatformsModule } from '../platforms/platforms.module.js';
+import { AdminCommands } from './admin.commands.js';
 
 @Module({
   imports: [PlatformsModule, BroadcastModule],

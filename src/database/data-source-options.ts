@@ -1,16 +1,26 @@
 import { join } from 'node:path';
 import type { DataSourceOptions } from 'typeorm';
 
-import { databaseConfig, type DatabaseConfig } from '../config';
-import { CatalogEpic, CatalogXbox, Guild, Subscription } from './entities';
+import { databaseConfig, type DatabaseConfig } from '../config/index.js';
+import {
+  CatalogEpic,
+  CatalogXbox,
+  Guild,
+  Subscription,
+} from './entities/index.js';
 
 export const entities = [CatalogEpic, CatalogXbox, Guild, Subscription];
 
 /**
- * `__dirname` resolves to `src/database` under ts-node (TypeORM CLI) and to
- * `dist/database` after `nest build`, so a single glob covers both.
+ * `import.meta.dirname` resolves to `src/database` under tsx (`db:init`, the
+ * TypeORM CLI) and to `dist/database` after `nest build` (production and
+ * watch), so a single glob covers all three runtime contexts.
  */
-export const migrationsGlob = join(__dirname, 'migrations', '*.{ts,js}');
+export const migrationsGlob = join(
+  import.meta.dirname,
+  'migrations',
+  '*.{ts,js}',
+);
 
 /**
  * The only options any caller is allowed to override.

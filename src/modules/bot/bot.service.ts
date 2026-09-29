@@ -4,7 +4,7 @@ import { ActivityType, Events } from 'discord.js';
 import { Context, On, Once } from 'necord';
 import type { ContextOf } from 'necord';
 import { Repository } from 'typeorm';
-import { Guild } from '../../database/entities';
+import { Guild } from '../../database/entities/index.js';
 
 @Injectable()
 export class BotService {

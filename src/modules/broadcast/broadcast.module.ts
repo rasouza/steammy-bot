@@ -4,9 +4,9 @@ import {
   CatalogEpic,
   CatalogXbox,
   Subscription,
-} from '../../database/entities';
-import { BroadcastService } from './broadcast.service';
-import { GameEmbedService } from './game-embed.service';
+} from '../../database/entities/index.js';
+import { BroadcastService } from './broadcast.service.js';
+import { GameEmbedService } from './game-embed.service.js';
 
 @Module({
   imports: [TypeOrmModule.forFeature([CatalogEpic, CatalogXbox, Subscription])],
