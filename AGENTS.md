@@ -165,3 +165,16 @@ through `/speckit.constitution` → `.specify` → `.plan` → `.tasks` →
 `.implement` → `.converge`; artifacts land in `specs/<branch>/`. The bundled
 scripts are bash (`--script sh`) and need `bash`, `git`, and `jq` on PATH — keep
 them that way rather than porting them to PowerShell.
+
+**Linear is the tracker of record.** `.specify/extensions.yml` wires the
+lifecycle to the Linear MCP: `after_tasks` → `/speckit.taskstolinear` (pushes
+`tasks.md` tasks as subtasks of the feature's `STE-x` issue, deduping by
+`T\d{3,}` ID), and `before_implement` / `after_implement` / `after_converge` →
+`/speckit.linear-status <mode>` (status transitions + progress comments;
+`converged` closes the issue only when every task checkbox is checked). Both
+commands resolve the parent issue from the **`STE-x` key in the branch name**
+and fall back to the `steammy-bot` project — never guess an issue. PR linking
+and branch-driven transitions come from Linear's native GitHub integration, so
+name feature branches with the `STE-x` key. `/speckit.taskstoissues` creates
+*GitHub* issues instead; do not run it alongside `taskstolinear` for the same
+`tasks.md` — the two trackers will drift.
