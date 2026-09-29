@@ -124,11 +124,22 @@ export class BroadcastService {
   ): Promise<void> {
     const subscriptions = await this.subscriptionRepository.find({
       where: { platform },
+      relations: { guild: true },
     });
 
     const embed = this.embed.build(game);
 
     for (const subscription of subscriptions) {
+      // Subscriptions of guilds the bot has been removed from survive in the
+      // table (`guildDelete` only flips `guild.deleted`; the FK cascades on
+      // hard deletes only), so filter them out before paying for a fetch.
+      if (subscription.guild?.deleted) {
+        this.logger.debug(
+          `Skipping broadcast to channel ${subscription.id}: guild ${subscription.guildId} is no longer served`,
+        );
+        continue;
+      }
+
       try {
         const channel = await this.client.channels.fetch(subscription.id);
 
