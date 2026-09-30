@@ -85,8 +85,8 @@ npm run test:e2e
 
 ## S9 — FR-009 cleanup (post-landing, separate change — do NOT run in this PR)
 
-1. The split PR has merged; a follow-up change then: `git mv docs/plans/*.md docs/`, remove `docs/plans/`, update the three `docs/plans/` references in AGENTS.md.
-2. **Expected**: `test -d docs/plans` fails (gone); `grep -rn "docs/plans" AGENTS.md README.md` → zero hits; both plan records still readable under `docs/`; the follow-up commit does not touch `src/`.
+1. The split PR has merged; a follow-up change then deletes both `docs/plans/` records, removes the folder, and retires the living references (AGENTS.md ×3, constitution ×2) — reconciled per FR-009: toolchain details live in `specs/002`, the STE-1 plan record in `specs/003`, and the §13 "Do Not Over-Abstract" text was explicitly retired per maintainer directive (2026-09-30).
+2. **Expected**: `test -d docs/plans` fails (gone); `grep -rn "docs/plans" AGENTS.md README.md .specify/memory/constitution.md docs/` → zero hits; no living document points at either deleted file; the follow-up commit does not touch `src/`.
 
 ## Verdict
 
@@ -107,3 +107,4 @@ closes only when every task checkbox is checked (after_converge hook rules).
 | S6 | zero "storefront" in src/README/docs; living-record hits only in exempt classes; `src/database/` diff empty; Discord choice literals identical |
 | S7 | guide references only new paths; every named file exists; README matches |
 | S8 | six-step gate green at every commit (C0–C4) — 39 unit + 1 e2e passing, warnings-only lint (22 baseline) |
+| S9 | verified 2026-09-30 on `chore/ste-75-retire-docs-plans` (after PR #29 merged): both records deleted; §13 "Do Not Over-Abstract" text retired (constraint carried by constitution Principle I + AGENTS); AGENTS ×3 + constitution ×2 references retired (constitution PATCH 3.1.1); living-doc grep zero (AGENTS/README/constitution/docs/); historical records retain period-accurate paths; no `src/` changes; gate green |

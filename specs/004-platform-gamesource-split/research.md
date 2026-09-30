@@ -133,18 +133,26 @@
 
 ## R8. Where do the `docs/plans/` records go when the folder is removed? (FR-009)
 
-- **Decision**: **Flatten**: `docs/plans/easy_add_platform.md` → `docs/easy_add_platform.md`,
-  `docs/plans/nest12_esm_toolchain.md` → `docs/nest12_esm_toolchain.md`; delete
-  `docs/plans/`; update the three AGENTS.md references
-  (`docs/plans/X` → `docs/X`). Executed as a separate change *after* the split PR lands
-  (spec assumption; AGENTS' "a commit containing both is unreviewable" rule).
-- **Rationale**: Satisfies the maintainer's directive ("remove the docs/plans folder")
-  with minimal conceptual churn — records stay findable, links stay valid, the guide
-  (`docs/platform-integration.md`) is untouched.
-- **Alternatives considered**: moving records into their `specs/00X-*/` directories
-  (associative but risks confusion with speckit's generated `plan.md`); deleting the
-  records (unacceptable — AGENTS cites the STE-1 record's "Do Not Over-Abstract" §13 as
-  active governance).
+- **Decision**: **Retire** — delete both records and the `docs/plans/` folder, and retire
+  every living reference instead of repointing it (AGENTS.md ×3, constitution ×2).
+  Supersedes the earlier *flatten* decision of the same day: maintainer correction
+  2026-09-30 — "I don't want to flatten these 2 docs. I want them gone. They are already
+  implemented and their details are present in specs." The STE-1 plan's content persists
+  as `specs/003-easy-add-platform`, the toolchain migration's as
+  `specs/002-nest12-esm-toolchain`. Executed as a separate change *after* the split PR
+  lands (spec assumption; AGENTS' "a commit containing both is unreviewable" rule).
+- **Rationale**: Both plans are fully implemented; the living guidance already lives in
+  specs, AGENTS, the integration guide, and the actual config files — the records are
+  history, not references. The one piece FR-009 called "active governance" (the STE-1
+  plan's §13 "Do Not Over-Abstract") was offered three homes (integration guide /
+  specs/003 / retire) and the maintainer chose **full retirement**: the constraint
+  survives as constitution Principle I's "abstraction MUST stop at what the second
+  platform actually needs" plus the AGENTS sentence.
+- **Alternatives considered**: flattening into `docs/` (initial decision — rejected by
+  the maintainer as keeping dead weight); relocating §13 into
+  `docs/platform-integration.md` or `specs/003-easy-add-platform` (FR-009's relocate
+  option — offered, declined); moving records into their `specs/00X-*/` directories
+  (associative but risks confusion with speckit's generated `plan.md`).
 
 ## Open items carried (none blocking)
 

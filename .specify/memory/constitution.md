@@ -15,9 +15,11 @@ carries `broadcastEpic()`/`broadcastXbox()` plus `cronEpic()`/`cronXbox()`; `adm
 branches on `if (platform === ...)`. This is the documented anti-pattern, not the model to copy.
 The target is one generic platform lifecycle driven by a platform registry.
 
-`docs/plans/easy_add_platform.md` is the maintainer's active directive and governs platform
-architecture. It MUST be read before any platform work. Its "Do Not Over-Abstract" constraints
-bind equally: abstraction MUST stop at what the second platform actually needs.
+`docs/platform-integration.md` is the maintainer's active directive and governs platform
+architecture (the STE-1 plan record it derives from lives in `specs/003-easy-add-platform`; the
+plan documents were retired post-implementation per FR-009). It MUST be read before any
+platform work. The "Do Not Over-Abstract" constraints bind equally: abstraction MUST stop at
+what the second platform actually needs.
 
 Rationale: the current shape makes N storefronts cost N edits in shared code, so each new
 platform risks breaking the platforms already shipping.
@@ -179,7 +181,7 @@ Rationale: an uncollected spec is worse than no spec, because it manufactures fa
   GitHub-issues variant (`speckit.taskstoissues`) MUST NOT run for the same `tasks.md`.
   Operational wiring lives in AGENTS.md.
 
-1. Confirm the target platform and whether `docs/plans/easy_add_platform.md` applies. For platform
+1. Confirm the target platform and whether `docs/platform-integration.md` applies. For platform
    work, drive the change through the Spec Kit workflow rather than hand-implementing the plan.
 2. Branch from `main`. Keep commits atomic: a commit MUST contain one logical change, and a
    commit that references a document MUST include that document.
@@ -229,4 +231,4 @@ Compliance review: the six CI steps in Principle IV are the mechanical floor. Th
 checks in "Compliance review expectations" — new platform branching, delivery ordering, and
 partial-gate passes — are not automatable and MUST be verified by a human reviewer.
 
-**Version**: 3.1.0 | **Ratified**: 2026-09-27 | **Last Amended**: 2026-09-29
+**Version**: 3.1.1 | **Ratified**: 2026-09-27 | **Last Amended**: 2026-09-30
