@@ -1,6 +1,8 @@
 import { StringOption } from 'necord';
-import { GamePlatform } from '../../platforms/platform.constants.js';
-import type { GamePlatformType } from '../../platforms/platform.constants.js';
+import {
+  GamePlatform,
+  type GamePlatformType,
+} from '../../../gamesources/game-platform.js';
 
 export class PlatformOptionDto {
   @StringOption({

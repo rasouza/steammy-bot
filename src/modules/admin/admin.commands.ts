@@ -2,8 +2,8 @@ import { Inject, Injectable } from '@nestjs/common';
 import { MessageFlags, PermissionFlagsBits } from 'discord.js';
 import { Context, Options, SlashCommand } from 'necord';
 import type { SlashCommandContext } from 'necord';
-import { GamePlatformName } from '../platforms/platform.constants.js';
-import type { GamePlatformType } from '../platforms/platform.constants.js';
+import type { GamePlatformType } from '../../gamesources/game-platform.js';
+import { gameSourceNames } from '../../gamesources/index.js';
 import { PLATFORM_REGISTRY } from '../platforms/platform.tokens.js';
 import type { PlatformRuntime } from '../platforms/platform.types.js';
 import { PlatformOptionDto } from '../subscription/dto/platform-option.dto.js';
@@ -11,7 +11,7 @@ import { PlatformOptionDto } from '../subscription/dto/platform-option.dto.js';
 /**
  * Admin commands resolve their target from the platform registry instead of
  * branching on `platform === ...` (spec A-002, FR-011). Reply wording,
- * ephemeral flags, and `GamePlatformName` lookups are unchanged (FR-015).
+ * ephemeral flags, and display-name lookups are unchanged (FR-015).
  */
 @Injectable()
 export class AdminCommands {
@@ -45,11 +45,11 @@ export class AdminCommands {
       await this.runtime(platform).sync();
 
       return interaction.editReply(
-        `**${GamePlatformName[platform]}** catalog synchronized successfully.`,
+        `**${gameSourceNames[platform]}** catalog synchronized successfully.`,
       );
     } catch (error) {
       return interaction.editReply(
-        `Failed to sync ${GamePlatformName[platform]}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Failed to sync ${gameSourceNames[platform]}: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
     }
   }
@@ -70,11 +70,11 @@ export class AdminCommands {
       const count = await this.runtime(platform).broadcastPending();
 
       return interaction.editReply(
-        `Broadcasted ${count} games for **${GamePlatformName[platform]}**.`,
+        `Broadcasted ${count} games for **${gameSourceNames[platform]}**.`,
       );
     } catch (error) {
       return interaction.editReply(
-        `Failed to broadcast ${GamePlatformName[platform]}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Failed to broadcast ${gameSourceNames[platform]}: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
     }
   }

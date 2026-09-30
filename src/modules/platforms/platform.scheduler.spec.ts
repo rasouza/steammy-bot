@@ -1,7 +1,7 @@
 import { Logger } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
-import { GamePlatform } from './platform.constants.js';
-import type { GamePlatformType } from './platform.constants.js';
+import { GamePlatform } from '../../gamesources/game-platform.js';
+import type { GamePlatformType } from '../../gamesources/game-platform.js';
 import { PlatformScheduler } from './platform.scheduler.js';
 
 function fakeRuntime(type: GamePlatformType) {
