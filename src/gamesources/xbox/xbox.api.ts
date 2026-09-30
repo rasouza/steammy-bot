@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import chalk from 'chalk';
 import type { XboxApiGame, XboxCatalogIdResponse } from './xbox.types.js';
-import type { PlatformApi } from '../platform.types.js';
+import type { PlatformApi } from '../../modules/platforms/platform.types.js';
 
 /**
  * Fetch step for Xbox (moved from `xbox.service.ts`): id-list first, then

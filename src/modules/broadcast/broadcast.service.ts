@@ -4,7 +4,6 @@ import chalk from 'chalk';
 import { ChannelType, Client } from 'discord.js';
 import { Repository } from 'typeorm';
 import { Subscription } from '../../database/entities/index.js';
-import type { GamePlatformType } from '../platforms/platform.constants.js';
 import type { Game } from '../platforms/platform.types.js';
 import type { SendOutcome } from '../platforms/platform.types.js';
 import { GameEmbedService } from './game-embed.service.js';
@@ -28,7 +27,7 @@ export class BroadcastService {
   async send(
     message: string,
     game: Game,
-    platform: GamePlatformType,
+    platform: string,
   ): Promise<SendOutcome> {
     const subscriptions = await this.subscriptionRepository.find({
       where: { platform },

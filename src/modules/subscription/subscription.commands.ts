@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ChannelType, MessageFlags } from 'discord.js';
 import { Context, Options, SlashCommand } from 'necord';
 import type { SlashCommandContext } from 'necord';
-import { GamePlatformName } from '../platforms/platform.constants.js';
+import { gameSourceNames } from '../../gamesources/index.js';
 import { PlatformOptionDto } from './dto/platform-option.dto.js';
 import {
   SubscriptionAlreadyExistsError,
@@ -42,12 +42,12 @@ export class SubscriptionCommands {
       );
 
       return interaction.reply(
-        `**#${channel.name}** subscribed to **${GamePlatformName[platform]}** news`,
+        `**#${channel.name}** subscribed to **${gameSourceNames[platform]}** news`,
       );
     } catch (error) {
       if (error instanceof SubscriptionAlreadyExistsError) {
         return interaction.reply(
-          `This channel is already subscribed to **${GamePlatformName[platform]}** news`,
+          `This channel is already subscribed to **${gameSourceNames[platform]}** news`,
         );
       }
 
@@ -85,12 +85,12 @@ export class SubscriptionCommands {
       );
 
       return interaction.reply(
-        `**#${channel.name}** unsubscribed from **${GamePlatformName[platform]}** news`,
+        `**#${channel.name}** unsubscribed from **${gameSourceNames[platform]}** news`,
       );
     } catch (error) {
       if (error instanceof SubscriptionNotFoundError) {
         return interaction.reply(
-          `This channel is **not** subscribed to **${GamePlatformName[platform]}** news`,
+          `This channel is **not** subscribed to **${gameSourceNames[platform]}** news`,
         );
       }
 

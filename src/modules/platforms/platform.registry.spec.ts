@@ -1,5 +1,7 @@
-import { GamePlatform, GamePlatformName } from './platform.constants.js';
-import { EPIC_PLATFORM, XBOX_PLATFORM } from './platform.registry.js';
+import { GamePlatform } from '../../gamesources/game-platform.js';
+import { EPIC_PLATFORM } from '../../gamesources/epic/index.js';
+import { XBOX_PLATFORM } from '../../gamesources/xbox/index.js';
+import { gameSourceNames as GamePlatformName } from '../../gamesources/index.js';
 
 /**
  * Message lock (spec SC-002 / FR-015): moving announcement text from the

@@ -1,7 +1,5 @@
 import { Logger } from '@nestjs/common';
 import chalk from 'chalk';
-import { GamePlatformName } from './platform.constants.js';
-import type { GamePlatformType } from './platform.constants.js';
 import type { Game } from './platform.types.js';
 import type {
   BroadcastPort,
@@ -14,9 +12,10 @@ import type {
 
 /**
  * The one generic platform lifecycle (research R1, plan §13): fetch → map →
- * persist, and find pending → send → mark. Storefront-specific behavior is
+ * persist, and find pending → send → mark. GameSource-specific behavior is
  * injected through the definition's components — this class contains no
- * platform branching (spec FR-005).
+ * platform branching (spec FR-005). Display names come from the definition,
+ * so the machinery never imports the name record (FR-001).
  *
  * Directly constructible in specs: constructor takes plain objects, no
  * Nest testing module (Constitution V).
@@ -35,7 +34,7 @@ export class GenericPlatform<
     private readonly broadcast: BroadcastPort<TGame>,
   ) {}
 
-  get type(): GamePlatformType {
+  get type(): string {
     return this.definition.type;
   }
 
@@ -50,7 +49,7 @@ export class GenericPlatform<
       }
     }
 
-    const name = GamePlatformName[this.definition.type];
+    const name = this.definition.name;
     this.logger.log(
       `Fetched ${games.length} games from ${chalk.bold.green(name)}`,
     );
@@ -62,7 +61,7 @@ export class GenericPlatform<
   }
 
   async broadcastPending(): Promise<number> {
-    const name = GamePlatformName[this.definition.type];
+    const name = this.definition.name;
     const games = await this.repository.findPending(new Date());
 
     if (games.length === 0) {

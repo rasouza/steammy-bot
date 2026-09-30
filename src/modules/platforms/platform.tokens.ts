@@ -1,9 +1,7 @@
-import type { GamePlatformType } from './platform.constants.js';
-
-/** Injection token for `PlatformRuntime[]` — every registered storefront (contracts §3). */
+/** Injection token for `PlatformRuntime[]` — every registered platform (contracts §3). */
 export const PLATFORM_REGISTRY: unique symbol = Symbol('PLATFORM_REGISTRY');
 
-/** Per-definition provider token, e.g. `platform:epic`. */
-export function platformToken(type: GamePlatformType): string {
+/** Per-definition provider token, e.g. `platform:<key>`. */
+export function platformToken(type: string): string {
   return `platform:${type}`;
 }

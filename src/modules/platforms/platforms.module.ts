@@ -1,42 +1,26 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { CatalogEpic, CatalogXbox } from '../../database/entities/index.js';
+import { entities } from '../../database/data-source-options.js';
 import { BroadcastModule } from '../broadcast/broadcast.module.js';
-import { EpicApi } from './epic/epic.api.js';
-import { EpicMapper } from './epic/epic.mapper.js';
-import { EpicRepository } from './epic/epic.repository.js';
-import { createPlatformProvider } from './platform.factory.js';
 import {
-  EPIC_PLATFORM,
-  XBOX_PLATFORM,
+  platformProviders,
   platformRegistryProvider,
 } from './platform.registry.js';
 import { PlatformScheduler } from './platform.scheduler.js';
 import { PLATFORM_REGISTRY } from './platform.tokens.js';
-import { XboxApi } from './xbox/xbox.api.js';
-import { XboxMapper } from './xbox/xbox.mapper.js';
-import { XboxRepository } from './xbox/xbox.repository.js';
 
 /**
- * Composition root for storefronts: per-platform components, one factory
- * provider per definition, the shared registry, and the generic scheduler.
- * Adding a storefront = its three components + one definition entry — no
- * edits to this module's generic wiring (spec FR-001).
+ * Composition root for the platform area: providers derived from the central
+ * GameSource registration list, the shared registry, and the generic
+ * scheduler (spec FR-001). Adding a platform never edits this module's
+ * generic wiring — registration flows through
+ * `src/gamesources/index.ts` alone. Repositories are provided from the
+ * connection's own entity list, so a new catalog entity joins automatically.
  */
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([CatalogEpic, CatalogXbox]),
-    BroadcastModule,
-  ],
+  imports: [TypeOrmModule.forFeature(entities), BroadcastModule],
   providers: [
-    EpicApi,
-    EpicMapper,
-    EpicRepository,
-    XboxApi,
-    XboxMapper,
-    XboxRepository,
-    createPlatformProvider(EPIC_PLATFORM),
-    createPlatformProvider(XBOX_PLATFORM),
+    ...platformProviders,
     platformRegistryProvider,
     PlatformScheduler,
   ],

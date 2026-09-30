@@ -6,7 +6,7 @@ import type { Guild, Subscription } from '../../database/entities/index.js';
 import {
   GamePlatform,
   type GamePlatformType,
-} from '../platforms/platform.constants.js';
+} from '../../gamesources/game-platform.js';
 import type { Game } from '../platforms/platform.types.js';
 import { BroadcastService } from './broadcast.service.js';
 import { GameEmbedService } from './game-embed.service.js';

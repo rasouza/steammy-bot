@@ -1,6 +1,6 @@
 import { Logger } from '@nestjs/common';
-import { GamePlatform } from './platform.constants.js';
-import type { GamePlatformType } from './platform.constants.js';
+import { GamePlatform } from '../../gamesources/game-platform.js';
+import type { GamePlatformType } from '../../gamesources/game-platform.js';
 import type { Game } from './platform.types.js';
 import { GenericPlatform } from './generic-platform.js';
 import type { PlatformDefinition, SendOutcome } from './platform.types.js';

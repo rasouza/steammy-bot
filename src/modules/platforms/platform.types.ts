@@ -1,14 +1,14 @@
 /**
- * Platform lifecycle contracts — the stable seams a new storefront plugs into
+ * Platform lifecycle contracts — the stable seams a new GameSource plugs into
  * (specs/003-easy-add-platform/contracts/platform-contracts.md).
  *
  * Design-level interfaces: `GenericPlatform` is the only `PlatformRuntime`
- * implementation; each storefront provides its own Api/Mapper/Repository.
- * No lifecycle logic lives here (spec FR-003).
+ * implementation; each GameSource provides its own Api/Mapper/Repository.
+ * No lifecycle logic lives here (spec FR-003). The machinery never imports
+ * the domain keys — definition keys are plain strings (SC-003).
  */
 
 import type { Type } from '@nestjs/common';
-import type { GamePlatformType } from './platform.constants.js';
 
 /**
  * Common game model — the contracts' `TGame` (the producer side owns the
@@ -32,8 +32,8 @@ export interface PlatformApi<TSource> {
 
 /**
  * Translate — native shape → common game model, no persistence.
- * `null` means the source does not qualify for this storefront and must not
- * be persisted (e.g. Epic's upcoming/discount filter, spec FR-002).
+ * `null` means the source does not qualify for this platform and must not
+ * be persisted (e.g. an upcoming/discount filter, spec FR-002).
  */
 export interface PlatformMapper<TSource, TGame> {
   toGame(source: TSource): TGame | null;
@@ -43,15 +43,20 @@ export interface PlatformMapper<TSource, TGame> {
 export interface PlatformRepository<TGame> {
   /** Upsert by id; the `broadcasted` flag is never written here (FR-001 / clarification Q2). */
   saveAll(games: TGame[]): Promise<void>;
-  /** Loads only rows matching this storefront's criteria (research R5). */
+  /** Loads only rows matching this GameSource's criteria (research R5). */
   findPending(now: Date): Promise<TGame[]>;
   /** Called ONLY after delivery succeeded (Constitution II / spec FR-009). */
   markBroadcasted(game: TGame): Promise<void>;
 }
 
 /** Registration record — configuration only (spec FR-003). */
-export interface PlatformDefinition<TSource, TGame> {
-  type: GamePlatformType;
+export interface PlatformDefinition<
+  TSource,
+  TGame,
+  TKey extends string = string,
+> {
+  type: TKey;
+  name: string;
   message: string;
   api: Type<PlatformApi<TSource>>;
   mapper: Type<PlatformMapper<TSource, TGame>>;
@@ -60,8 +65,8 @@ export interface PlatformDefinition<TSource, TGame> {
 
 /** What the scheduler and admin commands see — one generic implementation (research R1). */
 export interface PlatformRuntime {
-  readonly type: GamePlatformType;
-  /** fetch → map → saveAll; errors are caught per storefront by the scheduler. */
+  readonly type: string;
+  /** fetch → map → saveAll; errors are caught per platform by the scheduler. */
   sync(): Promise<void>;
   /** findPending → send → mark; returns the number of games announced. */
   broadcastPending(): Promise<number>;
@@ -77,9 +82,5 @@ export interface SendOutcome {
 
 /** The delivery surface the lifecycle depends on (contracts §4). */
 export interface BroadcastPort<TGame> {
-  send(
-    message: string,
-    game: TGame,
-    platform: GamePlatformType,
-  ): Promise<SendOutcome>;
+  send(message: string, game: TGame, platform: string): Promise<SendOutcome>;
 }
