@@ -35,18 +35,17 @@ here, each with a justification (spec FR-003). Nothing else may change:
 
 | # | File | Why it must be edited | Justification |
 |---|------|----------------------|---------------|
-| 1 | `src/gamesources/game-platform.ts` | Add your key to the `GamePlatform` object (`STEAM: 'steam'`) | The domain key union is what the Discord DTO, admin commands, and the derived name map type against — a new key joins it so it stays compile-checked everywhere |
-| 2 | `src/gamesources/index.ts` | Add one line to the `gameSources` array | Explicit registration — no filesystem auto-discovery; this list is the machinery's single bridge into the platform area |
-| 3 | `src/modules/subscription/dto/platform-option.dto.ts` | Append `{ name: 'Steam', value: GamePlatform.STEAM }` to `choices` | The decorator array is evaluated at class-decoration time and must stay a literal; it has no natural home inside your folder |
-| 4 | `src/database/entities/index.ts` | `export *` your catalog entity | Standard entity-registration rule (AGENTS.md) — required by any new catalog table, unchanged by this layout |
-| 5 | `src/database/data-source-options.ts` | Add your entity to the `entities` array | Same standard rule: the TypeORM connection must know the table |
+| 1 | `src/gamesources/index.ts` | Add one line to the `gameSources` array | Explicit registration — no filesystem auto-discovery; this list is the machinery's single bridge into the platform area, and the key union, display-name map, and Discord `choices` all derive from it |
+| 2 | `src/database/entities/index.ts` | `export *` your catalog entity | Standard entity-registration rule (AGENTS.md) — required by any new catalog table, unchanged by this layout |
+| 3 | `src/database/data-source-options.ts` | Add your entity to the `entities` array | Same standard rule: the TypeORM connection must know the table |
 
-**Count**: registration proper is **3** shared files (1–3). The pre-split
-layout needed **4** (`platform.constants.ts`, `platform.registry.ts`,
-`platforms.module.ts`, the DTO). Files 4–5 are the database's standard
-entity-registration pair, required identically before and after the split —
-total shared files **5**, against a pre-split total of **6** (the same pair
-plus the four registration files). The count has not increased (SC-001).
+**Count**: registration proper is **1** shared file (the central list). The
+pre-split layout needed **4** (`platform.constants.ts`, `platform.registry.ts`,
+`platforms.module.ts`, the DTO), and the domain-key union + Discord `choices`
+were two more edits the definition now absorbs. Files 2–3 are the database's
+standard entity-registration pair, required identically before and after the
+split — total shared files **3**, against a pre-split total of **6** (the same
+pair plus the four registration files). The count has not increased (SC-001).
 
 **Files you must NOT edit** — if a step seems to require one of these, the
 registration is incomplete:
@@ -169,7 +168,7 @@ export class <Name>Repository implements PlatformRepository<Game> {
 
 Your catalog entity must be registered in **both**
 `src/database/entities/index.ts` and the `entities` array in
-`src/database/data-source-options.ts` (touch points 4–5 above), with a
+`src/database/data-source-options.ts` (touch points 2–3 above), with a
 generated migration (never `synchronize`). Follow the repository's standard
 database workflow if the table does not exist yet.
 
@@ -184,27 +183,16 @@ feature's definition of done (FR-016).
 
 Registration is configuration, and it is the only shared code you touch:
 
-1. **Key** — in `src/gamesources/game-platform.ts` add the platform value:
-
-   ```ts
-   export const GamePlatform = {
-     XBOX: 'xbox',
-     EPIC: 'epic',
-     STEAM: 'steam', // <- new
-   } as const;
-   ```
-
-2. **Declaration** — in `src/gamesources/<name>/index.ts` export your
+1. **Declaration** — in `src/gamesources/<name>/index.ts` export your
    complete registration with one `defineGameSource(...)` call:
 
    ```ts
    import { defineGameSource } from '../../modules/platforms/define-gamesource.js';
-   import { GamePlatform } from '../game-platform.js';
    // ... your component imports
 
    export const STEAM_PLATFORM = defineGameSource({
-     platform: GamePlatform.STEAM,
-     name: 'Steam', // display name used in command replies and logs
+     platform: 'steam', // the identity — a plain literal, not a shared enum
+     name: 'Steam', // display name in command replies, logs, AND Discord choices
      message: 'New free game available on **Steam**', // announcement text (FR-003)
      api: SteamApi,
      mapper: SteamMapper,
@@ -214,27 +202,26 @@ Registration is configuration, and it is the only shared code you touch:
 
    Class references, not instances — the machinery wires them into providers
    itself. `defineGameSource` is pure declaration: it never registers or
-   performs I/O.
+   performs I/O. The `platform` literal *is* your platform's key: the
+   `GamePlatformType` union is `(typeof gameSources)[number]['type']`, so
+   there is no shared enum file to edit.
 
-3. **Central list** — in `src/gamesources/index.ts` import your definition
+2. **Central list** — in `src/gamesources/index.ts` import your definition
    and add it to the array (one entry per folder):
 
    ```ts
    export const gameSources = [EPIC_PLATFORM, XBOX_PLATFORM, STEAM_PLATFORM] as const;
-   //                          ^ one line added — the name map derives from this list
+   //                          ^ one line added — everything else derives from this list
    ```
 
-   The registry, the scheduler, and the display-name map all read this list;
-   there is nothing else to wire.
-
-4. **Discord choices** — in `src/modules/subscription/dto/platform-option.dto.ts`
-   append `{ name: 'Steam', value: GamePlatform.STEAM }` so `/subscribe`,
-   `/sync`, and `/broadcast` can offer the platform. (The `choices` array is
-   evaluated at class-decoration time, which is why it is a literal list.)
+   The registry, the scheduler, the display-name map, the key union, and the
+   Discord `choices` for `/subscribe`, `/sync`, and `/broadcast` all read this
+   list; there is nothing else to wire.
 
 That's the full integration. Schedules, admin commands, and broadcast delivery
 pick the new platform up from the registry automatically — there is no
-per-platform cron, command branch, or broadcast method to write.
+per-platform cron, command branch, or broadcast method to write, and no
+Discord DTO to edit (the choices are derived from the definitions).
 
 ## Step 7 — Verify
 
@@ -257,7 +244,7 @@ npm run test:e2e
 ```
 
 Self-check against the touch-point contract: `git diff --stat` should show
-only your new `gamesources/<name>/` folder plus the five enumerated shared
+only your new `gamesources/<name>/` folder plus the three enumerated shared
 files — no changes under `src/modules/platforms/`, none to
 `broadcast.service.ts`, none to another platform's files, and no
 platform-specific lifecycle, scheduled job, or broadcast method anywhere in

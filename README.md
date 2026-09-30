@@ -122,7 +122,7 @@ The full walkthrough lives in
 2. Register the entity in `src/database/entities/index.ts` and `src/database/data-source-options.ts`.
 3. Generate a migration for it with `npm run migration:generate -- src/database/migrations/AddMyPlatform` and apply it with `npm run migration:run`.
 4. Create the platform's components in `src/gamesources/myplatform/`: an API client (`myplatform.api.ts`), a mapper (`myplatform.mapper.ts`), and a repository with a pure pending-criteria function (`myplatform.repository.ts`), plus its eligibility spec — and export the platform's declaration with one `defineGameSource(...)` call in `myplatform/index.ts`.
-5. Register the platform: its key in `src/gamesources/game-platform.ts`, one line in the central list `src/gamesources/index.ts`, and the Discord choice in `src/modules/subscription/dto/platform-option.dto.ts`.
+5. Register the platform: one line in the central list `src/gamesources/index.ts` — the domain-key union, the display names, and the Discord `choices` for `/subscribe`, `/sync`, and `/broadcast` all derive from that list.
 6. Run the guide's verification commands (`npm run type:check`, `npm run lint`, your focused specs, then the full CI gate).
 
 No broadcast method, scheduled job, or edit to the generic lifecycle is

@@ -1,18 +1,24 @@
 import { StringOption } from 'necord';
 import {
-  GamePlatform,
+  gameSources,
   type GamePlatformType,
-} from '../../../gamesources/game-platform.js';
+} from '../../../gamesources/index.js';
 
+/**
+ * The `platform` option shared by `/subscribe`, `/sync`, and `/broadcast`.
+ * The Discord choices are derived from the central registration list, so a
+ * registered GameSource is offered automatically — this file never names a
+ * platform.
+ */
 export class PlatformOptionDto {
   @StringOption({
     name: 'platform',
     description: 'Pick a platform',
     required: true,
-    choices: [
-      { name: 'Xbox Game Pass', value: GamePlatform.XBOX },
-      { name: 'Epic Games', value: GamePlatform.EPIC },
-    ],
+    choices: gameSources.map((definition) => ({
+      name: definition.name,
+      value: definition.type,
+    })),
   })
   platform: GamePlatformType;
 }

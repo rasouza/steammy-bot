@@ -1,7 +1,6 @@
 import { Logger } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
-import { GamePlatform } from '../../gamesources/game-platform.js';
-import type { GamePlatformType } from '../../gamesources/game-platform.js';
+import type { GamePlatformType } from '../../gamesources/index.js';
 import { PlatformScheduler } from './platform.scheduler.js';
 
 function fakeRuntime(type: GamePlatformType) {
@@ -39,8 +38,8 @@ describe('PlatformScheduler', () => {
   });
 
   it('runs the sync pass over the whole registry', async () => {
-    const epic = fakeRuntime(GamePlatform.EPIC);
-    const xbox = fakeRuntime(GamePlatform.XBOX);
+    const epic = fakeRuntime('epic');
+    const xbox = fakeRuntime('xbox');
     const scheduler = new PlatformScheduler([epic, xbox], fakeConfig(true));
 
     await scheduler.syncAll();
@@ -50,8 +49,8 @@ describe('PlatformScheduler', () => {
   });
 
   it('continues with the remaining GameSources when one sync throws (Q1)', async () => {
-    const epic = fakeRuntime(GamePlatform.EPIC);
-    const xbox = fakeRuntime(GamePlatform.XBOX);
+    const epic = fakeRuntime('epic');
+    const xbox = fakeRuntime('xbox');
     epic.sync.mockRejectedValue(new Error('epic is down'));
     const scheduler = new PlatformScheduler([epic, xbox], fakeConfig(true));
 
@@ -62,8 +61,8 @@ describe('PlatformScheduler', () => {
   });
 
   it('announces across the whole registry and sums the counts', async () => {
-    const epic = fakeRuntime(GamePlatform.EPIC);
-    const xbox = fakeRuntime(GamePlatform.XBOX);
+    const epic = fakeRuntime('epic');
+    const xbox = fakeRuntime('xbox');
     epic.broadcastPending.mockResolvedValue(2);
     xbox.broadcastPending.mockResolvedValue(1);
     const scheduler = new PlatformScheduler([epic, xbox], fakeConfig(true));
@@ -76,8 +75,8 @@ describe('PlatformScheduler', () => {
   });
 
   it('keeps announcing after one GameSource fails mid-pass (Q1)', async () => {
-    const epic = fakeRuntime(GamePlatform.EPIC);
-    const xbox = fakeRuntime(GamePlatform.XBOX);
+    const epic = fakeRuntime('epic');
+    const xbox = fakeRuntime('xbox');
     epic.broadcastPending.mockRejectedValue(new Error('epic exploded'));
     xbox.broadcastPending.mockResolvedValue(1);
     const scheduler = new PlatformScheduler([epic, xbox], fakeConfig(true));
@@ -90,8 +89,8 @@ describe('PlatformScheduler', () => {
   });
 
   it('skips the announce pass entirely when BROADCAST_ENABLED is false (FR-013)', async () => {
-    const epic = fakeRuntime(GamePlatform.EPIC);
-    const xbox = fakeRuntime(GamePlatform.XBOX);
+    const epic = fakeRuntime('epic');
+    const xbox = fakeRuntime('xbox');
     epic.broadcastPending.mockResolvedValue(2);
     xbox.broadcastPending.mockResolvedValue(1);
     const scheduler = new PlatformScheduler([epic, xbox], fakeConfig(false));
@@ -104,8 +103,8 @@ describe('PlatformScheduler', () => {
   });
 
   it('runs the sync pass even when announcements are disabled (A-007)', async () => {
-    const epic = fakeRuntime(GamePlatform.EPIC);
-    const xbox = fakeRuntime(GamePlatform.XBOX);
+    const epic = fakeRuntime('epic');
+    const xbox = fakeRuntime('xbox');
     const scheduler = new PlatformScheduler([epic, xbox], fakeConfig(false));
 
     await scheduler.syncAll();
@@ -115,7 +114,7 @@ describe('PlatformScheduler', () => {
   });
 
   it('announces by default when the flag is unset (R4 production-safe)', async () => {
-    const epic = fakeRuntime(GamePlatform.EPIC);
+    const epic = fakeRuntime('epic');
     epic.broadcastPending.mockResolvedValue(1);
     const scheduler = new PlatformScheduler([epic], fakeConfig(undefined));
 

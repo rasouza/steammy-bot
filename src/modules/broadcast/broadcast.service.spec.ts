@@ -3,10 +3,7 @@ import { ChannelType } from 'discord.js';
 import type { Client } from 'discord.js';
 import type { Repository } from 'typeorm';
 import type { Guild, Subscription } from '../../database/entities/index.js';
-import {
-  GamePlatform,
-  type GamePlatformType,
-} from '../../gamesources/game-platform.js';
+import type { GamePlatformType } from '../../gamesources/index.js';
 import type { Game } from '../platforms/platform.types.js';
 import { BroadcastService } from './broadcast.service.js';
 import { GameEmbedService } from './game-embed.service.js';
@@ -101,17 +98,12 @@ describe('BroadcastService', () => {
 
   it('skips subscriptions whose guild is soft-deleted', async () => {
     const { service, fetch, channels } = buildHarness([
-      subscriptionRow('left-guild-channel', GamePlatform.XBOX, 'guild-1', true),
-      subscriptionRow(
-        'live-guild-channel',
-        GamePlatform.XBOX,
-        'guild-2',
-        false,
-      ),
+      subscriptionRow('left-guild-channel', 'xbox', 'guild-1', true),
+      subscriptionRow('live-guild-channel', 'xbox', 'guild-2', false),
     ]);
     channels.set('live-guild-channel', textChannel('deals'));
 
-    const outcome = await service.send(XBOX_MESSAGE, game, GamePlatform.XBOX);
+    const outcome = await service.send(XBOX_MESSAGE, game, 'xbox');
 
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(fetch).toHaveBeenCalledWith('live-guild-channel');
@@ -124,12 +116,12 @@ describe('BroadcastService', () => {
 
   it('sends the broadcast to channels of guilds that are still served', async () => {
     const { service, channels } = buildHarness([
-      subscriptionRow('live-channel', GamePlatform.XBOX, 'guild-2', false),
+      subscriptionRow('live-channel', 'xbox', 'guild-2', false),
     ]);
     const channel = textChannel('deals');
     channels.set('live-channel', channel);
 
-    const outcome = await service.send(XBOX_MESSAGE, game, GamePlatform.XBOX);
+    const outcome = await service.send(XBOX_MESSAGE, game, 'xbox');
 
     expect(channel.send).toHaveBeenCalledTimes(1);
     expect(channel.send).toHaveBeenCalledWith({
@@ -142,10 +134,10 @@ describe('BroadcastService', () => {
 
   it('still warns when a live guild channel cannot be fetched', async () => {
     const { service } = buildHarness([
-      subscriptionRow('dead-channel', GamePlatform.XBOX, 'guild-3', false),
+      subscriptionRow('dead-channel', 'xbox', 'guild-3', false),
     ]);
 
-    const outcome = await service.send(XBOX_MESSAGE, game, GamePlatform.XBOX);
+    const outcome = await service.send(XBOX_MESSAGE, game, 'xbox');
 
     expect(logs.warn).toContain(
       'Could not send broadcast to channel dead-channel: Unknown Channel',
@@ -157,12 +149,12 @@ describe('BroadcastService', () => {
 
   it('counts partial delivery without throwing (A-004)', async () => {
     const { service, channels } = buildHarness([
-      subscriptionRow('good-channel', GamePlatform.XBOX, 'guild-1', false),
-      subscriptionRow('broken-channel', GamePlatform.XBOX, 'guild-2', false),
+      subscriptionRow('good-channel', 'xbox', 'guild-1', false),
+      subscriptionRow('broken-channel', 'xbox', 'guild-2', false),
     ]);
     channels.set('good-channel', textChannel('deals'));
 
-    const outcome = await service.send(XBOX_MESSAGE, game, GamePlatform.XBOX);
+    const outcome = await service.send(XBOX_MESSAGE, game, 'xbox');
 
     expect(outcome).toEqual({ delivered: 1, subscribers: 2 });
     expect(logs.warn).toContain(
@@ -172,11 +164,11 @@ describe('BroadcastService', () => {
 
   it('reports total failure when no channel accepts the message', async () => {
     const { service } = buildHarness([
-      subscriptionRow('dead-1', GamePlatform.XBOX, 'guild-1', false),
-      subscriptionRow('dead-2', GamePlatform.XBOX, 'guild-2', false),
+      subscriptionRow('dead-1', 'xbox', 'guild-1', false),
+      subscriptionRow('dead-2', 'xbox', 'guild-2', false),
     ]);
 
-    const outcome = await service.send(XBOX_MESSAGE, game, GamePlatform.XBOX);
+    const outcome = await service.send(XBOX_MESSAGE, game, 'xbox');
 
     expect(outcome).toEqual({ delivered: 0, subscribers: 2 });
     expect(logs.warn).toHaveLength(2);
@@ -185,7 +177,7 @@ describe('BroadcastService', () => {
   it('reports zero subscribers when nobody targets the platform', async () => {
     const { service, fetch } = buildHarness([]);
 
-    const outcome = await service.send(XBOX_MESSAGE, game, GamePlatform.XBOX);
+    const outcome = await service.send(XBOX_MESSAGE, game, 'xbox');
 
     expect(outcome).toEqual({ delivered: 0, subscribers: 0 });
     expect(fetch).not.toHaveBeenCalled();

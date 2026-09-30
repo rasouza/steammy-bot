@@ -19,7 +19,7 @@ export interface GameSourceSpec<
   TGame extends Game,
   TKey extends string,
 > {
-  /** Domain key of the platform (a member of the domain key union). */
+  /** Domain key of the platform — a plain string literal; the registered definitions together form the key union. */
   platform: TKey;
   /** Display name used by command replies and lifecycle logs. */
   name: string;

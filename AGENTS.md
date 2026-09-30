@@ -69,15 +69,15 @@ Miss the array and the entity is invisible to both Nest and the CLI.
 ## Adding a platform
 
 **Registry-driven — follow `docs/platform-integration.md`**, the step-by-step
-integration guide (spec `003-easy-add-platform`). Touch points: storefront
-components under `src/modules/platforms/<name>/` (api + mapper + repository
-with a pure pending-criteria function, plus its eligibility spec) → entity →
-`entities/index.ts` **and**
-`data-source-options.ts` → migration → registration in
-`src/modules/platforms/platform.constants.ts`,
-`platform.registry.ts`, and `platforms.module.ts` → the Discord `choices`
-entry in `src/modules/subscription/dto/platform-option.dto.ts` (still
-hardcoded).
+integration guide (spec `003-easy-add-platform`). Touch points: platform
+components under `src/gamesources/<name>/` (api + mapper + repository
+with a pure pending-criteria function, plus its eligibility spec, and a
+`defineGameSource(...)` declaration whose `platform` literal is the key) →
+entity → `entities/index.ts` **and**
+`data-source-options.ts` → migration → one line in the central list
+`src/gamesources/index.ts`. That list is the source of truth: the
+`GamePlatformType` union, `gameSourceNames`, and the Discord `choices` in
+`platform-option.dto.ts` all derive from it, so no other file is edited.
 
 There is no per-platform cron, broadcast method, or admin branch:
 `PlatformScheduler` iterates the `PLATFORM_REGISTRY` and `AdminCommands`
