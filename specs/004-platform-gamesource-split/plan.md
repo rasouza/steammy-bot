@@ -124,7 +124,7 @@ src/
 └── config|database|…                 # untouched
 docs/platform-integration.md          # rewritten for the new layout + touch-point contract (FR-007)
 README.md                             # "Adding more platforms" section updated (FR-007)
-# post-landing, separate change (FR-009): docs/plans/* flattened to docs/, AGENTS links fixed
+# post-landing, separate change (FR-009): docs/plans/* records deleted, AGENTS/constitution links retired
 ```
 
 **Structure Decision**: Machinery stays put (folder-wise) — the diff's movement cost is

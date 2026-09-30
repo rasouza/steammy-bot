@@ -64,5 +64,5 @@ base (origin/main, gate green)
      consumer updates, gate green)
   → C3 vocabulary sweep (source text only, assertions byte-identical, gate green)
   → C4 docs (guide + README + touch-point contract, gate green)  = PR head
-  → [post-landing, separate change] FR-009: docs/plans/ flattened, AGENTS links fixed
+  → [post-landing, separate change] FR-009: docs/plans/ records deleted, AGENTS/constitution links retired
 ```
