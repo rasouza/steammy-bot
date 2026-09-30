@@ -1,20 +1,33 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { MessageFlags, PermissionFlagsBits } from 'discord.js';
 import { Context, Options, SlashCommand } from 'necord';
 import type { SlashCommandContext } from 'necord';
-import { BroadcastService } from '../broadcast/broadcast.service.js';
-import { EpicService } from '../platforms/epic.service.js';
-import { XboxService } from '../platforms/xbox.service.js';
+import { GamePlatformName } from '../platforms/platform.constants.js';
+import type { GamePlatformType } from '../platforms/platform.constants.js';
+import { PLATFORM_REGISTRY } from '../platforms/platform.tokens.js';
+import type { PlatformRuntime } from '../platforms/platform.types.js';
 import { PlatformOptionDto } from '../subscription/dto/platform-option.dto.js';
-import { GamePlatform, GamePlatformName } from '../../shared/constants.js';
 
+/**
+ * Admin commands resolve their target from the platform registry instead of
+ * branching on `platform === ...` (spec A-002, FR-011). Reply wording,
+ * ephemeral flags, and `GamePlatformName` lookups are unchanged (FR-015).
+ */
 @Injectable()
 export class AdminCommands {
   constructor(
-    private readonly epicService: EpicService,
-    private readonly xboxService: XboxService,
-    private readonly broadcastService: BroadcastService,
+    @Inject(PLATFORM_REGISTRY) private readonly registry: PlatformRuntime[],
   ) {}
+
+  private runtime(type: GamePlatformType): PlatformRuntime {
+    const runtime = this.registry.find((platform) => platform.type === type);
+
+    if (!runtime) {
+      throw new Error(`Platform is not registered: ${type}`);
+    }
+
+    return runtime;
+  }
 
   @SlashCommand({
     name: 'sync',
@@ -29,11 +42,7 @@ export class AdminCommands {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     try {
-      if (platform === GamePlatform.XBOX) {
-        await this.xboxService.syncXbox();
-      } else if (platform === GamePlatform.EPIC) {
-        await this.epicService.syncEpic();
-      }
+      await this.runtime(platform).sync();
 
       return interaction.editReply(
         `**${GamePlatformName[platform]}** catalog synchronized successfully.`,
@@ -58,12 +67,7 @@ export class AdminCommands {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     try {
-      let count = 0;
-      if (platform === GamePlatform.EPIC) {
-        count = await this.broadcastService.broadcastEpic();
-      } else if (platform === GamePlatform.XBOX) {
-        count = await this.broadcastService.broadcastXbox();
-      }
+      const count = await this.runtime(platform).broadcastPending();
 
       return interaction.editReply(
         `Broadcasted ${count} games for **${GamePlatformName[platform]}**.`,

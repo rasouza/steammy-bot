@@ -4,10 +4,11 @@ import { z } from 'zod';
  * Parses a "true"/"false" style environment variable.
  * Anything other than an explicit "true" is treated as false.
  */
-const booleanish = z
-  .enum(['true', 'false'])
-  .default('false')
-  .transform((value) => value === 'true');
+const booleanish = (defaultValue: 'true' | 'false') =>
+  z
+    .enum(['true', 'false'])
+    .default(defaultValue)
+    .transform((value) => value === 'true');
 
 export const databaseSchema = z.object({
   DATABASE_HOST: z.string().min(1),
@@ -15,7 +16,7 @@ export const databaseSchema = z.object({
   DATABASE_NAME: z.string().min(1),
   DATABASE_USER: z.string().min(1),
   DATABASE_PASSWORD: z.string().min(1),
-  DATABASE_SSL: booleanish,
+  DATABASE_SSL: booleanish('false'),
 });
 
 /**
@@ -35,6 +36,12 @@ export const envSchema = z
     BOT_TOKEN: z.string().min(1, 'BOT_TOKEN is required'),
     TEST_GUILD_ID: z.string().optional(),
     API_PORT: z.coerce.number().int().positive().default(4000),
+    /**
+     * Kill switch for the scheduled announcement pass (spec FR-013).
+     * Defaults to TRUE: a missing variable must never mute announcements
+     * on deploy (research R4) — set it to 'false' explicitly to disable.
+     */
+    BROADCAST_ENABLED: booleanish('true'),
     ...databaseSchema.shape,
   })
   .passthrough();

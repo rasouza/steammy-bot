@@ -68,19 +68,22 @@ Miss the array and the entity is invisible to both Nest and the CLI.
 
 ## Adding a platform
 
-Six touch points, per the README: entity → `entities/index.ts` **and**
-`data-source-options.ts` → migration → platform service with `@Cron()` →
-`src/shared/constants.ts` and `src/modules/subscription/dto/platform-option.dto.ts`
-(the Discord `choices` array is hardcoded) → `broadcast.service.ts`.
+**Registry-driven — follow `docs/platform-integration.md`**, the step-by-step
+integration guide (spec `003-easy-add-platform`). Touch points: storefront
+components under `src/modules/platforms/<name>/` (api + mapper + repository
+with a pure pending-criteria function, plus its eligibility spec) → entity →
+`entities/index.ts` **and**
+`data-source-options.ts` → migration → registration in
+`src/modules/platforms/platform.constants.ts`,
+`platform.registry.ts`, and `platforms.module.ts` → the Discord `choices`
+entry in `src/modules/subscription/dto/platform-option.dto.ts` (still
+hardcoded).
 
-**Read `docs/plans/easy_add_platform.md` first — it is the maintainer's active
-directive, and it deliberately rejects the current shape.** `BroadcastService`
-today injects `Repository<CatalogEpic>` and `Repository<CatalogXbox>`, carries
-per-platform `broadcastEpic()`/`broadcastXbox()` and `cronEpic()`/`cronXbox()`,
-and `admin.commands.ts` branches on `if (platform === ...)`. Do not copy that
-pattern. The target is one generic platform lifecycle plus a platform registry,
-so adding a platform means adding a definition and registering it — not editing
-generic code.
+There is no per-platform cron, broadcast method, or admin branch:
+`PlatformScheduler` iterates the `PLATFORM_REGISTRY` and `AdminCommands`
+resolves runtimes from it — adding a platform never edits generic code.
+`docs/plans/easy_add_platform.md` records the plan this tree implemented
+(STE-1); its "Do Not Over-Abstract" §13 still governs the next platform.
 
 ## Changing the toolchain
 
@@ -93,22 +96,21 @@ Rspack was evaluated and rejected on 2026-09-29 (decision recorded in
 `tsconfig.migrations.json`, and no two-step `build` —
 `dist/database/migrations/*.js` keeps coming from the standard build.
 
-Two hazards worth knowing before you touch anything here:
+One hazard worth knowing before you touch anything here:
 
 - Every relative import carries an explicit extension — `.js` for concrete
-  files, `/index.js` for the 19 barrels (70 specifiers across 29 files). Keep
-  them that way: an extensionless relative import breaks at runtime, not at
-  typecheck.
-- `src/shared/constants` is a **file**, not a barrel directory, despite sitting
-  next to `src/shared/types/`. It takes a plain `.js`, not `/index.js`.
+  files, `/index.js` for barrel files (currently `src/config/index.ts` and
+  `src/database/entities/index.ts`). Keep them that way: an extensionless
+  relative import breaks at runtime, not at typecheck.
 
 This work is independent of `docs/plans/easy_add_platform.md`; a commit
 containing both is unreviewable.
 
-A bug the plan also fixes: `broadcastEpic`/`broadcastXbox` run
-`game.broadcasted = true; await save()` **before** `send()`, so a failed Discord
-delivery permanently marks a game as broadcast and it is never retried. Do not
-preserve that ordering if you are implementing the plan.
+The plan's delivery-ordering bug is **fixed**: nothing writes
+`game.broadcasted = true` before `send()` anymore — `GenericPlatform` marks a
+game only after `BroadcastService.send()` reports success
+(`delivered > 0 || subscribers === 0`), and a total failure leaves it pending
+for the next pass. Keep that ordering intact (Constitution II).
 
 ## Conventions that differ from defaults
 

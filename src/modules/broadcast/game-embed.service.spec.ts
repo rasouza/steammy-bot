@@ -1,5 +1,5 @@
 import { GameEmbedService } from './game-embed.service.js';
-import type { Game } from '../../shared/types/index.js';
+import type { Game } from '../platforms/platform.types.js';
 
 describe('GameEmbedService', () => {
   let service: GameEmbedService;

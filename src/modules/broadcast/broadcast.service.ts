@@ -1,133 +1,43 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import chalk from 'chalk';
 import { ChannelType, Client } from 'discord.js';
-import { LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
-import {
-  CatalogEpic,
-  CatalogXbox,
-  Subscription,
-} from '../../database/entities/index.js';
-import { GamePlatform, type GamePlatformType } from '../../shared/constants.js';
-import type { Game } from '../../shared/types/index.js';
+import { Repository } from 'typeorm';
+import { Subscription } from '../../database/entities/index.js';
+import type { GamePlatformType } from '../platforms/platform.constants.js';
+import type { Game } from '../platforms/platform.types.js';
+import type { SendOutcome } from '../platforms/platform.types.js';
 import { GameEmbedService } from './game-embed.service.js';
 
+/**
+ * Discord delivery ONLY: no catalog entities, no eligibility, no crons
+ * (spec FR-006/FR-014). The generic platform lifecycle owns when to call
+ * `send` and what to do with the result (contracts §4).
+ */
 @Injectable()
 export class BroadcastService {
   private readonly logger = new Logger(BroadcastService.name);
 
   constructor(
     private readonly client: Client,
-    @InjectRepository(CatalogEpic)
-    private readonly epicRepository: Repository<CatalogEpic>,
-    @InjectRepository(CatalogXbox)
-    private readonly xboxRepository: Repository<CatalogXbox>,
     @InjectRepository(Subscription)
     private readonly subscriptionRepository: Repository<Subscription>,
     private readonly embed: GameEmbedService,
   ) {}
 
-  @Cron('10 * * * *')
-  async cronEpic(): Promise<void> {
-    await this.broadcastEpic();
-  }
-
-  @Cron('10 * * * *')
-  async cronXbox(): Promise<void> {
-    await this.broadcastXbox();
-  }
-
-  async broadcastEpic(): Promise<number> {
-    const now = new Date();
-    const games = await this.epicRepository.find({
-      where: {
-        broadcasted: false,
-        offer_start_at: LessThanOrEqual(now),
-        offer_end_at: MoreThanOrEqual(now),
-      },
-    });
-
-    if (games.length === 0) {
-      this.logger.log(
-        `No new games to broadcast for ${chalk.bold.green('Epic')}`,
-      );
-
-      return 0;
-    }
-
-    this.logger.log(
-      `Broadcasting ${games.length} new games for ${chalk.bold.green('Epic')}`,
-    );
-
-    for (const game of games) {
-      try {
-        game.broadcasted = true;
-        await this.epicRepository.save(game);
-        await this.send(
-          'New free game available on **Epic Games**',
-          game,
-          GamePlatform.EPIC,
-        );
-      } catch (error) {
-        this.logger.error(
-          `Error broadcasting Epic game ${game.title}: ${error instanceof Error ? error.message : error}`,
-        );
-      }
-    }
-
-    return games.length;
-  }
-
-  async broadcastXbox(): Promise<number> {
-    const games = await this.xboxRepository.find({
-      where: {
-        broadcasted: false,
-      },
-    });
-
-    if (games.length === 0) {
-      this.logger.log(
-        `No new games to broadcast for ${chalk.bold.green('Xbox')}`,
-      );
-
-      return 0;
-    }
-
-    this.logger.log(
-      `Broadcasting ${games.length} new games for ${chalk.bold.green('Xbox')}`,
-    );
-
-    for (const game of games) {
-      try {
-        game.broadcasted = true;
-        await this.xboxRepository.save(game);
-        await this.send(
-          'New game available on **Xbox Game Pass**',
-          game,
-          GamePlatform.XBOX,
-        );
-      } catch (error) {
-        this.logger.error(
-          `Error broadcasting Xbox game ${game.title}: ${error instanceof Error ? error.message : error}`,
-        );
-      }
-    }
-
-    return games.length;
-  }
-
-  private async send(
+  async send(
     message: string,
     game: Game,
     platform: GamePlatformType,
-  ): Promise<void> {
+  ): Promise<SendOutcome> {
     const subscriptions = await this.subscriptionRepository.find({
       where: { platform },
       relations: { guild: true },
     });
 
     const embed = this.embed.build(game);
+    const subscribers = subscriptions.length;
+    let delivered = 0;
 
     for (const subscription of subscriptions) {
       // Subscriptions of guilds the bot has been removed from survive in the
@@ -151,6 +61,7 @@ export class BroadcastService {
             content: message,
             embeds: [embed],
           });
+          delivered++;
         }
       } catch (error) {
         this.logger.warn(
@@ -158,5 +69,9 @@ export class BroadcastService {
         );
       }
     }
+
+    // One failed channel among many never throws (A-004); the caller decides
+    // what to mark based on these counts (contracts §4 / spec FR-010).
+    return { delivered, subscribers };
   }
 }

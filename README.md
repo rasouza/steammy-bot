@@ -115,9 +115,16 @@ connection error.
 
 ## How to contribute: Adding more platforms
 
+The full walkthrough lives in
+[`docs/platform-integration.md`](docs/platform-integration.md). In short:
+
 1. Create a new TypeORM catalog entity (`src/database/entities/catalog-myplatform.entity.ts`).
 2. Register the entity in `src/database/entities/index.ts` and `src/database/data-source-options.ts`.
 3. Generate a migration for it with `npm run migration:generate -- src/database/migrations/AddMyPlatform` and apply it with `npm run migration:run`.
-4. Create a platform service (`src/modules/platforms/myplatform.service.ts`) with a `@Cron()` schedule to sync games.
-5. Register the new platform choice in `src/shared/constants.ts` and `src/modules/subscription/dto/platform-option.dto.ts`.
-6. Add broadcasting logic in `src/modules/broadcast/broadcast.service.ts`.
+4. Create the storefront components in `src/modules/platforms/myplatform/`: an API client (`myplatform.api.ts`), a mapper (`myplatform.mapper.ts`), and a repository with a pure pending-criteria function (`myplatform.repository.ts`), plus its eligibility spec.
+5. Register the platform: identity in `src/modules/platforms/platform.constants.ts`, a `PlatformDefinition` in `platform.registry.ts`, the components plus `createPlatformProvider(...)` in `platforms.module.ts`, and the Discord choice in `src/modules/subscription/dto/platform-option.dto.ts`.
+6. Run the guide's verification commands (`npm run type:check`, `npm run lint`, your focused specs, then the full CI gate).
+
+No broadcast method, scheduled job, or edit to the generic lifecycle is
+needed — the registry-driven scheduler and broadcast service pick the new
+platform up automatically.
