@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { merge } from 'object-mapper';
-import type { Game } from '../platform.types.js';
+import type { Game } from '../../modules/platforms/platform.types.js';
 import type { XboxApiGame } from './xbox.types.js';
-import type { PlatformMapper } from '../platform.types.js';
+import type { PlatformMapper } from '../../modules/platforms/platform.types.js';
 
 const MAPPER_SCHEMA = {
   StoreId: 'id',

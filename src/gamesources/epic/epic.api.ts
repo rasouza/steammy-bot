@@ -4,7 +4,7 @@ import type {
   EpicApiGame,
   FreeGamesPromotionApiResponse,
 } from './epic.types.js';
-import type { PlatformApi } from '../platform.types.js';
+import type { PlatformApi } from '../../modules/platforms/platform.types.js';
 
 /**
  * Fetch step for Epic's free-games promotions endpoint (moved from

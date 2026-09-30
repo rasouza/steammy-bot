@@ -2,9 +2,9 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CatalogEpic, CatalogXbox } from '../../database/entities/index.js';
 import { BroadcastModule } from '../broadcast/broadcast.module.js';
-import { EpicApi } from './epic/epic.api.js';
-import { EpicMapper } from './epic/epic.mapper.js';
-import { EpicRepository } from './epic/epic.repository.js';
+import { EpicApi } from '../../gamesources/epic/epic.api.js';
+import { EpicMapper } from '../../gamesources/epic/epic.mapper.js';
+import { EpicRepository } from '../../gamesources/epic/epic.repository.js';
 import { createPlatformProvider } from './platform.factory.js';
 import {
   EPIC_PLATFORM,
@@ -13,9 +13,9 @@ import {
 } from './platform.registry.js';
 import { PlatformScheduler } from './platform.scheduler.js';
 import { PLATFORM_REGISTRY } from './platform.tokens.js';
-import { XboxApi } from './xbox/xbox.api.js';
-import { XboxMapper } from './xbox/xbox.mapper.js';
-import { XboxRepository } from './xbox/xbox.repository.js';
+import { XboxApi } from '../../gamesources/xbox/xbox.api.js';
+import { XboxMapper } from '../../gamesources/xbox/xbox.mapper.js';
+import { XboxRepository } from '../../gamesources/xbox/xbox.repository.js';
 
 /**
  * Composition root for storefronts: per-platform components, one factory

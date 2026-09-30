@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
-import { CatalogEpic } from '../../../database/entities/index.js';
+import { CatalogEpic } from '../../database/entities/index.js';
 import type { EpicGame } from './epic.types.js';
-import type { PlatformRepository } from '../platform.types.js';
+import type { PlatformRepository } from '../../modules/platforms/platform.types.js';
 
 /**
  * Epic's eligibility rules (research R5, spec FR-002/FR-007). Pure and

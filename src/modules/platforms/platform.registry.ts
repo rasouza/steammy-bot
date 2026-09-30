@@ -1,16 +1,19 @@
 import type { Provider } from '@nestjs/common';
 import { GamePlatform } from './platform.constants.js';
-import type { EpicApiGame, EpicGame } from './epic/epic.types.js';
+import type {
+  EpicApiGame,
+  EpicGame,
+} from '../../gamesources/epic/epic.types.js';
 import type { Game } from './platform.types.js';
-import type { XboxApiGame } from './xbox/xbox.types.js';
-import { EpicApi } from './epic/epic.api.js';
-import { EpicMapper } from './epic/epic.mapper.js';
-import { EpicRepository } from './epic/epic.repository.js';
+import type { XboxApiGame } from '../../gamesources/xbox/xbox.types.js';
+import { EpicApi } from '../../gamesources/epic/epic.api.js';
+import { EpicMapper } from '../../gamesources/epic/epic.mapper.js';
+import { EpicRepository } from '../../gamesources/epic/epic.repository.js';
 import { PLATFORM_REGISTRY, platformToken } from './platform.tokens.js';
 import type { PlatformDefinition, PlatformRuntime } from './platform.types.js';
-import { XboxApi } from './xbox/xbox.api.js';
-import { XboxMapper } from './xbox/xbox.mapper.js';
-import { XboxRepository } from './xbox/xbox.repository.js';
+import { XboxApi } from '../../gamesources/xbox/xbox.api.js';
+import { XboxMapper } from '../../gamesources/xbox/xbox.mapper.js';
+import { XboxRepository } from '../../gamesources/xbox/xbox.repository.js';
 
 /**
  * The composition root — registering a storefront is one definition here

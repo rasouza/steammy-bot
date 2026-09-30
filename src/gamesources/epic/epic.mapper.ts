@@ -1,6 +1,6 @@
 import { merge } from 'object-mapper';
 import type { EpicApiGame, EpicGame } from './epic.types.js';
-import type { PlatformMapper } from '../platform.types.js';
+import type { PlatformMapper } from '../../modules/platforms/platform.types.js';
 
 const isDeveloper = (item: any) => item.key === 'developerName';
 const isThumbnail = (item: any) => item.type === 'Thumbnail';

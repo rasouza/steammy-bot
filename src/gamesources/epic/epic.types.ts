@@ -1,4 +1,4 @@
-import type { Game } from '../platform.types.js';
+import type { Game } from '../../modules/platforms/platform.types.js';
 
 /**
  * Epic-only in-memory shapes, moved out of the retired shared types folder (research
