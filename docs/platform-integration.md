@@ -71,6 +71,10 @@ storefront-specific fields, which persistence ignores).
   pure, unit-testable translation.
 
 ```ts
+import { Injectable } from '@nestjs/common';
+import type { Game, PlatformMapper } from '../platform.types.js';
+import type { <Name>ApiGame } from './<name>.types.js';
+
 @Injectable()
 export class <Name>Mapper implements PlatformMapper<<Name>ApiGame, Game> {
   toGame(source: <Name>ApiGame): Game | null {
@@ -96,6 +100,12 @@ Implements `PlatformRepository<TGame>`:
   that ordering decision yourself.
 
 ```ts
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import type { CatalogMyplatform } from '../../../database/entities/index.js';
+import type { Game, PlatformRepository } from '../platform.types.js';
+
 export function <name>PendingCriteria(now: Date) {
   return {
     broadcasted: false,
@@ -106,6 +116,11 @@ export function <name>PendingCriteria(now: Date) {
 
 @Injectable()
 export class <Name>Repository implements PlatformRepository<Game> {
+  constructor(
+    @InjectRepository(CatalogMyplatform)
+    private readonly repository: Repository<CatalogMyplatform>,
+  ) {}
+
   async saveAll(games: Game[]): Promise<void> {
     await this.repository.upsert(games, ['id']);
   }

@@ -112,10 +112,10 @@ model §"Persistence operations").
 
 ## 6. Done checklist
 
-- [ ] All six CI steps green (step 1)
-- [ ] All four focused unit suites green (step 2)
-- [ ] Structural greps clean (step 2)
+- [x] All six CI steps green (step 1)
+- [x] All four focused unit suites green (step 2)
+- [x] Structural greps clean (step 2)
 - [ ] `docs/platform-integration.md` passes the non-author review (step 3)
-- [ ] Local run works with no production credentials and broadcast disabled (step 4)
-- [ ] Failure drill: failed delivery ⇒ retried; success ⇒ announced exactly once (4b)
-- [ ] Eligibility parity query returns identical sets (step 5)
+- [x] Local run works with no production credentials and broadcast disabled (step 4)
+- [ ] Failure drill: failed delivery ⇒ retried; success ⇒ announced exactly once (4b) — manual opt-in; semantics unit-proven (T024–T027)
+- [x] Eligibility parity query returns identical sets (step 5)
