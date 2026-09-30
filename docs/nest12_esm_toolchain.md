@@ -30,7 +30,7 @@ everything else in this plan is unchanged.
 This is a **tooling** migration. It MUST NOT change runtime behavior, the database schema,
 Discord behavior, or the broadcast lifecycle.
 
-It is a prerequisite for, and independent of, `docs/plans/easy_add_platform.md`. Nothing here
+It is a prerequisite for, and independent of, `docs/easy_add_platform.md`. Nothing here
 blocks or is blocked by that plan; the two may land in either order.
 
 ---
@@ -740,7 +740,7 @@ are redefined, either of which satisfies "redefining a principle" independently.
 
 `AGENTS.md` repeats the CI command list and the Jest/ts-node guidance, so it MUST be amended in
 the same change or it will contradict the constitution. It also names
-`docs/plans/easy_add_platform.md` as "the maintainer's active directive"; add a parallel
+`docs/easy_add_platform.md` as "the maintainer's active directive"; add a parallel
 reference to this plan for the tooling and module system.
 
 ---
@@ -893,7 +893,7 @@ by convention:
 Re-verify against the installed packages before acting. If a fact in this document turns out to
 be wrong, correct the document and say so — do not work around it silently.
 
-Do not combine this plan with `docs/plans/easy_add_platform.md`. They are independent. A commit
+Do not combine this plan with `docs/easy_add_platform.md`. They are independent. A commit
 containing both is unreviewable.
 
 Do not fix the `broadcasted`-before-`send()` defect here. It is a real bug and it is governed by

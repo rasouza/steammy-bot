@@ -107,3 +107,4 @@ closes only when every task checkbox is checked (after_converge hook rules).
 | S6 | zero "storefront" in src/README/docs; living-record hits only in exempt classes; `src/database/` diff empty; Discord choice literals identical |
 | S7 | guide references only new paths; every named file exists; README matches |
 | S8 | six-step gate green at every commit (C0–C4) — 39 unit + 1 e2e passing, warnings-only lint (22 baseline) |
+| S9 | verified 2026-09-30 on `chore/ste-75-flatten-docs-plans` (after PR #29 merged): `docs/plans/` gone; living-doc grep zero (AGENTS/README/constitution/docs/); records readable at `docs/*.md`; no `src/` changes; gate green |

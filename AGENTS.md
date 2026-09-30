@@ -82,12 +82,12 @@ hardcoded).
 There is no per-platform cron, broadcast method, or admin branch:
 `PlatformScheduler` iterates the `PLATFORM_REGISTRY` and `AdminCommands`
 resolves runtimes from it — adding a platform never edits generic code.
-`docs/plans/easy_add_platform.md` records the plan this tree implemented
+`docs/easy_add_platform.md` records the plan this tree implemented
 (STE-1); its "Do Not Over-Abstract" §13 still governs the next platform.
 
 ## Changing the toolchain
 
-**`docs/plans/nest12_esm_toolchain.md` records the Nest 12 migration.** It has
+**`docs/nest12_esm_toolchain.md` records the Nest 12 migration.** It has
 been implemented and merged in PR #20: the tree is native ESM
 (`"type": "module"`), tested with Vitest, linted with type-aware oxlint, and
 the TypeORM CLI runs through `tsx`. The builder stayed on plain `tsc`:
@@ -103,7 +103,7 @@ One hazard worth knowing before you touch anything here:
   `src/database/entities/index.ts`). Keep them that way: an extensionless
   relative import breaks at runtime, not at typecheck.
 
-This work is independent of `docs/plans/easy_add_platform.md`; a commit
+This work is independent of `docs/easy_add_platform.md`; a commit
 containing both is unreviewable.
 
 The plan's delivery-ordering bug is **fixed**: nothing writes

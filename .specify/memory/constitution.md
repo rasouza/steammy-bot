@@ -15,7 +15,7 @@ carries `broadcastEpic()`/`broadcastXbox()` plus `cronEpic()`/`cronXbox()`; `adm
 branches on `if (platform === ...)`. This is the documented anti-pattern, not the model to copy.
 The target is one generic platform lifecycle driven by a platform registry.
 
-`docs/plans/easy_add_platform.md` is the maintainer's active directive and governs platform
+`docs/easy_add_platform.md` is the maintainer's active directive and governs platform
 architecture. It MUST be read before any platform work. Its "Do Not Over-Abstract" constraints
 bind equally: abstraction MUST stop at what the second platform actually needs.
 
@@ -179,7 +179,7 @@ Rationale: an uncollected spec is worse than no spec, because it manufactures fa
   GitHub-issues variant (`speckit.taskstoissues`) MUST NOT run for the same `tasks.md`.
   Operational wiring lives in AGENTS.md.
 
-1. Confirm the target platform and whether `docs/plans/easy_add_platform.md` applies. For platform
+1. Confirm the target platform and whether `docs/easy_add_platform.md` applies. For platform
    work, drive the change through the Spec Kit workflow rather than hand-implementing the plan.
 2. Branch from `main`. Keep commits atomic: a commit MUST contain one logical change, and a
    commit that references a document MUST include that document.
