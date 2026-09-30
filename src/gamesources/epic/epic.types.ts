@@ -2,7 +2,7 @@ import type { Game } from '../../modules/platforms/platform.types.js';
 
 /**
  * Epic-only in-memory shapes, moved out of the retired shared types folder (research
- * R11): the common game model, native API DTOs, and the storefront-specific
+ * R11): the common game model, native API DTOs, and the GameSource-specific
  * extension the mapper produces.
  */
 

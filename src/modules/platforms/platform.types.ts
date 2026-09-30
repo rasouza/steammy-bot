@@ -43,7 +43,7 @@ export interface PlatformMapper<TSource, TGame> {
 export interface PlatformRepository<TGame> {
   /** Upsert by id; the `broadcasted` flag is never written here (FR-001 / clarification Q2). */
   saveAll(games: TGame[]): Promise<void>;
-  /** Loads only rows matching this storefront's criteria (research R5). */
+  /** Loads only rows matching this GameSource's criteria (research R5). */
   findPending(now: Date): Promise<TGame[]>;
   /** Called ONLY after delivery succeeded (Constitution II / spec FR-009). */
   markBroadcasted(game: TGame): Promise<void>;

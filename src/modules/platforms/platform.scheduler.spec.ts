@@ -49,7 +49,7 @@ describe('PlatformScheduler', () => {
     expect(xbox.sync).toHaveBeenCalledTimes(1);
   });
 
-  it('continues with the remaining storefronts when one sync throws (Q1)', async () => {
+  it('continues with the remaining GameSources when one sync throws (Q1)', async () => {
     const epic = fakeRuntime(GamePlatform.EPIC);
     const xbox = fakeRuntime(GamePlatform.XBOX);
     epic.sync.mockRejectedValue(new Error('epic is down'));
@@ -75,7 +75,7 @@ describe('PlatformScheduler', () => {
     expect(xbox.broadcastPending).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps announcing after one storefront fails mid-pass (Q1)', async () => {
+  it('keeps announcing after one GameSource fails mid-pass (Q1)', async () => {
     const epic = fakeRuntime(GamePlatform.EPIC);
     const xbox = fakeRuntime(GamePlatform.XBOX);
     epic.broadcastPending.mockRejectedValue(new Error('epic exploded'));

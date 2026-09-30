@@ -5,10 +5,10 @@ import { PLATFORM_REGISTRY } from './platform.tokens.js';
 import type { PlatformRuntime } from './platform.types.js';
 
 /**
- * Drives every registered storefront through the generic lifecycle
+ * Drives every registered GameSource through the generic lifecycle
  * (spec FR-004, clarification Q1). Timings are preserved from the old
  * per-platform crons (A-003): sync at the top of the hour, announce at
- * minute 10. One storefront failing never stops the others (research R1);
+ * minute 10. One GameSource failing never stops the others (research R1);
  * this class has zero platform imports or branches (FR-005).
  */
 @Injectable()

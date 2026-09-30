@@ -8,7 +8,7 @@ import type { PlatformRepository } from '../../modules/platforms/platform.types.
 /**
  * Xbox's eligibility rule (research R5, spec FR-008): pending iff never
  * announced. The offer window is never consulted — `now` is accepted only
- * so both storefronts share the `PlatformRepository` contract.
+ * so both GameSources share the `PlatformRepository` contract.
  */
 export function xboxPendingCriteria(_now: Date): { broadcasted: false } {
   return { broadcasted: false };
