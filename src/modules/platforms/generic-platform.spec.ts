@@ -1,6 +1,5 @@
 import { Logger } from '@nestjs/common';
-import { GamePlatform } from '../../gamesources/game-platform.js';
-import type { GamePlatformType } from '../../gamesources/game-platform.js';
+import type { GamePlatformType } from '../../gamesources/index.js';
 import type { Game } from './platform.types.js';
 import { GenericPlatform } from './generic-platform.js';
 import type { PlatformDefinition, SendOutcome } from './platform.types.js';
@@ -10,7 +9,7 @@ interface FakeSource {
 }
 
 const definition = {
-  type: GamePlatform.EPIC,
+  type: 'epic',
   message: 'New free game available on **Epic Games**',
 } as PlatformDefinition<FakeSource, Game>;
 
@@ -115,7 +114,7 @@ describe('GenericPlatform', () => {
       expect(broadcast.send).toHaveBeenCalledWith(
         definition.message,
         pending[0],
-        GamePlatform.EPIC,
+        'epic',
       );
       expect(repository.markBroadcasted).toHaveBeenCalledWith(pending[0]);
       expect(broadcast.send.mock.invocationCallOrder[0]).toBeLessThan(

@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import chalk from 'chalk';
 import { Repository } from 'typeorm';
 import { Guild, Subscription } from '../../database/entities/index.js';
-import type { GamePlatformType } from '../../gamesources/game-platform.js';
+import type { GamePlatformType } from '../../gamesources/index.js';
 
 export class SubscriptionAlreadyExistsError extends Error {
   constructor() {

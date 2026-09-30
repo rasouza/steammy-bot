@@ -2,8 +2,10 @@ import { Inject, Injectable } from '@nestjs/common';
 import { MessageFlags, PermissionFlagsBits } from 'discord.js';
 import { Context, Options, SlashCommand } from 'necord';
 import type { SlashCommandContext } from 'necord';
-import type { GamePlatformType } from '../../gamesources/game-platform.js';
-import { gameSourceNames } from '../../gamesources/index.js';
+import {
+  gameSourceNames,
+  type GamePlatformType,
+} from '../../gamesources/index.js';
 import { PLATFORM_REGISTRY } from '../platforms/platform.tokens.js';
 import type { PlatformRuntime } from '../platforms/platform.types.js';
 import { PlatformOptionDto } from '../subscription/dto/platform-option.dto.js';
