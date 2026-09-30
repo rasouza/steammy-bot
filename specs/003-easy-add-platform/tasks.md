@@ -46,8 +46,8 @@ Polish retires it). `import type` for type-only imports under `verbatimModuleSyn
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T003 Create the platform contracts in `src/modules/platforms/platform.types.ts`: `PlatformApi<TSource>`, `PlatformMapper<TSource, TGame>`, `PlatformRepository<TGame>` (`saveAll`, `findPending(now)`, `markBroadcasted`), `PlatformDefinition<TSource, TGame>`, `PlatformRuntime` (`type`, `sync()`, `broadcastPending()`), plus `SendOutcome = { delivered: number; subscribers: number }` and the minimal delivery-port `send` signature — exactly as specified in `contracts/platform-contracts.md` §§1–4; type-only imports, ESM `.js` extensions
-- [ ] T004 [P] Create the DI tokens in `src/modules/platforms/platform.tokens.ts`: `PLATFORM_REGISTRY` (symbol) and `platformToken(type)` returning the per-definition provider token (e.g. `'platform:epic'`), per `contracts/platform-contracts.md` §3
+- [X] T003 Create the platform contracts in `src/modules/platforms/platform.types.ts`: `PlatformApi<TSource>`, `PlatformMapper<TSource, TGame>`, `PlatformRepository<TGame>` (`saveAll`, `findPending(now)`, `markBroadcasted`), `PlatformDefinition<TSource, TGame>`, `PlatformRuntime` (`type`, `sync()`, `broadcastPending()`), plus `SendOutcome = { delivered: number; subscribers: number }` and the minimal delivery-port `send` signature — exactly as specified in `contracts/platform-contracts.md` §§1–4; type-only imports, ESM `.js` extensions (done in `6c2fe58`, checkbox missed at execution time)
+- [X] T004 [P] Create the DI tokens in `src/modules/platforms/platform.tokens.ts`: `PLATFORM_REGISTRY` (symbol) and `platformToken(type)` returning the per-definition provider token (e.g. `'platform:epic'`), per `contracts/platform-contracts.md` §3 (done in `6c2fe58`, checkbox missed at execution time)
 
 **Checkpoint**: Foundation ready — user story implementation can now begin
 
