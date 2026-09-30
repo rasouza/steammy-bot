@@ -26,8 +26,9 @@ each storefront's eligibility rules, and delivery failure/retry"). Unit specs ar
 ## Path Conventions
 
 Single project: `src/`, `test/` at repository root. All relative imports carry explicit ESM
-extensions (`.js`; `/index.js` only for barrels — `src/shared/constants` is a file, until
-Polish retires it). `import type` for type-only imports under `verbatimModuleSyntax`.
+extensions (`.js`; `/index.js` only for barrels — currently `src/config/index.ts` and
+`src/database/entities/index.ts`; `src/shared/` was retired by the Polish phase in T042).
+`import type` for type-only imports under `verbatimModuleSyntax`.
 
 ---
 
@@ -270,4 +271,4 @@ Task: "Xbox API + mapper in src/modules/platforms/xbox/ (T012, T013)"
 
 - [ ] T047 Execute the live delivery and failure/retry drill of quickstart §4b against the development Discord application and test server — `BROADCAST_ENABLED=true`, `/subscribe` a test channel, `/sync` + `/broadcast` announce each game exactly once, then the permission-removal drill must leave the game pending and the next pass must announce it exactly once — note: maintainer-run, needs Discord permission changes the agent cannot perform; semantics are already unit-proven by the T024–T027 specs per US4/AC3, SC-003 (partial)
 - [ ] T048 Obtain a non-author review of `docs/platform-integration.md` — a maintainer who did not write the refactor follows the guide end to end and confirms a hypothetical storefront needs only new platform files plus registration entries (quickstart §6, constitution compliance-review expectations) per FR-018, SC-006 (partial)
-- [ ] T049 Update the stale "Path Conventions" note in this file that still calls `src/shared/constants` a file "until Polish retires it" — the Polish phase (T042) retired `src/shared/` already per A-010 (contradicts)
+- [X] T049 Update the stale "Path Conventions" note in this file that still calls `src/shared/constants` a file "until Polish retires it" — the Polish phase (T042) retired `src/shared/` already per A-010 (contradicts) — ✅ note now names the two live barrels (`src/config/index.ts`, `src/database/entities/index.ts`) and records the T042 retirement
