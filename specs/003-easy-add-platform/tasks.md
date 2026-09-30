@@ -261,3 +261,13 @@ Task: "Xbox API + mapper in src/modules/platforms/xbox/ (T012, T013)"
 - Lint is read-only (`npm run lint`, never `--fix`); formatting via `npm run format`; 22 `no-unsafe-*` warnings on a clean tree are normal
 - Stop at any checkpoint to validate the story independently
 - After this file exists, the mandatory `after_tasks` hook pushes these tasks to Linear as subtasks of STE-1 (deduped by `T\d{3,}` ID)
+
+---
+
+## Phase 8: Convergence
+
+**Purpose**: Remaining gaps found by `/speckit.converge` against spec, plan, tasks, and constitution (code state verified 2026-09-30; six-step gate re-run green on HEAD)
+
+- [ ] T047 Execute the live delivery and failure/retry drill of quickstart §4b against the development Discord application and test server — `BROADCAST_ENABLED=true`, `/subscribe` a test channel, `/sync` + `/broadcast` announce each game exactly once, then the permission-removal drill must leave the game pending and the next pass must announce it exactly once — note: maintainer-run, needs Discord permission changes the agent cannot perform; semantics are already unit-proven by the T024–T027 specs per US4/AC3, SC-003 (partial)
+- [ ] T048 Obtain a non-author review of `docs/platform-integration.md` — a maintainer who did not write the refactor follows the guide end to end and confirms a hypothetical storefront needs only new platform files plus registration entries (quickstart §6, constitution compliance-review expectations) per FR-018, SC-006 (partial)
+- [ ] T049 Update the stale "Path Conventions" note in this file that still calls `src/shared/constants` a file "until Polish retires it" — the Polish phase (T042) retired `src/shared/` already per A-010 (contradicts)
