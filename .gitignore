@@ -48,6 +48,9 @@ lerna-debug.log*
 .temp
 .tmp
 
+# opencode worktrees (see worktree.directory in opencode.jsonc)
+.opencode/worktrees/
+
 # Runtime data
 pids
 *.pid

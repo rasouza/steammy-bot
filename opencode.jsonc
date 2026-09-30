@@ -1,0 +1,8 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  // Keep new worktrees inside the repo instead of the server data directory.
+  // Relative paths resolve against this project's checkout: <repo>/.opencode/worktrees/<name>.
+  "worktree": {
+    "directory": ".opencode/worktrees"
+  }
+}
