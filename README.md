@@ -32,22 +32,53 @@ You can use `/unsubscribe <platform>` to stop a channel from receiving announcem
 
 ## Development
 
-Requires **Node.js >= 24.15.0** (see `.nvmrc`).
+Prerequisites:
+
+- **Node.js >= 24.15.0** (`.nvmrc` pins 24.21.0; `engines` enforces the floor)
+- **Docker** with Compose v2 — runs the local database
+- To run the bot manually: a Discord **bot token** and a **test guild** you
+  control (with the bot invited)
 
 ```bash
 # Install dependencies
 # --ignore-scripts works around a crash in necord's own postinstall on Windows.
 npm install --ignore-scripts
 
-# Start in watch mode
-npm run start:dev
+# Local database — PostgreSQL 18, matching production
+docker compose up -d database
 
-# Build for production (outputs to dist/)
-npm run build
-
-# Run the compiled build
-npm run start:prod
+# Verify the broadcast pipeline end to end: no bot token, no Discord, no
+# clicking. Runs the real platform/broadcast code against the real database
+# with only the Discord client mocked in-process (see "Tests" below).
+npm run test:e2e
 ```
+
+### Run the bot locally
+
+```bash
+cp .env.example .env    # set BOT_TOKEN + TEST_GUILD_ID; uncomment the local DATABASE_* block
+npm run db:init         # one-time: TypeORM never creates the schema itself
+npm run start:dev       # watch mode; pending migrations run automatically on boot
+```
+
+Keep `NODE_ENV=development` in `.env`: together with `TEST_GUILD_ID` it scopes
+slash-command registration to your test guild only (`src/modules/bot`) — a
+local run never touches commands in any other guild. For a quiet local bot
+that should not post anything, also set `BROADCAST_ENABLED=false`.
+
+The full walkthrough — prerequisites, expected output, and troubleshooting —
+is [specs/005-dev-test-environment/quickstart.md](specs/005-dev-test-environment/quickstart.md).
+
+### Tests
+
+`npm run test:e2e` boots a Nest testing module with the real
+`DatabaseModule` (schema + migrations applied automatically) and the real
+broadcast pipeline, and substitutes exactly one boundary: a fake Discord
+`Client`. It needs a PostgreSQL — by default the bundled one
+(`docker compose up -d database`, credentials `steammy_dev`); export
+`DATABASE_*` to point it at another throwaway database. No bot token, no
+network calls to Discord or the storefront APIs, and no state survives the
+run (fixtures are `dev-`-prefixed and purged around every test).
 
 ### Scripts
 
@@ -61,7 +92,7 @@ npm run start:prod
 | `npm run type:check`                   | Typecheck without emitting                              |
 | `npm test`                             | Unit tests (Vitest)                                     |
 | `npm run test:cov`                     | Unit tests with coverage report (CI uploads to Codecov) |
-| `npm run test:e2e`                     | End-to-end tests (Vitest + supertest)                   |
+| `npm run test:e2e`                     | Integration suite (real DB, mocked Discord)             |
 | `npm run db:init`                      | Create the `steammy_bot` schema if it does not exist    |
 | `npm run migration:generate -- <path>` | Generate a migration from entity changes                |
 | `npm run migration:run`                | Apply pending migrations                                |
@@ -73,11 +104,6 @@ without a separate compile step. The CI gate runs, in this exact order:
 `prettier --check` → `type:check` → `lint` → `build` → `test:cov` →
 `test:e2e`. Unit-test coverage is uploaded to Codecov as an informational
 report — it never blocks a merge.
-
-> **Testing note**: Vitest transpiles with esbuild, which does not emit
-> constructor-injection metadata (`design:paramtypes`). The current tests never
-> boot a constructor-injected class; a future test that must do so needs explicit
-> `@Inject(...)` decorators or an SWC transform plugin.
 
 ## Database
 

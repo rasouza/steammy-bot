@@ -29,17 +29,34 @@ services:
   # ==== PostgreSQL database ====
 
   database:
-    image: postgres
+    # Pinned major: matches the production server (verified with SELECT
+    # version() → PostgreSQL 18.6) so migrations behave locally as in prod.
+    image: postgres:18
     container_name: database
     restart: always
     volumes:
-      - ./data:/var/lib/postgresql:rw
+      - steammy-dev-data:/var/lib/postgresql/data
     environment:
-      - POSTGRES_DB=${DATABASE_NAME}
-      - POSTGRES_USER=${DATABASE_USER}
-      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
+      # Throwaway container defaults so a fresh clone can run the database —
+      # and the e2e suite — with no DATABASE_* entries in .env.
+      - POSTGRES_DB=${DATABASE_NAME:-steammy_dev}
+      - POSTGRES_USER=${DATABASE_USER:-steammy_dev}
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD:-steammy_dev}
     ports:
-      - 5432:5432
+      # Loopback only — the local database is never reachable from the network.
+      - 127.0.0.1:5432:5432
+    healthcheck:
+      # Lets `docker compose up -d --wait database` block until Postgres is
+      # ready, so db:init never races an uninitialized server.
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U ${DATABASE_USER:-steammy_dev} -d ${DATABASE_NAME:-steammy_dev}',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
 
   # ==== MySQL database ====
 
@@ -56,3 +73,6 @@ services:
   #     - MYSQL_ROOT_PASSWORD=${DATABASE_PASSWORD}
   #   ports:
   #     - 3306:3306
+
+volumes:
+  steammy-dev-data:

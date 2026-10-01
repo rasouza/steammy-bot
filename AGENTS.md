@@ -43,8 +43,16 @@ npm run test:e2e
   but `tsc --noEmit -p tsconfig.json` _does_ typecheck them. `type:check` is the
   only gate for spec files.
 - Unit specs construct services directly (`new GameEmbedService()`), no Nest
-  testing module. E2E uses `Test.createTestingModule` with a single module, so
-  it needs neither a database nor a Discord token.
+  testing module. E2E uses `Test.createTestingModule`; `test/health.e2e-spec.ts`
+  needs neither a database nor a Discord token, but `test/broadcast.e2e-spec.ts`
+  boots the real `DatabaseModule` + `PlatformsModule` against a real PostgreSQL
+  (by default the compose database — `docker compose up -d database`; defaults
+  `steammy_dev`, set in `test/setup/e2e-env.ts`, overridable via `DATABASE_*`).
+  Discord is the only mocked boundary: a fake `Client` provided from a
+  `@Global()` test module, mirroring how Necord provides the real one. Raw SQL
+  in tests must be schema-qualified by hand (`"steammy_bot".…`) — TypeORM only
+  qualifies SQL it generates itself. `vitest.config.e2e.ts` sets
+  `fileParallelism: false` so migrations never race.
 - `tsx` transpiles without typechecking, so `npm run typeorm` and
   `npm run db:init` do not typecheck. Run `type:check` separately.
 
@@ -137,10 +145,11 @@ for the next pass. Keep that ordering intact (Constitution II).
 - `NODE_ENV` deliberately has no default, so an unset `NODE_ENV` never behaves
   like development. Necord's dev-gateway registration is gated on it plus
   `TEST_GUILD_ID`.
-- `dotenv` is imported by `src/database/data-source.ts` and
-  `src/database/scripts/create-schema.ts` but is **not** a declared dependency;
-  it resolves only because `@nestjs/config` and `typeorm` hoist it. If you touch
-  those files, add `dotenv` to `dependencies`.
+- `dotenv` is a declared dependency (`dependencies`), used by every CLI
+  entrypoint that runs outside Nest: `src/database/data-source.ts`,
+  `src/database/scripts/create-schema.ts`, and the `src/dev/*` commands,
+  which follow the same `loadEnv()` pattern. (An older note claiming it was
+  only hoisted transitively was corrected by spec 005 / T035.)
 - Catalog `price` and `size` are `bigint`, so pg returns them as strings — wrap
   in `Number()` before arithmetic, as `game-embed.service.ts` does. Prices are
   stored in cents.

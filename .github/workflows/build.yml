@@ -16,6 +16,32 @@ jobs:
   build:
     name: Build and Test
     runs-on: ubuntu-latest
+
+    services:
+      # The e2e suite runs the real broadcast pipeline against real
+      # PostgreSQL (same major as production), with Discord mocked in-process.
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: steammy_dev
+          POSTGRES_USER: steammy_dev
+          POSTGRES_PASSWORD: steammy_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_HOST: 127.0.0.1
+      DATABASE_PORT: '5432'
+      DATABASE_NAME: steammy_dev
+      DATABASE_USER: steammy_dev
+      DATABASE_PASSWORD: steammy_dev
+      DATABASE_SSL: 'false'
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
