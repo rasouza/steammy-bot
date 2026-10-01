@@ -10,8 +10,8 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * the specs persist it through a TypeORM repository.
  *
  * Deterministic defaults: the pending fixture offer — inside its window,
- * `broadcasted: false`, `dev-`-prefixed id (so `purgeFixtureRows` owns the
- * row). Callers override per scenario with `build({ ... })`.
+ * `broadcasted: false`, `dev-`-prefixed fixture id. Callers override per
+ * scenario with `build({ ... })`.
  */
 export const catalogEpicFactory = Factory.define<CatalogEpic>(() => {
   const game = new CatalogEpic();

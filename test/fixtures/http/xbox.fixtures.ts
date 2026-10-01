@@ -6,7 +6,7 @@ import type {
 /**
  * HTTP fixtures for the sync e2e suite: the sigls id list and the products
  * enrichment body, typed against the DTOs `XboxApi.fetch()` navigates. Store
- * ids carry the `dev-` prefix so `purgeFixtureRows` owns them.
+ * IDs are deterministic fixture values for the dedicated E2E database.
  */
 
 /** The sigls list id `XboxApi` hardcodes. */

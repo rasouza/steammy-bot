@@ -14,6 +14,7 @@ npm run type:check
 npm run lint
 npm run build
 npm run test -- --coverage
+npm run db:e2e:setup
 npm run test:e2e -- --coverage
 ```
 
@@ -22,11 +23,12 @@ npm run test:e2e -- --coverage
 - `npm run format` writes Prettier output over `src/` and `test/`.
 - CI runs unit tests as `npm run test -- --coverage` and e2e as
   `npm run test:e2e -- --coverage` — the plain suites with coverage passed
-  through as an argument (no `:cov` wrapper scripts) — uploading
-  `coverage/lcov.info` and `coverage-e2e/lcov.info` respectively. Codecov
-  merges the two uploads into one report per commit. Uploads are
-  informational — `fail_ci_if_error: false` plus `codecov.yml` statuses
-  keep CI green and unblocked regardless; the steps only report once the
+  through as an argument (no `:cov` wrapper scripts). CI provisions the
+  dedicated E2E database with `npm run db:e2e:setup` before the e2e run,
+  then uploads `coverage/lcov.info` and `coverage-e2e/lcov.info` respectively.
+  Codecov merges the two uploads into one report per commit. Uploads are
+  informational — `fail_ci_if_error: false` plus `codecov.yml` statuses keep
+  CI green and unblocked regardless; the steps only report once the
   `CODECOV_TOKEN` secret is set.
 - `npm install --ignore-scripts` is required. necord's postinstall crashes on
   Windows; CI uses `npm ci --ignore-scripts` on Linux too.
@@ -50,16 +52,19 @@ npm run test:e2e -- --coverage
   testing module. E2E uses `Test.createTestingModule`; `test/health.e2e-spec.ts`
   needs neither a database nor a Discord token, but `test/broadcast.e2e-spec.ts`
   and `test/sync.e2e-spec.ts` boot the real `DatabaseModule` +
-  `PlatformsModule` against a real PostgreSQL (by default the compose
-  database — `docker compose up -d database`; defaults `steammy_dev`, set in
-  `test/setup/e2e-env.ts`, overridable via `DATABASE_*`). Outbound boundaries
-  are mocked and nothing else: a fake `Client` provided from a `@Global()`
-  test module (mirroring how Necord provides the real one), and MSW answering
-  the storefront HTTP for the sync spec (`onUnhandledRequest: 'error'` — a
-  request no handler matches fails the test). Raw SQL in tests must be
-  schema-qualified by hand (`"steammy_bot".…`) — TypeORM only qualifies SQL
-  it generates itself. `vitest.config.e2e.ts` sets
-  `fileParallelism: false` so migrations never race.
+  `PlatformsModule` against the dedicated Compose PostgreSQL (`e2e-database`,
+  port 5433, database `steammy_e2e`). Provision it with
+  `docker compose up -d --wait e2e-database` then
+  `npm run db:e2e:setup` before `npm run test:e2e`; the test script supplies
+  `DATABASE_*` and a dummy `BOT_TOKEN` via `cross-env`, and Vitest has no
+  environment-mutating setup file. Outbound boundaries are mocked and nothing
+  else: a fake `Client` provided from a `@Global()` test module (mirroring how
+  Necord provides the real one), and MSW answering the storefront HTTP for the
+  sync spec (`onUnhandledRequest: 'error'` — a request no handler matches
+  fails the test). Raw SQL in tests must be schema-qualified by hand
+  (`"steammy_bot".…`) — TypeORM only qualifies SQL it generates itself.
+  `vitest.config.e2e.ts` sets `fileParallelism: false` so migrations never
+  race.
 - `tsx` transpiles without typechecking, so `npm run typeorm` and
   `npm run db:init` do not typecheck. Run `type:check` separately.
 
@@ -207,8 +212,8 @@ them that way rather than porting them to PowerShell.
 `bug` provides `/speckit.bug.assess` → `.fix` → `.test`, a per-bug triage loop
 writing `.specify/bugs/<slug>/{assessment,fix,test}.md`; `assess` provides
 `/speckit.assess.intake` → `research` → `define` → `shape` → `decide`, writing
-`.specify/assessments/<slug>/`, where a *go* verdict hands off to
-`/speckit.specify` and a *kill* closes the idea. Neither registers hooks, so the
+`.specify/assessments/<slug>/`, where a _go_ verdict hands off to
+`/speckit.specify` and a _kill_ closes the idea. Neither registers hooks, so the
 Linear block below is unaffected. Beware: `specify extension add/update`
 rewrites `.specify/extensions.yml` — it strips the comment header and reflows
 the hook block — so restore the original content (keeping only the appended

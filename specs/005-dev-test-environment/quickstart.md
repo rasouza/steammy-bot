@@ -5,11 +5,11 @@ time with Docker and a warm npm cache: well under 10 minutes (SC-001).
 
 ## 0. Prerequisites
 
-| Requirement | Used for | Notes |
-| --- | --- | --- |
-| Node.js >= 24.15.0 | everything | `.nvmrc` pins 24.21.0 |
-| Docker + Compose v2 | the local database | any PostgreSQL 18 works via `DATABASE_*` overrides |
-| `BOT_TOKEN`, `TEST_GUILD_ID` | running the bot (step 4) only | **not** needed for the test suite |
+| Requirement                  | Used for                      | Notes                                              |
+| ---------------------------- | ----------------------------- | -------------------------------------------------- |
+| Node.js >= 24.15.0           | everything                    | `.nvmrc` pins 24.21.0                              |
+| Docker + Compose v2          | the local database            | any PostgreSQL 18 works via `DATABASE_*` overrides |
+| `BOT_TOKEN`, `TEST_GUILD_ID` | running the bot (step 4) only | **not** needed for the test suite                  |
 
 ## 1. Install
 
@@ -17,17 +17,20 @@ time with Docker and a warm npm cache: well under 10 minutes (SC-001).
 npm install --ignore-scripts   # --ignore-scripts: necord's postinstall crashes on Windows
 ```
 
-## 2. Start the database (FR-001)
+## 2. Start and provision the E2E database (FR-001)
 
 ```bash
-docker compose up -d database
-docker compose ps              # expect: healthy, postgres:18, 127.0.0.1:5432
+docker compose up -d --wait e2e-database
+npm run db:e2e:setup
+docker compose ps              # expect: healthy, postgres:18, 127.0.0.1:5433
 ```
 
 The image is pinned to PostgreSQL **18** (production reports 18.6), the port
-is published on loopback only, data lives in the named volume
-`steammy-dev-data`, and the `pg_isready` healthcheck lets `--wait` block
-until the server accepts connections.
+is published on loopback only, and the dedicated `steammy_e2e` database is
+stored in the `steammy-e2e-data` named volume. The `pg_isready` healthcheck
+lets `--wait` block until the server accepts connections. The setup command
+creates the `steammy_bot` schema and applies migrations through TypeORM before
+tests start; it is safe to rerun.
 
 ## 3. Run the e2e suites (FR-002…FR-005, FR-009)
 
@@ -44,18 +47,17 @@ Expected tail:
 
 What one run does:
 
-1. `test/setup/e2e-env.ts` fills missing connection env (see table below) —
-   exported `DATABASE_*` variables always win.
-2. The fixture helper creates the `steammy_bot` schema if absent (the same
-   prerequisite as `npm run db:init`).
-3. `Test.createTestingModule` boots the real `DatabaseModule` — migrations run
-   automatically — plus `PlatformsModule`, with a **fake Discord `Client`**
+1. The `test:e2e` npm script sets its database connection environment and a
+   dummy `BOT_TOKEN` through `cross-env`; there is no Vitest setup file that
+   mutates `process.env`.
+2. `Test.createTestingModule` boots the real `DatabaseModule` — any newly
+   pending migrations run automatically — plus `PlatformsModule`, with a **fake Discord `Client`**
    (provided globally, exactly like Necord provides the real one) and, for
    the sync spec, **MSW** answering axios for the storefront endpoints.
    `onUnhandledRequest: 'error'` makes the run offline by construction: an
    unmocked URL fails the test. Nothing logs in; nothing is posted; nothing
    reaches Epic or Xbox.
-4. Contract tests run against the real `GenericPlatform`:
+3. Contract tests run against the real `GenericPlatform`:
    - **broadcast (4)**: pending game → delivered to the active subscriber →
      marked announced; departed guild's subscription skipped before any
      channel fetch while the active subscriber still receives (the
@@ -66,29 +68,31 @@ What one run does:
      fields updated); an announced row stays announced; the Xbox id list is
      forwarded to the products request (params and body pinned) with mapped
      products persisted; an empty id list skips the products call.
-5. Every test purges its `dev-`-prefixed rows; a second run starts from the
-   same baseline (SC-003: five consecutive identical runs).
+4. Cleanup truncates the fixture tables in the dedicated E2E database between
+   tests; a second run starts from the same baseline (SC-003: five consecutive
+   identical runs).
 
-Connection defaults (overridable):
+E2E connection values set by `npm run test:e2e`:
 
-| Variable | Default | Source |
-| --- | --- | --- |
-| `DATABASE_HOST` | `127.0.0.1` | `test/setup/e2e-env.ts` |
-| `DATABASE_PORT` | `5432` | same |
-| `DATABASE_NAME` | `steammy_dev` | same — matches the compose default |
-| `DATABASE_USER` | `steammy_dev` | same |
-| `DATABASE_PASSWORD` | `steammy_dev` | same |
-| `DATABASE_SSL` | `false` | same |
-| `BOT_TOKEN` | `e2e-dummy-token` | dummy — no token can leak into tests |
+| Variable            | Value             | Source                            |
+| ------------------- | ----------------- | --------------------------------- |
+| `DATABASE_HOST`     | `127.0.0.1`       | `cross-env` in `package.json`     |
+| `DATABASE_PORT`     | `5433`            | same                              |
+| `DATABASE_NAME`     | `steammy_e2e`     | same — dedicated Compose database |
+| `DATABASE_USER`     | `steammy_e2e`     | same                              |
+| `DATABASE_PASSWORD` | `steammy_e2e`     | same                              |
+| `DATABASE_SSL`      | `false`           | same                              |
+| `BOT_TOKEN`         | `e2e-dummy-token` | dummy — no real token is used     |
 
 ### Troubleshooting
 
-| Symptom | Cause | Fix |
-| --- | --- | --- |
-| `ECONNREFUSED 127.0.0.1:5432` | database container not running | `docker compose up -d database` |
-| `password authentication failed` | exported `DATABASE_*` do not match the container | align them with the compose environment block |
-| port 5432 already in use | another local PostgreSQL | stop it, or export `DATABASE_PORT`/`DATABASE_HOST` for both container and suite |
-| suite hangs on migration | two suites racing | not expected — `fileParallelism: false` is set; check for a second manual run |
+| Symptom                          | Cause                              | Fix                                                                           |
+| -------------------------------- | ---------------------------------- | ----------------------------------------------------------------------------- |
+| `ECONNREFUSED 127.0.0.1:5433`    | E2E database container not running | `docker compose up -d --wait e2e-database`                                    |
+| `password authentication failed` | E2E database credentials changed   | use the values set by the E2E npm scripts                                     |
+| port 5433 already in use         | another local PostgreSQL           | stop the other listener or change the E2E port in Compose and the npm scripts |
+| schema or migration missing      | database was not provisioned       | `npm run db:e2e:setup`                                                        |
+| suite hangs on migration         | two suites racing                  | not expected — `fileParallelism: false` is set; check for a second manual run |
 
 ## 4. Run the bot locally (optional — FR-007)
 
@@ -106,7 +110,7 @@ npm run start:dev          # watch mode; pending migrations run automatically
 
 ```bash
 docker compose down         # stop; the data volume is kept
-docker compose down -v      # stop and wipe the database
+docker compose down -v      # stop and wipe both local database volumes
 ```
 
 ## Acceptance proofs (one-time, by hand)

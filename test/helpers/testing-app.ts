@@ -10,7 +10,6 @@ import { DatabaseModule } from '../../src/database/database.module.js';
 import { PlatformsModule } from '../../src/modules/platforms/platforms.module.js';
 import { PLATFORM_REGISTRY } from '../../src/modules/platforms/platform.tokens.js';
 import type { PlatformRuntime } from '../../src/modules/platforms/platform.types.js';
-import { ensureDatabaseSchema } from '../fixtures/db.fixture.js';
 
 /**
  * The suite's TestingModule: everything production wires, minus the real
@@ -44,13 +43,11 @@ export interface TestingApp {
 }
 
 /**
- * Applies the schema, compiles the module against the real database (Nest's
- * `DatabaseModule` runs migrations on init), and returns its handles. The
- * caller owns `app.close()` and the per-test purge.
+ * Compiles the module against the provisioned test database (Nest's
+ * `DatabaseModule` runs pending migrations on init) and returns its handles.
+ * The caller owns `app.close()` and the per-test cleanup.
  */
 export async function createTestingApp(): Promise<TestingApp> {
-  await ensureDatabaseSchema();
-
   const moduleRef = await Test.createTestingModule({
     imports: [
       ConfigModule.forRoot({

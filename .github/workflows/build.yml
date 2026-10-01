@@ -18,16 +18,16 @@ jobs:
     runs-on: ubuntu-latest
 
     services:
-      # The e2e suite runs the real broadcast pipeline against real
-      # PostgreSQL (same major as production), with Discord mocked in-process.
+      # The e2e suite uses its own PostgreSQL database, with Discord mocked
+      # in-process.
       postgres:
         image: postgres:18
         env:
-          POSTGRES_DB: steammy_dev
-          POSTGRES_USER: steammy_dev
-          POSTGRES_PASSWORD: steammy_dev
+          POSTGRES_DB: steammy_e2e
+          POSTGRES_USER: steammy_e2e
+          POSTGRES_PASSWORD: steammy_e2e
         ports:
-          - 5432:5432
+          - 5433:5432
         options: >-
           --health-cmd pg_isready
           --health-interval 5s
@@ -36,11 +36,12 @@ jobs:
 
     env:
       DATABASE_HOST: 127.0.0.1
-      DATABASE_PORT: '5432'
-      DATABASE_NAME: steammy_dev
-      DATABASE_USER: steammy_dev
-      DATABASE_PASSWORD: steammy_dev
+      DATABASE_PORT: '5433'
+      DATABASE_NAME: steammy_e2e
+      DATABASE_USER: steammy_e2e
+      DATABASE_PASSWORD: steammy_e2e
       DATABASE_SSL: 'false'
+      BOT_TOKEN: e2e-dummy-token
 
     steps:
       - name: Checkout repository
@@ -89,6 +90,9 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
           fail_ci_if_error: false
+
+      - name: Create E2E schema and apply migrations
+        run: npm run db:e2e:setup
 
       - name: Run e2e tests
         run: npm run test:e2e -- --coverage

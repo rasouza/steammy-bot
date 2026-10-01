@@ -2,8 +2,8 @@ import { ChannelType } from 'discord.js';
 
 /**
  * Scenario constants and the Discord-side fake for the broadcast e2e suite.
- * Every row id is prefixed `dev-`, which is exactly what `purgeFixtureRows`
- * (db.fixture.ts) deletes — tests can never touch rows they did not create.
+ * IDs are deterministic fixture values. E2E cleanup clears the dedicated
+ * test database tables between scenarios.
  * Entity construction lives in `test/factories/` (Fishery, build-only); the
  * specs persist those instances through TypeORM repositories.
  *

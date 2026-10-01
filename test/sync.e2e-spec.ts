@@ -8,7 +8,7 @@ import { CatalogEpic, CatalogXbox } from '../src/database/entities/index.js';
 import { EPIC_PLATFORM } from '../src/gamesources/epic/index.js';
 import { XBOX_PLATFORM } from '../src/gamesources/xbox/index.js';
 import type { PlatformRuntime } from '../src/modules/platforms/platform.types.js';
-import { purgeFixtureRows } from './fixtures/db.fixture.js';
+import { cleanTestDatabase } from './helpers/database.js';
 import {
   EPIC_PAID_ID,
   EPIC_QUALIFYING_ID,
@@ -87,11 +87,11 @@ describe('Sync pipeline (e2e)', () => {
     recorded.epic.length = 0;
     recorded.sigls.length = 0;
     recorded.products.length = 0;
-    await purgeFixtureRows(dataSource.manager);
+    await cleanTestDatabase(dataSource.manager);
   });
 
   afterAll(async () => {
-    await purgeFixtureRows(dataSource.manager);
+    await cleanTestDatabase(dataSource.manager);
     server.close();
     await app.close();
   });

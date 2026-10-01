@@ -8,8 +8,8 @@ import { ACTIVE_GUILD_ID } from '../fixtures/broadcast.fixture.js';
  * database access. Persistence stays visible in the specs, which save the
  * built instance through a TypeORM repository.
  *
- * Deterministic defaults: the active scenario guild (`dev-`-prefixed, so
- * `purgeFixtureRows` owns the row), `deleted: false`, no randomness.
+ * Deterministic defaults: the active scenario guild (`dev-`-prefixed),
+ * `deleted: false`, no randomness.
  * Callers override per scenario with `build({ ... })`.
  */
 export const guildFactory = Factory.define<Guild>(() => {

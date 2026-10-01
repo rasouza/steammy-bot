@@ -6,7 +6,7 @@ import type {
 /**
  * HTTP fixtures for the sync e2e suite: response bodies shaped like the real
  * free-games endpoint, typed against the DTOs `EpicApi.fetch()` navigates.
- * Ids carry the `dev-` prefix so `purgeFixtureRows` owns them.
+ * IDs are deterministic fixture values for the dedicated E2E database.
  */
 
 /**

@@ -44,8 +44,9 @@ Prerequisites:
 # --ignore-scripts works around a crash in necord's own postinstall on Windows.
 npm install --ignore-scripts
 
-# Local database — PostgreSQL 18, matching production
-docker compose up -d database
+# Dedicated E2E database — separate from the local development database
+docker compose up -d --wait e2e-database
+npm run db:e2e:setup
 
 # Verify both pipelines end to end: no bot token, no Discord, no clicking,
 # no storefront APIs. Runs the real platform code against the real database
@@ -72,40 +73,42 @@ is [specs/005-dev-test-environment/quickstart.md](specs/005-dev-test-environment
 ### Tests
 
 `npm run test:e2e` boots a Nest testing module with the real
-`DatabaseModule` (schema + migrations applied automatically), the real
+`DatabaseModule` (which applies pending migrations on startup), the real
 `PlatformsModule`, and both pipelines — broadcast and sync — end to end. It
 substitutes only the outbound boundaries: a fake Discord `Client`, and MSW
 answering the storefront HTTP in-process (`onUnhandledRequest: 'error'`: an
 unmocked URL fails the test, so the run never touches the network). It needs
-a PostgreSQL — by default the bundled one (`docker compose up -d database`,
-credentials `steammy_dev`); export `DATABASE_*` to point it at another
-throwaway database. No bot token, no network calls to Discord or the
-storefront APIs, and no state survives the run (fixtures are `dev-`-prefixed
-and purged around every test).
+the dedicated E2E PostgreSQL (`docker compose up -d --wait e2e-database`);
+run `npm run db:e2e:setup` first to create its schema and apply migrations.
+The test script supplies its `DATABASE_*` connection values and a dummy
+`BOT_TOKEN`. No real bot token or network calls to Discord/storefront APIs are
+used. The database is isolated from development data, and test tables are
+cleared between scenarios.
 
 ### Scripts
 
-| Script                                 | Description                                             |
-| -------------------------------------- | ------------------------------------------------------- |
-| `npm run start:dev`                    | Watch mode with `NODE_ENV=development`                  |
-| `npm run build`                        | Compile TypeScript to `dist/`                           |
-| `npm run start:prod`                   | Run the compiled `dist/main.js`                         |
-| `npm run format`                       | Format `src/` and `test/` with Prettier                 |
-| `npm run lint`                         | Type-aware lint with oxlint (read-only)                 |
-| `npm run type:check`                   | Typecheck without emitting                              |
-| `npm test`                             | Unit tests (Vitest)                                     |
-| `npm run test:e2e`                     | E2E suites (real DB, mocked Discord + storefront HTTP)  |
-| `npm run db:init`                      | Create the `steammy_bot` schema if it does not exist    |
-| `npm run migration:generate -- <path>` | Generate a migration from entity changes                |
-| `npm run migration:run`                | Apply pending migrations                                |
-| `npm run migration:revert`             | Revert the last applied migration                       |
-| `npm run migration:show`               | List migrations and their applied state                 |
+| Script                                 | Description                                            |
+| -------------------------------------- | ------------------------------------------------------ |
+| `npm run start:dev`                    | Watch mode with `NODE_ENV=development`                 |
+| `npm run build`                        | Compile TypeScript to `dist/`                          |
+| `npm run start:prod`                   | Run the compiled `dist/main.js`                        |
+| `npm run format`                       | Format `src/` and `test/` with Prettier                |
+| `npm run lint`                         | Type-aware lint with oxlint (read-only)                |
+| `npm run type:check`                   | Typecheck without emitting                             |
+| `npm test`                             | Unit tests (Vitest)                                    |
+| `npm run test:e2e`                     | E2E suites (real DB, mocked Discord + storefront HTTP) |
+| `npm run db:e2e:setup`                 | Create E2E schema and apply migrations                 |
+| `npm run db:init`                      | Create the `steammy_bot` schema if it does not exist   |
+| `npm run migration:generate -- <path>` | Generate a migration from entity changes               |
+| `npm run migration:run`                | Apply pending migrations                               |
+| `npm run migration:revert`             | Revert the last applied migration                      |
+| `npm run migration:show`               | List migrations and their applied state                |
 
 TypeORM's CLI and `db:init` run from source through `tsx`, so migrations work
 without a separate compile step. The CI gate runs, in this exact order:
 `prettier --check` → `type:check` → `lint` → `build` →
-`test -- --coverage` → `test:e2e -- --coverage` (the plain suites with
-coverage passed through as an argument). Unit and e2e coverage are
+`test -- --coverage` → `db:e2e:setup` → `test:e2e -- --coverage` (the plain
+suites with coverage passed through as an argument). Unit and e2e coverage are
 uploaded to Codecov as two informational reports (merged per commit) —
 they never block a merge.
 

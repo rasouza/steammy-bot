@@ -17,7 +17,7 @@ import {
   STALE_GUILD_ID,
   fakeTextChannel,
 } from './fixtures/broadcast.fixture.js';
-import { purgeFixtureRows } from './fixtures/db.fixture.js';
+import { cleanTestDatabase } from './helpers/database.js';
 import { createTestingApp, fetchSpy, sendSpy } from './helpers/testing-app.js';
 
 /**
@@ -44,11 +44,11 @@ describe('Broadcast pipeline (e2e)', () => {
   beforeEach(async () => {
     fetchSpy.mockReset();
     sendSpy.mockReset();
-    await purgeFixtureRows(dataSource.manager);
+    await cleanTestDatabase(dataSource.manager);
   });
 
   afterAll(async () => {
-    await purgeFixtureRows(dataSource.manager);
+    await cleanTestDatabase(dataSource.manager);
     await app.close();
   });
 
