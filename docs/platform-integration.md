@@ -240,7 +240,7 @@ npm run type:check
 npm run lint
 npm run build
 npm run test:cov
-npm run test:e2e
+npm run test:e2e:cov
 ```
 
 Self-check against the touch-point contract: `git diff --stat` should show

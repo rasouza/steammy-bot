@@ -83,7 +83,7 @@ jobs:
       - name: Run unit tests
         run: npm run test:cov
 
-      - name: Upload coverage to Codecov
+      - name: Upload unit coverage to Codecov
         uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -91,7 +91,16 @@ jobs:
           fail_ci_if_error: false
 
       - name: Run e2e tests
-        run: npm run test:e2e
+        run: npm run test:e2e:cov
+
+      # Codecov merges both uploads into a single report for the commit, so
+      # unit and e2e coverage land together without a merged-lcov step.
+      - name: Upload e2e coverage to Codecov
+        uses: codecov/codecov-action@v7
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage-e2e/lcov.info
+          fail_ci_if_error: false
 
   migrations:
     name: Database Migrations

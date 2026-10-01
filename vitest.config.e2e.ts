@@ -10,5 +10,14 @@ export default defineConfig({
     // Database-backed specs share one Postgres: migrations must not race.
     fileParallelism: false,
     setupFiles: ['./test/setup/e2e-env.ts'],
+    coverage: {
+      provider: 'v8',
+      // Separate from the unit report so `test:cov` and `test:e2e:cov` never
+      // clobber each other — coverage cleans only its own directory. Codecov
+      // merges both lcov uploads into one report per commit.
+      reportsDirectory: './coverage-e2e',
+      include: ['src/**/*.ts'],
+      reporter: ['text', 'lcov'],
+    },
   },
 });
