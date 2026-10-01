@@ -15,7 +15,8 @@ services:
     environment:
       # Throwaway container defaults so a fresh clone can run the dev
       # database with no DATABASE_* entries in .env (the e2e suite uses its
-      # own service below and pins its credentials in the scripts).
+      # own service below and takes its credentials from the committed
+      # .env.test).
       - POSTGRES_DB=${DATABASE_NAME:-steammy_dev}
       - POSTGRES_USER=${DATABASE_USER:-steammy_dev}
       - POSTGRES_PASSWORD=${DATABASE_PASSWORD:-steammy_dev}

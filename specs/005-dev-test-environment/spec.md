@@ -190,10 +190,11 @@ request no longer matches a handler); restore it and re-run (expect pass).
 - The database container is not running → the suite fails immediately with a
   connection error; it never silently skips, because a skipped suite is a
   false green.
-- A developer's `.env` points at another database → irrelevant: the
-  `test:e2e` script pins `DATABASE_*` (and a dummy `BOT_TOKEN`) with
-  `cross-env`, and the suite owns a dedicated e2e database whose tables are
-  truncated around every test, so nothing foreign is ever touched.
+- A developer's `.env` points at another database → irrelevant: the suite's
+  `ConfigModule` reads the committed, test-only `.env.test` instead (a
+  developer's `.env` is never loaded), `db:e2e:setup` runs through
+  `node --env-file=.env.test`, and the dedicated e2e database is cleared
+  around every test, so nothing foreign is ever touched.
 - Multiple test files initializing the database concurrently → the e2e config
   disables file parallelism so migrations cannot race.
 - The schema does not exist yet (brand-new database) → `npm run db:e2e:setup`
@@ -222,9 +223,10 @@ request no longer matches a handler); restore it and re-run (expect pass).
 - **FR-002**: The e2e suite MUST run against a real PostgreSQL, booted from a
   dedicated e2e database provisioned by `npm run db:e2e:setup` (schema +
   migrations), with the real `DatabaseModule` re-checking pending migrations
-  at boot; connection defaults are pinned by the `test:e2e` script via
-  `cross-env`, so neither `.env` nor ambient `DATABASE_*` can redirect the
-  suite.
+  at boot; connection defaults and a dummy `BOT_TOKEN` come from the
+  committed, test-only `.env.test` — loaded by the test module's
+  `ConfigModule` and by `node --env-file` for `db:e2e:setup` — so a
+  developer's `.env` never applies to the suite.
 - **FR-003**: The suite MUST mock the outbound boundaries and nothing else —
   the Discord `Client`, provided in the same way production receives it (a
   global provider mirroring Necord), and the storefront HTTP transport (MSW
@@ -235,11 +237,16 @@ request no longer matches a handler); restore it and re-run (expect pass).
   inherit state; neither the suite nor any fixture path may call the real
   Xbox or Epic services.
 - **FR-005**: The suite MUST cover the broadcast contract end to end through
-  the real platform and broadcast services: delivery to an active subscriber
-  with the announced flag set; a departed guild's subscription skipped before
-  any channel fetch while delivery to the active subscriber still succeeds;
-  failed delivery leaving the entry pending; already-announced entries
-  untouched.
+  the real platform and broadcast services, symmetric across Epic and Xbox
+  where the flow is platform-generic: pending entries delivered and flagged
+  announced (including one entry fanning out to multiple active
+  subscriptions); already-announced entries excluded by the repository query;
+  a departed guild's subscriptions skipped before any channel fetch while
+  delivery to active subscribers still succeeds; inactive (unreachable)
+  channels probed but never delivered to; multiple guilds served
+  independently; a mixed-state run over pending/already-announced rows and
+  active/inactive/departed subscribers; and failed delivery leaving the entry
+  pending.
 - **FR-006**: CI MUST run the e2e suite against an ephemeral PostgreSQL
   service pinned to the same major version and provisioned exactly like
   local runs (`npm run db:e2e:setup`), as part of the CI gate (prettier →
@@ -270,12 +277,12 @@ request no longer matches a handler); restore it and re-run (expect pass).
   (5432) and the suite's dedicated `e2e-database` (5433, fixed test
   credentials); same major as production, loopback-only, durable named
   volumes.
-- **Fixture set (test-only)**: deterministic rows created around each test —
-  an active guild and a departed (`deleted`) guild, one subscription each,
-  and a pending catalog entry inside its offer window — plus HTTP response
-  bodies shaped like the real storefront payloads; all row ids prefixed
-  `dev-`, the e2e database's tables truncated around every test.
-- **Broadcast contract**: the four behaviors FR-005 enumerates; the suite is
+- **Fixture set (test-only)**: deterministic rows composed per test from the
+  Fishery factories — active and departed (`deleted`) guilds, per-platform
+  subscriptions, and catalog entries in their lifecycle states — plus HTTP
+  response bodies shaped like the real storefront payloads; all row ids
+  prefixed `dev-`, the e2e database's tables cleared around every test.
+- **Broadcast contract**: the behaviors FR-005 enumerates; the suite is
   their executable definition.
 - **Sync contract**: the behaviors FR-009 enumerates — the fetch → map →
   persist half of the lifecycle, likewise executable.
@@ -314,8 +321,8 @@ request no longer matches a handler); restore it and re-run (expect pass).
 - A container runtime (Docker with Compose v2) is available on the developer
   machine: the dev database and the suite's dedicated `e2e-database` both
   come from compose. The dev server's connection remains redirectable through
-  `DATABASE_*` in `.env`; the e2e suite deliberately pins its own — the
-  `test:e2e` script supplies every value via `cross-env`.
+  `DATABASE_*` in `.env`; the e2e suite deliberately pins its own — its
+  defaults live in the committed, test-only `.env.test`.
 - CI provides PostgreSQL as a workflow service container (FR-006); no
   third-party test infrastructure is required.
 - Testing the guild-scoped command registration and slash-command visibility

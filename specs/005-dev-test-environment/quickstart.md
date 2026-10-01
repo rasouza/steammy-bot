@@ -42,14 +42,15 @@ Expected tail:
 
 ```
  Test Files  3 passed (3)
-      Tests  10 passed (10)
+      Tests  20 passed (20)
 ```
 
 What one run does:
 
-1. The `test:e2e` npm script sets its database connection environment and a
-   dummy `BOT_TOKEN` through `cross-env`; there is no Vitest setup file that
-   mutates `process.env`.
+1. The suite's connection settings and a dummy `BOT_TOKEN` come from the
+   committed, test-only `.env.test` (loaded by the test module's
+   `ConfigModule`); there is no Vitest setup file that mutates
+   `process.env`, and a developer's `.env` is never read.
 2. `Test.createTestingModule` boots the real `DatabaseModule` — any newly
    pending migrations run automatically — plus `PlatformsModule`, with a **fake Discord `Client`**
    (provided globally, exactly like Necord provides the real one) and, for
@@ -58,17 +59,22 @@ What one run does:
    unmocked URL fails the test. Nothing logs in; nothing is posted; nothing
    reaches Epic or Xbox.
 3. Contract tests run against the real `GenericPlatform`:
-   - **broadcast (4)**: pending game → delivered to the active subscriber →
-     marked announced; departed guild's subscription skipped before any
+   - **broadcast (8 specs / 14 runs, Epic + Xbox)**: pending game →
+     delivered → marked announced; already-broadcast game ignored by the
+     repository query; one pending game delivered to multiple active
+     subscriptions; departed guild's subscription skipped before any
      channel fetch while the active subscriber still receives (the
-     production `broadcast-stale-subscriptions` regression); delivery
-     failure → the entry stays pending; already-announced entry untouched.
+     production `broadcast-stale-subscriptions` regression); inactive
+     channel probed but never delivered to; multiple guilds served
+     independently across platforms; one mixed-state run (pending and
+     already-broadcast rows across active, inactive, and departed guilds);
+     delivery failure → the entry stays pending.
    - **sync (5)**: qualifying Epic offer persisted with mapped values while
      the non-qualifying one is dropped; re-sync idempotent (one row, changed
      fields updated); an announced row stays announced; the Xbox id list is
      forwarded to the products request (params and body pinned) with mapped
      products persisted; an empty id list skips the products call.
-4. Cleanup truncates the fixture tables in the dedicated E2E database between
+4. Cleanup clears the suite's tables in the dedicated E2E database between
    tests; a second run starts from the same baseline (SC-003: five consecutive
    identical runs).
 
@@ -90,7 +96,7 @@ E2E connection values loaded by Nest from `.env.test`:
 | -------------------------------- | ---------------------------------- | ----------------------------------------------------------------------------- |
 | `ECONNREFUSED 127.0.0.1:5433`    | E2E database container not running | `docker compose up -d --wait e2e-database`                                    |
 | `password authentication failed` | E2E database credentials changed   | align `.env.test` and the `e2e-database` service in Compose                   |
-| port 5433 already in use         | another local PostgreSQL           | stop the other listener or change the E2E port in Compose and the npm scripts |
+| port 5433 already in use         | another local PostgreSQL           | stop the other listener or change the E2E port in Compose and `.env.test`     |
 | schema or migration missing      | database was not provisioned       | `npm run db:e2e:setup`                                                        |
 | suite hangs on migration         | two suites racing                  | not expected — `fileParallelism: false` is set; check for a second manual run |
 
