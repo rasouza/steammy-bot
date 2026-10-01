@@ -1,6 +1,5 @@
 import { Factory } from 'fishery';
 import { CatalogEpic } from '../../src/database/entities/index.js';
-import { PENDING_GAME_ID } from '../fixtures/broadcast.fixture.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -15,7 +14,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  */
 export const catalogEpicFactory = Factory.define<CatalogEpic>(() => {
   const game = new CatalogEpic();
-  game.id = PENDING_GAME_ID;
+  game.id = 'dev-epic-pending-offer';
   game.title = 'Fixture Free Game';
   game.description = 'A deterministic fixture offer.';
   game.price = 0;

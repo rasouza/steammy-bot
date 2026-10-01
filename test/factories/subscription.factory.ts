@@ -1,10 +1,6 @@
 import { Factory } from 'fishery';
 import { Subscription } from '../../src/database/entities/index.js';
 import { EPIC_PLATFORM } from '../../src/gamesources/epic/index.js';
-import {
-  ACTIVE_CHANNEL_ID,
-  ACTIVE_GUILD_ID,
-} from '../fixtures/broadcast.fixture.js';
 
 /**
  * Fishery factory for the `Subscription` entity (composite PK: channel id +
@@ -17,8 +13,8 @@ import {
  */
 export const subscriptionFactory = Factory.define<Subscription>(() => {
   const subscription = new Subscription();
-  subscription.id = ACTIVE_CHANNEL_ID;
+  subscription.id = '150000000000000001';
   subscription.platform = EPIC_PLATFORM.type;
-  subscription.guildId = ACTIVE_GUILD_ID;
+  subscription.guildId = 'dev-e2e-guild-active';
   return subscription;
 });

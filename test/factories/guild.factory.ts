@@ -1,6 +1,5 @@
 import { Factory } from 'fishery';
 import { Guild } from '../../src/database/entities/index.js';
-import { ACTIVE_GUILD_ID } from '../fixtures/broadcast.fixture.js';
 
 /**
  * Fishery factory for the `Guild` entity. Builds a real entity instance via
@@ -14,7 +13,7 @@ import { ACTIVE_GUILD_ID } from '../fixtures/broadcast.fixture.js';
  */
 export const guildFactory = Factory.define<Guild>(() => {
   const guild = new Guild();
-  guild.id = ACTIVE_GUILD_ID;
+  guild.id = 'dev-e2e-guild-active';
   guild.prefix = null;
   guild.deleted = false;
   guild.lastInteract = new Date();
