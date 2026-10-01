@@ -33,6 +33,10 @@
 - Q: HTTP mocking (MSW) for the storefront APIs? → **A: Not needed.** The
   broadcast pipeline reads the catalog from the database; Xbox/Epic APIs are
   never in its path (session 2026-09-30: never call platform APIs).
+- Q: Keep the compose `app` service and the commented MySQL template? →
+  **A: No.** The bot is never run from compose — it ships as an image and the
+  release chain hands it to Coolify; compose exists only for the local
+  database. Both were removed (2026-10-01).
 
 ### Session 2026-09-30 (still in force where not superseded)
 
@@ -164,8 +168,8 @@ is present.
   documented compose command: image pinned to the production PostgreSQL major,
   a healthcheck so `up --wait` blocks until ready, loopback-only port
   publication, a named volume, and defaults matching the test suite's
-  connection defaults. The production `app` service definition MUST remain
-  untouched.
+  connection defaults. The compose file MUST be database-only: the unused
+  `app` service and the commented MySQL template are removed.
 - **FR-002**: The e2e suite MUST run against a real PostgreSQL, booting the
   real `DatabaseModule` so the schema is created if absent and migrations run
   automatically, with deterministic connection defaults that `DATABASE_*`

@@ -18,7 +18,7 @@ remains is deliberately small.
 
 ```
 docker-compose.yml                 # database service: postgres:18, healthcheck,
-                                   # loopback port, named volume (app untouched)
+                                   # loopback port, named volume (app + mysql removed)
 test/
   setup/e2e-env.ts                 # deterministic DATABASE_* / BOT_TOKEN defaults (??= only)
   fixtures/broadcast.fixture.ts    # dev- fixtures + schema bootstrap + purge

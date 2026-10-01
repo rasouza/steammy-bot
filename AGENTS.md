@@ -180,9 +180,12 @@ manual dispatches trigger nothing: `deploy.yml` has no tag or `workflow_dispatch
 triggers, and `build.yml` no longer runs on push to `main` (it keeps its PR/dispatch
 triggers). There is no npm publish step.
 
-The Dockerfile never copies `.env`; `docker-compose.yml` injects variables
-explicitly and bind-mounts `assets/`. `.env.prod` is gitignored. Migrations run
-at container boot, so deploys have no separate migrate step.
+The Dockerfile never copies `.env`: secrets reach the deployed container as
+injected environment, never as a committed or baked-in file. `.env.prod` is
+gitignored. Migrations run at container boot, so deploys have no separate
+migrate step. `docker-compose.yml` is local-development only — it provides
+the Postgres service for the dev/e2e path and has no `app` service; the bot
+is never run from compose.
 
 ## Spec-driven workflow
 

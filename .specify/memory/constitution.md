@@ -163,9 +163,10 @@ Rationale: an uncollected spec is worse than no spec, because it manufactures fa
   with a provenance attestation, and pings a Coolify webhook. `build.yml` no longer runs on push
   to `main`; it runs as the gate inside that chain and keeps its PR/dispatch triggers. There is no
   npm publish step.
-- The Dockerfile never copies `.env`; `docker-compose.yml` injects variables explicitly and
-  bind-mounts `assets/`. `.env.prod` is gitignored. Migrations run at container boot, so deploys
-  have no separate migrate step. Secrets MUST NOT be committed.
+- The Dockerfile never copies `.env`; `docker-compose.yml` is local-development only — it
+  provides the Postgres service for the dev/e2e path and has no `app` service (the bot ships as
+  an image and is never run from compose). `.env.prod` is gitignored. Migrations run at container
+  boot, so deploys have no separate migrate step. Secrets MUST NOT be committed.
 
 ## Development Workflow and Quality Gates
 
