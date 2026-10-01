@@ -13,20 +13,21 @@ npx prettier --check "src/**/*.ts" "test/**/*.ts"
 npm run type:check
 npm run lint
 npm run build
-npm run test:cov
-npm run test:e2e:cov
+npm run test -- --coverage
+npm run test:e2e -- --coverage
 ```
 
 - `npm run lint` is the CI lint command: type-aware oxlint (`--type-aware`),
   read-only — it never rewrites files. `npm run format` is the writer.
 - `npm run format` writes Prettier output over `src/` and `test/`.
-- CI runs unit tests as `npm run test:cov` and e2e as
-  `npm run test:e2e:cov` (the same suite as `npm run test:e2e`, plus
-  coverage), uploading `coverage/lcov.info` and `coverage-e2e/lcov.info`
-  respectively — Codecov merges the two uploads into one report per commit.
-  Uploads are informational — `fail_ci_if_error: false` plus `codecov.yml`
-  statuses keep CI green and unblocked regardless; the steps only report
-  once the `CODECOV_TOKEN` secret is set.
+- CI runs unit tests as `npm run test -- --coverage` and e2e as
+  `npm run test:e2e -- --coverage` — the plain suites with coverage passed
+  through as an argument (no `:cov` wrapper scripts) — uploading
+  `coverage/lcov.info` and `coverage-e2e/lcov.info` respectively. Codecov
+  merges the two uploads into one report per commit. Uploads are
+  informational — `fail_ci_if_error: false` plus `codecov.yml` statuses
+  keep CI green and unblocked regardless; the steps only report once the
+  `CODECOV_TOKEN` secret is set.
 - `npm install --ignore-scripts` is required. necord's postinstall crashes on
   Windows; CI uses `npm ci --ignore-scripts` on Linux too.
 - Node: `.nvmrc` pins `24.21.0`; `engines` sets the floor at `>=24.15.0`.

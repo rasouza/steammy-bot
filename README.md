@@ -94,9 +94,7 @@ and purged around every test).
 | `npm run lint`                         | Type-aware lint with oxlint (read-only)                 |
 | `npm run type:check`                   | Typecheck without emitting                              |
 | `npm test`                             | Unit tests (Vitest)                                     |
-| `npm run test:cov`                     | Unit tests with coverage report (CI uploads to Codecov) |
 | `npm run test:e2e`                     | E2E suites (real DB, mocked Discord + storefront HTTP)  |
-| `npm run test:e2e:cov`                 | E2E suites with coverage (CI uploads to Codecov)        |
 | `npm run db:init`                      | Create the `steammy_bot` schema if it does not exist    |
 | `npm run migration:generate -- <path>` | Generate a migration from entity changes                |
 | `npm run migration:run`                | Apply pending migrations                                |
@@ -105,9 +103,11 @@ and purged around every test).
 
 TypeORM's CLI and `db:init` run from source through `tsx`, so migrations work
 without a separate compile step. The CI gate runs, in this exact order:
-`prettier --check` → `type:check` → `lint` → `build` → `test:cov` →
-`test:e2e:cov`. Unit and e2e coverage are uploaded to Codecov as two
-informational reports (merged per commit) — they never block a merge.
+`prettier --check` → `type:check` → `lint` → `build` →
+`test -- --coverage` → `test:e2e -- --coverage` (the plain suites with
+coverage passed through as an argument). Unit and e2e coverage are
+uploaded to Codecov as two informational reports (merged per commit) —
+they never block a merge.
 
 ## Database
 

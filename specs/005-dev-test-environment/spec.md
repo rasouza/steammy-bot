@@ -236,8 +236,9 @@ request no longer matches a handler); restore it and re-run (expect pass).
   untouched.
 - **FR-006**: CI MUST run the e2e suite against an ephemeral PostgreSQL
   service pinned to the same major version, as part of the unchanged
-  six-step gate (prettier → type:check → lint → build → test:cov →
-  test:e2e), with lint at zero errors.
+  six-step gate (prettier → type:check → lint → build →
+  test -- --coverage → test:e2e -- --coverage), with lint at zero
+  errors.
 - **FR-007**: Project documentation MUST describe: starting the local
   database, running the e2e suite (prerequisites, connection defaults,
   override), and running the bot locally — including the scoping mechanism
