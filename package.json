@@ -59,6 +59,7 @@
     "@types/supertest": "^7.0.0",
     "@vitest/coverage-v8": "^4.1.11",
     "cross-env": "^7.0.3",
+    "fishery": "^2.4.0",
     "msw": "^2.15.0",
     "oxlint": "^1.86.0",
     "oxlint-tsgolint": "^7.0.2003",

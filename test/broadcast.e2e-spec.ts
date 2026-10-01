@@ -1,18 +1,21 @@
 import type { INestApplication } from '@nestjs/common';
 import type { DataSource } from 'typeorm';
-import { CatalogEpic } from '../src/database/entities/index.js';
+import {
+  CatalogEpic,
+  Guild,
+  Subscription,
+} from '../src/database/entities/index.js';
 import { EPIC_PLATFORM } from '../src/gamesources/epic/index.js';
 import type { PlatformRuntime } from '../src/modules/platforms/platform.types.js';
+import { catalogEpicFactory } from './factories/catalog-epic.factory.js';
+import { guildFactory } from './factories/guild.factory.js';
+import { subscriptionFactory } from './factories/subscription.factory.js';
 import {
   ACTIVE_CHANNEL_ID,
-  ACTIVE_GUILD_ID,
   PENDING_GAME_ID,
   STALE_CHANNEL_ID,
   STALE_GUILD_ID,
   fakeTextChannel,
-  seedEpicSubscription,
-  seedGuild,
-  seedPendingEpicGame,
 } from './fixtures/broadcast.fixture.js';
 import { purgeFixtureRows } from './fixtures/db.fixture.js';
 import { createTestingApp, fetchSpy, sendSpy } from './helpers/testing-app.js';
@@ -64,15 +67,18 @@ describe('Broadcast pipeline (e2e)', () => {
     return row.broadcasted;
   }
 
-  /** Active guild + subscription + one pending Epic offer. */
+  /**
+   * Active guild + subscription + one pending Epic offer. The factories'
+   * defaults are this scenario; persistence is the explicit `save` below.
+   */
   async function seedActiveScenario(): Promise<void> {
-    await seedGuild(dataSource.manager, ACTIVE_GUILD_ID, false);
-    await seedEpicSubscription(
-      dataSource.manager,
-      ACTIVE_CHANNEL_ID,
-      ACTIVE_GUILD_ID,
-    );
-    await seedPendingEpicGame(dataSource.manager);
+    await dataSource.getRepository(Guild).save(guildFactory.build());
+    await dataSource
+      .getRepository(Subscription)
+      .save(subscriptionFactory.build());
+    await dataSource
+      .getRepository(CatalogEpic)
+      .save(catalogEpicFactory.build());
   }
 
   it('announces a pending game to an active subscriber and marks it broadcasted', async () => {
@@ -99,11 +105,14 @@ describe('Broadcast pipeline (e2e)', () => {
 
   it('skips a departed guild without fetching its channel, and still delivers to the active one', async () => {
     await seedActiveScenario();
-    await seedGuild(dataSource.manager, STALE_GUILD_ID, true);
-    await seedEpicSubscription(
-      dataSource.manager,
-      STALE_CHANNEL_ID,
-      STALE_GUILD_ID,
+    await dataSource
+      .getRepository(Guild)
+      .save(guildFactory.build({ id: STALE_GUILD_ID, deleted: true }));
+    await dataSource.getRepository(Subscription).save(
+      subscriptionFactory.build({
+        id: STALE_CHANNEL_ID,
+        guildId: STALE_GUILD_ID,
+      }),
     );
     fetchSpy.mockImplementation(async (id) =>
       id === ACTIVE_CHANNEL_ID
@@ -139,7 +148,9 @@ describe('Broadcast pipeline (e2e)', () => {
 
   it('ignores games that were already announced', async () => {
     await seedActiveScenario();
-    await seedPendingEpicGame(dataSource.manager, true);
+    await dataSource
+      .getRepository(CatalogEpic)
+      .save(catalogEpicFactory.build({ broadcasted: true }));
     fetchSpy.mockImplementation(async () =>
       fakeTextChannel('announcements', sendSpy),
     );
