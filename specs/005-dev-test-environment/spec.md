@@ -190,14 +190,16 @@ request no longer matches a handler); restore it and re-run (expect pass).
 - The database container is not running → the suite fails immediately with a
   connection error; it never silently skips, because a skipped suite is a
   false green.
-- A developer's `.env` points at another database → exported `DATABASE_*`
-  variables win (test setup fills only what is missing), and fixtures are
-  `dev-`-prefixed and purged around every test, so nothing foreign is touched.
+- A developer's `.env` points at another database → irrelevant: the
+  `test:e2e` script pins `DATABASE_*` (and a dummy `BOT_TOKEN`) with
+  `cross-env`, and the suite owns a dedicated e2e database whose tables are
+  truncated around every test, so nothing foreign is ever touched.
 - Multiple test files initializing the database concurrently → the e2e config
   disables file parallelism so migrations cannot race.
-- The schema does not exist yet (brand-new database) → the suite creates it
-  before the module boots (same prerequisite as `db:init`), then migrations
-  run automatically.
+- The schema does not exist yet (brand-new database) → `npm run db:e2e:setup`
+  creates it and applies migrations before the suite runs; at boot
+  `DatabaseModule` re-checks pending migrations (idempotent), so an
+  unprovisioned database fails loudly instead of skipping.
 - Windows and Linux → identical behavior; the suite is pure Node/Vitest with
   no platform-specific steps.
 - The platform APIs are unreachable → irrelevant: the suite never contacts
@@ -210,24 +212,28 @@ request no longer matches a handler); restore it and re-run (expect pass).
 
 ### Functional Requirements
 
-- **FR-001**: The repository MUST provide the local database as one
-  documented compose command: image pinned to the production PostgreSQL major,
-  a healthcheck so `up --wait` blocks until ready, loopback-only port
-  publication, a named volume, and defaults matching the test suite's
-  connection defaults. The compose file MUST be database-only: the unused
-  `app` service and the commented MySQL template are removed.
-- **FR-002**: The e2e suite MUST run against a real PostgreSQL, booting the
-  real `DatabaseModule` so the schema is created if absent and migrations run
-  automatically, with deterministic connection defaults that `DATABASE_*`
-  environment variables can override.
+- **FR-001**: The repository MUST provide the local databases as documented
+  compose services: image pinned to the production PostgreSQL major,
+  healthchecks so `up -d --wait` blocks until ready, loopback-only port
+  publication, named volumes — a dev service (`database`) and a dedicated
+  `e2e-database` service with fixed test credentials on its own port. The
+  compose file MUST remain app-free: the unused `app` service and the
+  commented MySQL template are removed.
+- **FR-002**: The e2e suite MUST run against a real PostgreSQL, booted from a
+  dedicated e2e database provisioned by `npm run db:e2e:setup` (schema +
+  migrations), with the real `DatabaseModule` re-checking pending migrations
+  at boot; connection defaults are pinned by the `test:e2e` script via
+  `cross-env`, so neither `.env` nor ambient `DATABASE_*` can redirect the
+  suite.
 - **FR-003**: The suite MUST mock the outbound boundaries and nothing else —
   the Discord `Client`, provided in the same way production receives it (a
   global provider mirroring Necord), and the storefront HTTP transport (MSW
   answering axios in-process) — and MUST never require a bot token or make
   any network call to Discord, Epic, or Xbox.
-- **FR-004**: Fixtures MUST be deterministic, prefixed so they are
-  distinguishable from any other row, and purged around every test; neither
-  the suite nor any fixture path may call the real Xbox or Epic services.
+- **FR-004**: Fixtures MUST be deterministic (`dev-`-prefixed ids), and the
+  dedicated e2e database MUST be cleared around every test so runs never
+  inherit state; neither the suite nor any fixture path may call the real
+  Xbox or Epic services.
 - **FR-005**: The suite MUST cover the broadcast contract end to end through
   the real platform and broadcast services: delivery to an active subscriber
   with the announced flag set; a departed guild's subscription skipped before
@@ -235,13 +241,13 @@ request no longer matches a handler); restore it and re-run (expect pass).
   failed delivery leaving the entry pending; already-announced entries
   untouched.
 - **FR-006**: CI MUST run the e2e suite against an ephemeral PostgreSQL
-  service pinned to the same major version, as part of the unchanged
-  six-step gate (prettier → type:check → lint → build →
-  test -- --coverage → test:e2e -- --coverage), with lint at zero
-  errors.
+  service pinned to the same major version and provisioned exactly like
+  local runs (`npm run db:e2e:setup`), as part of the CI gate (prettier →
+  type:check → lint → build → test -- --coverage → db:e2e:setup →
+  test:e2e -- --coverage), with lint at zero errors.
 - **FR-007**: Project documentation MUST describe: starting the local
-  database, running the e2e suite (prerequisites, connection defaults,
-  override), and running the bot locally — including the scoping mechanism
+  database, running the e2e suite (prerequisites, connection defaults), and
+  running the bot locally — including the scoping mechanism
   (`NODE_ENV=development` + `TEST_GUILD_ID`) and the quiet-run switch
   (`BROADCAST_ENABLED=false`).
 - **FR-008**: Production code MUST NOT gain test-only execution paths: no
@@ -260,13 +266,15 @@ request no longer matches a handler); restore it and re-run (expect pass).
 
 ### Key Entities *(include if feature involves data)*
 
-- **Local database**: the compose-managed PostgreSQL — same major as
-  production, loopback-only, durable named volume.
+- **Local database**: the compose-managed PostgreSQL — dev service `database`
+  (5432) and the suite's dedicated `e2e-database` (5433, fixed test
+  credentials); same major as production, loopback-only, durable named
+  volumes.
 - **Fixture set (test-only)**: deterministic rows created around each test —
   an active guild and a departed (`deleted`) guild, one subscription each,
   and a pending catalog entry inside its offer window — plus HTTP response
   bodies shaped like the real storefront payloads; all row ids prefixed
-  `dev-`, rows removed after the test.
+  `dev-`, the e2e database's tables truncated around every test.
 - **Broadcast contract**: the four behaviors FR-005 enumerates; the suite is
   their executable definition.
 - **Sync contract**: the behaviors FR-009 enumerates — the fetch → map →
@@ -281,15 +289,17 @@ request no longer matches a handler); restore it and re-run (expect pass).
 ### Measurable Outcomes
 
 - **SC-001**: From a fresh clone on a machine with Docker and Node, `docker
-  compose up -d database && npm run test:e2e` reaches a green suite in under
-  10 minutes, with no bot token and no network access to Discord.
+  compose up -d --wait e2e-database && npm run db:e2e:setup && npm run
+  test:e2e` reaches a green suite in under 10 minutes, with no bot token and
+  no network access to Discord.
 - **SC-002**: Removing the stale-guild skip from the broadcast pipeline makes
   the suite fail in 100% of runs; restoring it makes it pass again. Performed
   once by hand during acceptance (no shipped fault-injection mode).
 - **SC-003**: Five consecutive suite runs on the same database all pass with
   no manual cleanup between them.
 - **SC-004**: Every pull request runs the suite in CI against an ephemeral
-  PostgreSQL; the six-step gate is green with lint at zero errors.
+  PostgreSQL (provisioned via `npm run db:e2e:setup`); the CI gate is green
+  with lint at zero errors.
 - **SC-005**: Zero test-only code paths exist in production sources — no
   `src/dev`, no `preview()` API, no dev scripts in `package.json`.
 - **SC-006**: Following the README verbatim from a fresh clone reproduces a
@@ -302,8 +312,10 @@ request no longer matches a handler); restore it and re-run (expect pass).
 ## Assumptions
 
 - A container runtime (Docker with Compose v2) is available on the developer
-  machine for the default database; any reachable PostgreSQL of the same major
-  can substitute via exported `DATABASE_*` variables.
+  machine: the dev database and the suite's dedicated `e2e-database` both
+  come from compose. The dev server's connection remains redirectable through
+  `DATABASE_*` in `.env`; the e2e suite deliberately pins its own — the
+  `test:e2e` script supplies every value via `cross-env`.
 - CI provides PostgreSQL as a workflow service container (FR-006); no
   third-party test infrastructure is required.
 - Testing the guild-scoped command registration and slash-command visibility

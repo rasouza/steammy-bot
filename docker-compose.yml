@@ -13,8 +13,9 @@ services:
     volumes:
       - steammy-dev-data:/var/lib/postgresql/data
     environment:
-      # Throwaway container defaults so a fresh clone can run the database —
-      # and the e2e suite — with no DATABASE_* entries in .env.
+      # Throwaway container defaults so a fresh clone can run the dev
+      # database with no DATABASE_* entries in .env (the e2e suite uses its
+      # own service below and pins its credentials in the scripts).
       - POSTGRES_DB=${DATABASE_NAME:-steammy_dev}
       - POSTGRES_USER=${DATABASE_USER:-steammy_dev}
       - POSTGRES_PASSWORD=${DATABASE_PASSWORD:-steammy_dev}

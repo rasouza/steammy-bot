@@ -17,21 +17,25 @@ remains is deliberately small.
 ## Structure
 
 ```
-docker-compose.yml                 # database service: postgres:18, healthcheck,
-                                   # loopback port, named volume (app + mysql removed)
+docker-compose.yml                 # two database services: dev `database` (5432) and
+                                   # dedicated `e2e-database` (5433, steammy_e2e) —
+                                   # postgres:18, healthchecks, named volumes
+                                   # (app + mysql removed)
 test/
-  setup/e2e-env.ts                 # deterministic DATABASE_* / BOT_TOKEN defaults (??= only)
-  fixtures/db.fixture.ts           # schema bootstrap + schema-qualified purge (shared)
-  fixtures/broadcast.fixture.ts    # dev- broadcast rows + fake text channel
+  fixtures/broadcast.fixture.ts    # dev- scenario constants + fake text channel
   fixtures/http/epic.fixtures.ts   # storefront responses typed against the DTOs
   fixtures/http/xbox.fixtures.ts
+  factories/                       # Fishery entity factories (build() only)
   helpers/testing-app.ts           # shared TestingModule + fake Client spies
+  helpers/database.ts              # cleanTestDatabase: TRUNCATE ... CASCADE
   broadcast.e2e-spec.ts            # the broadcast contract (4 tests)
   sync.e2e-spec.ts                 # the sync contract (5 tests, MSW transport)
   health.e2e-spec.ts               # unchanged
-vitest.config.e2e.ts               # setupFiles + fileParallelism: false
-.github/workflows/build.yml        # build job gains a postgres:18 service
-package.json                       # + msw devDependency (test-only)
+vitest.config.e2e.ts               # coverage-e2e + fileParallelism: false
+.github/workflows/build.yml        # postgres:18 service (5433/steammy_e2e),
+                                   # db:e2e:setup step, both coverage uploads
+package.json                       # + msw, fishery devDependencies (test-only);
+                                   # cross-env e2e / db:e2e:setup scripts
 ```
 
 Test module composition — both mocked boundaries are outbound; everything the
@@ -57,10 +61,10 @@ outside the module: MSW answers axios for the storefront endpoints
 | D3 | Fake Client provided from a `@Global()` module | Necord's `NecordModule` is `@Global()`, which is how `BroadcastModule` resolves `Client` without importing anything. The test mirrors that topology instead of introducing an interface into production code. |
 | D4 | Real PostgreSQL, no SQLite/pg-mem | The behavior under test (FK cascade on departed guilds, timestamptz offer windows, `bigint` price columns, relations) is TypeORM/Postgres behavior; an emulation would verify the emulation. |
 | D5 | No storefront mocking for broadcast (scope at the time; extended by D11) | Broadcast reads the catalog table; Xbox/Epic HTTP is not on the broadcast path (spec clarification: never call platform APIs). Sync-path coverage was initially out of scope. |
-| D6 | Env defaults in a Vitest setup file with `??=` | Runs before the spec module is imported, so config resolution always sees them; exported `DATABASE_*` win, so CI and developers can redirect the suite without code changes. |
+| D6 | Env defaults in a Vitest setup file with `??=` *(superseded by the dedicated-database restructure)* | Originally ran before the spec module imported, so config resolution always saw the defaults. Replaced by `cross-env` pinned in the `test:e2e` / `db:e2e:setup` scripts against the dedicated `e2e-database` service — stronger isolation: `.env` and ambient `DATABASE_*` can no longer redirect the suite at all. |
 | D7 | Schema-qualified raw SQL in fixtures | TypeORM only qualifies SQL it generates; `em.query` is verbatim — `"steammy_bot".…` by hand (AGENTS note). |
 | D8 | `fileParallelism: false` for e2e | Two workers initializing migrations concurrently can race; e2e runs are seconds long, serializing costs nothing. |
-| D9 | CI service container `postgres:18` | Same major as production and the compose pin; the gate (`test:e2e`) then runs identically locally and in CI. |
+| D9 | CI service container `postgres:18` | Same major as production and the compose pin; the service mirrors the compose `e2e-database` exactly (port 5433, `steammy_e2e` credentials), so the gate runs identically locally and in CI. |
 | D10 | Docs-only dev safety | Guild scoping (`NODE_ENV` + `TEST_GUILD_ID`) and `BROADCAST_ENABLED` are pre-existing production mechanisms; no guard code is added for them (spec FR-007/FR-008). |
 | D11 | MSW at the HTTP transport for the sync suite (supersedes D5's "out of scope", spec Clarifications 2026-10-01) | The faithful analogue of D2/D3: fake only what is outside the process. A Nest DI fake of `EpicApi`/`XboxApi` would skip our own adapters — URL building, pinned params, Xbox's two-call flow — which is mocking `BroadcastService` in reverse. MSW intercepts axios before the network, so the real adapters, mappers, and repositories run, and `onUnhandledRequest: 'error'` makes any stray or wrong URL a test failure (SC-007). |
 
@@ -71,14 +75,15 @@ harness, the `preview()` API, the scheduler guard and the env guard added by
 the first iteration were all reverted (FR-008, SC-005). Changed files are
 limited to `docker-compose.yml`, `.env.example`, `README.md`, `AGENTS.md`,
 `.github/workflows/build.yml`, `vitest.config.e2e.ts`, `package.json`
-(dev-script removal — reverted to stock; later `+msw` as a devDependency,
-test-only) and `test/`.
+(dev-script removal — reverted to stock; later `+msw`, `+fishery` as
+devDependencies, test-only, plus the `cross-env` e2e / `db:e2e:setup`
+scripts) and `test/`.
 
 ## Risks
 
 | Risk | Mitigation |
 | --- | --- |
 | Developer machine without Docker | Suite only needs *a* PostgreSQL: quickstart documents `DATABASE_*` overrides; failure mode is an immediate `ECONNREFUSED`, never a silent skip (edge case FR-002). |
-| `.env` pointing elsewhere | Setup fills only missing vars; fixtures are `dev-`-prefixed and purged, so foreign rows are never touched. |
+| `.env` pointing elsewhere | The `test:e2e` script pins `DATABASE_*` with `cross-env` (neither `.env` nor exported vars can redirect the run), and the dedicated e2e database is truncated around every test. |
 | CI drift from local | Identical image pin (`postgres:18`) in compose and the workflow service; same env default names. |
 | Regression test loses teeth | SC-002's one-time fault injection proves the stale-skip test fails when the skip is removed; recorded in quickstart § Acceptance. |
