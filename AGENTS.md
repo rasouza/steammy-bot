@@ -52,10 +52,11 @@ npm run test:e2e -- --coverage
   testing module. E2E uses `Test.createTestingModule`; `test/health.e2e-spec.ts`
   needs neither a database nor a Discord token, but `test/broadcast.e2e-spec.ts`
   and `test/sync.e2e-spec.ts` boot the real `DatabaseModule` +
-  `PlatformsModule` against the dedicated Compose PostgreSQL (`e2e-database`,
-  port 5433, database `steammy_e2e`). Provision it with
-  `docker compose up -d --wait e2e-database` then
-  `npm run db:e2e:setup` before `npm run test:e2e`; Nest's `ConfigModule`
+  `PlatformsModule` against the compose PostgreSQL server's dedicated test
+  database (`steammy_test`, same `database` service as development, port
+  5432). Provision it with `docker compose up -d --wait database` then
+  `npm run db:e2e:setup` before `npm run test:e2e` — setup creates the
+  database and schema and applies migrations; Nest's `ConfigModule`
   loads the committed, test-only `.env.test` file for database settings and a
   dummy `BOT_TOKEN`, and Vitest has no environment-mutating setup file.
   Outbound boundaries are mocked and nothing else: a fake `Client` provided
@@ -75,8 +76,9 @@ npm run test:e2e -- --coverage
   (`DATABASE_SCHEMA`) on purpose, so the schema literal baked into generated
   migrations is identical in every environment. Do not make it configurable.
 - `synchronize` is never used; schema changes go through migrations only.
-- `npm run db:init` is a prerequisite, not a convenience: TypeORM will not
-  create the Postgres schema, and it creates the `migrations` table _inside_
+- `npm run db:init` is a prerequisite, not a convenience: `create-schema.ts`
+  creates the logical database (when missing) and the Postgres schema;
+  TypeORM creates neither, it only creates the `migrations` table _inside_
   that schema. Run it once per database before any `migration:run`.
 - `npm run migration:generate` diffs entities against the **live** database. Run
   it against a fully migrated DB or it emits a wrong migration.

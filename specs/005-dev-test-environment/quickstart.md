@@ -20,17 +20,20 @@ npm install --ignore-scripts   # --ignore-scripts: necord's postinstall crashes 
 ## 2. Start and provision the E2E database (FR-001)
 
 ```bash
-docker compose up -d --wait e2e-database
+docker compose up -d --wait database
 npm run db:e2e:setup
-docker compose ps              # expect: healthy, postgres:18, 127.0.0.1:5433
+docker compose ps              # expect: healthy, postgres:18, 127.0.0.1:5432
 ```
 
 The image is pinned to PostgreSQL **18** (production reports 18.6), the port
-is published on loopback only, and the dedicated `steammy_e2e` database is
-stored in the `steammy-e2e-data` named volume. The `pg_isready` healthcheck
+is published on loopback only, and both databases live in the
+`steammy-dev-data` named volume: `steammy_dev` created by the container,
+`steammy_test` created by the setup command. The `pg_isready` healthcheck
 lets `--wait` block until the server accepts connections. The setup command
-creates the `steammy_bot` schema and applies migrations through TypeORM before
-tests start; it is safe to rerun.
+creates the `steammy_test` database and the `steammy_bot` schema and applies
+migrations through TypeORM before tests start; it is safe to rerun. The two
+databases share one server but never touch each other: the suite connects
+only to `steammy_test` and clears its tables between tests.
 
 ## 3. Run the e2e suites (FR-002…FR-005, FR-009)
 
@@ -83,22 +86,22 @@ E2E connection values loaded by Nest from `.env.test`:
 | Variable            | Value             | Source                            |
 | ------------------- | ----------------- | --------------------------------- |
 | `DATABASE_HOST`     | `127.0.0.1`       | `.env.test`                       |
-| `DATABASE_PORT`     | `5433`            | same                              |
-| `DATABASE_NAME`     | `steammy_e2e`     | same — dedicated Compose database |
-| `DATABASE_USER`     | `steammy_e2e`     | same                              |
-| `DATABASE_PASSWORD` | `steammy_e2e`     | same                              |
+| `DATABASE_PORT`     | `5432`            | same                              |
+| `DATABASE_NAME`     | `steammy_test`    | same — dedicated Compose database |
+| `DATABASE_USER`     | `steammy_dev`     | same — the Compose role           |
+| `DATABASE_PASSWORD` | `steammy_dev`     | same — the Compose role           |
 | `DATABASE_SSL`      | `false`           | same                              |
 | `BOT_TOKEN`         | `e2e-dummy-token` | dummy — no real token is used     |
 
 ### Troubleshooting
 
-| Symptom                          | Cause                              | Fix                                                                           |
-| -------------------------------- | ---------------------------------- | ----------------------------------------------------------------------------- |
-| `ECONNREFUSED 127.0.0.1:5433`    | E2E database container not running | `docker compose up -d --wait e2e-database`                                    |
-| `password authentication failed` | E2E database credentials changed   | align `.env.test` and the `e2e-database` service in Compose                   |
-| port 5433 already in use         | another local PostgreSQL           | stop the other listener or change the E2E port in Compose and `.env.test`     |
-| schema or migration missing      | database was not provisioned       | `npm run db:e2e:setup`                                                        |
-| suite hangs on migration         | two suites racing                  | not expected — `fileParallelism: false` is set; check for a second manual run |
+| Symptom                          | Cause                                          | Fix                                                                           |
+| -------------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------- |
+| `ECONNREFUSED 127.0.0.1:5432`    | compose database not running                   | `docker compose up -d --wait database`                                        |
+| `password authentication failed` | `.env.test` creds differ from the Compose role | align `DATABASE_USER`/`DATABASE_PASSWORD` in `.env.test` and your `.env`      |
+| port 5432 already in use         | another local PostgreSQL                       | stop the other listener or change the port in Compose and `.env.test`         |
+| schema or migration missing      | database was not provisioned                   | `npm run db:e2e:setup`                                                        |
+| suite hangs on migration         | two suites racing                              | not expected — `fileParallelism: false` is set; check for a second manual run |
 
 ## 4. Run the bot locally (optional — FR-007)
 

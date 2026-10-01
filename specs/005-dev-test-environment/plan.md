@@ -17,10 +17,11 @@ remains is deliberately small.
 ## Structure
 
 ```
-docker-compose.yml                 # two database services: dev `database` (5432) and
-                                   # dedicated `e2e-database` (5433, steammy_e2e) —
-                                   # postgres:18, healthchecks, named volumes
-                                   # (app + mysql removed)
+docker-compose.yml                 # one `database` service (postgres:18, 5432,
+                                   # healthcheck, named volume) hosting two
+                                   # logical databases: `steammy_dev` (POSTGRES_DB)
+                                   # + `steammy_test` (created by db:e2e:setup);
+                                   # app + mysql removed
 test/
   fixtures/broadcast.fixture.ts    # fake text channel (the Discord boundary surface)
   fixtures/http/epic.fixtures.ts   # storefront responses typed against the DTOs
@@ -34,7 +35,7 @@ test/
   sync.e2e-spec.ts                 # the sync contract (5 tests, MSW transport)
   health.e2e-spec.ts               # unchanged
 vitest.config.e2e.ts               # coverage-e2e + fileParallelism: false
-.github/workflows/build.yml        # postgres:18 service (5433/steammy_e2e),
+.github/workflows/build.yml        # postgres:18 service (5432, steammy_dev),
                                    # db:e2e:setup step, both coverage uploads
 package.json                       # + msw, fishery devDependencies (test-only);
                                    # db:e2e:setup via node --env-file=.env.test
@@ -66,7 +67,7 @@ outside the module: MSW answers axios for the storefront endpoints
 | D6 | Env defaults in a Vitest setup file with `??=` *(superseded: first by the dedicated-database restructure, then by `.env.test`)* | Originally ran before the spec module imported, so config resolution always saw the defaults. Now the committed, test-only `.env.test`: the test module's `ConfigModule` loads it via `envFilePath` (a developer's `.env` is never read), `db:e2e:setup` runs through `node --env-file`, and the suite's defaults travel with the repo. |
 | D7 | Schema-qualified raw SQL in fixtures | TypeORM only qualifies SQL it generates; `em.query` is verbatim — `"steammy_bot".…` by hand (AGENTS note). |
 | D8 | `fileParallelism: false` for e2e | Two workers initializing migrations concurrently can race; e2e runs are seconds long, serializing costs nothing. |
-| D9 | CI service container `postgres:18` | Same major as production and the compose pin; the service mirrors the compose `e2e-database` exactly (port 5433, `steammy_e2e` credentials), so the gate runs identically locally and in CI. |
+| D9 | CI service container `postgres:18` | Same major as production and the compose pin; the service mirrors the compose `database` server exactly (port 5432, `steammy_dev` credentials) and `db:e2e:setup` creates `steammy_test` on it just as locally, so the gate runs the identical provisioning path in both places. |
 | D10 | Docs-only dev safety | Guild scoping (`NODE_ENV` + `TEST_GUILD_ID`) and `BROADCAST_ENABLED` are pre-existing production mechanisms; no guard code is added for them (spec FR-007/FR-008). |
 | D11 | MSW at the HTTP transport for the sync suite (supersedes D5's "out of scope", spec Clarifications 2026-10-01) | The faithful analogue of D2/D3: fake only what is outside the process. A Nest DI fake of `EpicApi`/`XboxApi` would skip our own adapters — URL building, pinned params, Xbox's two-call flow — which is mocking `BroadcastService` in reverse. MSW intercepts axios before the network, so the real adapters, mappers, and repositories run, and `onUnhandledRequest: 'error'` makes any stray or wrong URL a test failure (SC-007). |
 

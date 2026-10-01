@@ -44,8 +44,8 @@ Prerequisites:
 # --ignore-scripts works around a crash in necord's own postinstall on Windows.
 npm install --ignore-scripts
 
-# Dedicated E2E database — separate from the local development database
-docker compose up -d --wait e2e-database
+# Disposable E2E database — same compose server, separate `steammy_test` database
+docker compose up -d --wait database
 npm run db:e2e:setup
 
 # Verify both pipelines end to end: no bot token, no Discord, no clicking,
@@ -78,31 +78,32 @@ is [specs/005-dev-test-environment/quickstart.md](specs/005-dev-test-environment
 substitutes only the outbound boundaries: a fake Discord `Client`, and MSW
 answering the storefront HTTP in-process (`onUnhandledRequest: 'error'`: an
 unmocked URL fails the test, so the run never touches the network). It needs
-the dedicated E2E PostgreSQL (`docker compose up -d --wait e2e-database`);
-run `npm run db:e2e:setup` first to create its schema and apply migrations.
-Nest's `ConfigModule` loads the test connection values and dummy `BOT_TOKEN`
-from the committed `.env.test` file. No real bot token or network calls to
-Discord/storefront APIs are used. The database is isolated from development
-data, and test tables are cleared between scenarios.
+the compose PostgreSQL server (`docker compose up -d --wait database`); run
+`npm run db:e2e:setup` first to create the `steammy_test` database and
+schema and apply migrations. Nest's `ConfigModule` loads the test connection
+values and dummy `BOT_TOKEN` from the committed `.env.test` file. No real
+bot token or network calls to Discord/storefront APIs are used. The suite
+runs in its own `steammy_test` database — isolated from development data —
+and test tables are cleared between scenarios.
 
 ### Scripts
 
-| Script                                 | Description                                            |
-| -------------------------------------- | ------------------------------------------------------ |
-| `npm run start:dev`                    | Watch mode with `NODE_ENV=development`                 |
-| `npm run build`                        | Compile TypeScript to `dist/`                          |
-| `npm run start:prod`                   | Run the compiled `dist/main.js`                        |
-| `npm run format`                       | Format `src/` and `test/` with Prettier                |
-| `npm run lint`                         | Type-aware lint with oxlint (read-only)                |
-| `npm run type:check`                   | Typecheck without emitting                             |
-| `npm test`                             | Unit tests (Vitest)                                    |
-| `npm run test:e2e`                     | E2E suites (real DB, mocked Discord + storefront HTTP) |
-| `npm run db:e2e:setup`                 | Create E2E schema and apply migrations                 |
-| `npm run db:init`                      | Create the `steammy_bot` schema if it does not exist   |
-| `npm run migration:generate -- <path>` | Generate a migration from entity changes               |
-| `npm run migration:run`                | Apply pending migrations                               |
-| `npm run migration:revert`             | Revert the last applied migration                      |
-| `npm run migration:show`               | List migrations and their applied state                |
+| Script                                 | Description                                             |
+| -------------------------------------- | ------------------------------------------------------- |
+| `npm run start:dev`                    | Watch mode with `NODE_ENV=development`                  |
+| `npm run build`                        | Compile TypeScript to `dist/`                           |
+| `npm run start:prod`                   | Run the compiled `dist/main.js`                         |
+| `npm run format`                       | Format `src/` and `test/` with Prettier                 |
+| `npm run lint`                         | Type-aware lint with oxlint (read-only)                 |
+| `npm run type:check`                   | Typecheck without emitting                              |
+| `npm test`                             | Unit tests (Vitest)                                     |
+| `npm run test:e2e`                     | E2E suites (real DB, mocked Discord + storefront HTTP)  |
+| `npm run db:e2e:setup`                 | Create `steammy_test`, schema, and migrations           |
+| `npm run db:init`                      | Create the database and `steammy_bot` schema if missing |
+| `npm run migration:generate -- <path>` | Generate a migration from entity changes                |
+| `npm run migration:run`                | Apply pending migrations                                |
+| `npm run migration:revert`             | Revert the last applied migration                       |
+| `npm run migration:show`               | List migrations and their applied state                 |
 
 TypeORM's CLI and `db:init` run from source through `tsx`, so migrations work
 without a separate compile step. The CI gate runs, in this exact order:

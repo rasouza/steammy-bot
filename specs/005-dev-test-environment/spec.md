@@ -193,14 +193,16 @@ request no longer matches a handler); restore it and re-run (expect pass).
 - A developer's `.env` points at another database → irrelevant: the suite's
   `ConfigModule` reads the committed, test-only `.env.test` instead (a
   developer's `.env` is never loaded), `db:e2e:setup` runs through
-  `node --env-file=.env.test`, and the dedicated e2e database is cleared
-  around every test, so nothing foreign is ever touched.
+  `node --env-file=.env.test`, and only the disposable `steammy_test`
+  database is cleared around every test — dev data on the same server is
+  never touched.
 - Multiple test files initializing the database concurrently → the e2e config
   disables file parallelism so migrations cannot race.
-- The schema does not exist yet (brand-new database) → `npm run db:e2e:setup`
-  creates it and applies migrations before the suite runs; at boot
-  `DatabaseModule` re-checks pending migrations (idempotent), so an
-  unprovisioned database fails loudly instead of skipping.
+- Neither the database nor the schema exists yet (fresh server) →
+  `npm run db:e2e:setup` creates both and applies migrations before the
+  suite runs; at boot `DatabaseModule` re-checks pending migrations
+  (idempotent), so an unprovisioned database fails loudly instead of
+  skipping.
 - Windows and Linux → identical behavior; the suite is pure Node/Vitest with
   no platform-specific steps.
 - The platform APIs are unreachable → irrelevant: the suite never contacts
@@ -213,20 +215,23 @@ request no longer matches a handler); restore it and re-run (expect pass).
 
 ### Functional Requirements
 
-- **FR-001**: The repository MUST provide the local databases as documented
-  compose services: image pinned to the production PostgreSQL major,
-  healthchecks so `up -d --wait` blocks until ready, loopback-only port
-  publication, named volumes — a dev service (`database`) and a dedicated
-  `e2e-database` service with fixed test credentials on its own port. The
-  compose file MUST remain app-free: the unused `app` service and the
-  commented MySQL template are removed.
-- **FR-002**: The e2e suite MUST run against a real PostgreSQL, booted from a
-  dedicated e2e database provisioned by `npm run db:e2e:setup` (schema +
-  migrations), with the real `DatabaseModule` re-checking pending migrations
-  at boot; connection defaults and a dummy `BOT_TOKEN` come from the
-  committed, test-only `.env.test` — loaded by the test module's
-  `ConfigModule` and by `node --env-file` for `db:e2e:setup` — so a
-  developer's `.env` never applies to the suite.
+- **FR-001**: The repository MUST provide the local database as a documented
+  compose service: image pinned to the production PostgreSQL major,
+  healthcheck so `up -d --wait` blocks until ready, loopback-only port
+  publication, named volume — one `database` service hosting two logical
+  databases (`steammy_dev` from `POSTGRES_DB`, `steammy_test` created by
+  `npm run db:e2e:setup`), so dev and e2e data are isolated by Postgres
+  itself rather than by a second server. The compose file MUST remain
+  app-free: the unused `app` service and the commented MySQL template are
+  removed.
+- **FR-002**: The e2e suite MUST run against a real PostgreSQL, booted from
+  the suite's own `steammy_test` database provisioned by
+  `npm run db:e2e:setup` (database + schema + migrations), with the real
+  `DatabaseModule` re-checking pending migrations at boot; connection
+  defaults and a dummy `BOT_TOKEN` come from the committed, test-only
+  `.env.test` — loaded by the test module's `ConfigModule` and by
+  `node --env-file` for `db:e2e:setup` — so a developer's `.env` never
+  applies to the suite.
 - **FR-003**: The suite MUST mock the outbound boundaries and nothing else —
   the Discord `Client`, provided in the same way production receives it (a
   global provider mirroring Necord), and the storefront HTTP transport (MSW
@@ -273,10 +278,10 @@ request no longer matches a handler); restore it and re-run (expect pass).
 
 ### Key Entities *(include if feature involves data)*
 
-- **Local database**: the compose-managed PostgreSQL — dev service `database`
-  (5432) and the suite's dedicated `e2e-database` (5433, fixed test
-  credentials); same major as production, loopback-only, durable named
-  volumes.
+- **Local database**: the compose-managed PostgreSQL server (5432,
+  loopback-only, durable named volume, same major as production) hosting two
+  logical databases: `steammy_dev` for development and the suite's
+  disposable `steammy_test`, created and migrated by `npm run db:e2e:setup`.
 - **Fixture set (test-only)**: deterministic rows composed per test from the
   Fishery factories — active and departed (`deleted`) guilds, per-platform
   subscriptions, and catalog entries in their lifecycle states — plus HTTP
@@ -296,7 +301,7 @@ request no longer matches a handler); restore it and re-run (expect pass).
 ### Measurable Outcomes
 
 - **SC-001**: From a fresh clone on a machine with Docker and Node, `docker
-  compose up -d --wait e2e-database && npm run db:e2e:setup && npm run
+  compose up -d --wait database && npm run db:e2e:setup && npm run
   test:e2e` reaches a green suite in under 10 minutes, with no bot token and
   no network access to Discord.
 - **SC-002**: Removing the stale-guild skip from the broadcast pipeline makes
@@ -319,10 +324,12 @@ request no longer matches a handler); restore it and re-run (expect pass).
 ## Assumptions
 
 - A container runtime (Docker with Compose v2) is available on the developer
-  machine: the dev database and the suite's dedicated `e2e-database` both
-  come from compose. The dev server's connection remains redirectable through
+  machine: one compose PostgreSQL server hosts both the dev database and the
+  suite's `steammy_test`. The dev connection remains redirectable through
   `DATABASE_*` in `.env`; the e2e suite deliberately pins its own — its
-  defaults live in the committed, test-only `.env.test`.
+  defaults live in the committed, test-only `.env.test`, which mirrors the
+  compose credentials (align the two if you override `DATABASE_USER` /
+  `DATABASE_PASSWORD` locally).
 - CI provides PostgreSQL as a workflow service container (FR-006); no
   third-party test infrastructure is required.
 - Testing the guild-scoped command registration and slash-command visibility
