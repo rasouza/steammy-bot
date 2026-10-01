@@ -80,10 +80,10 @@ answering the storefront HTTP in-process (`onUnhandledRequest: 'error'`: an
 unmocked URL fails the test, so the run never touches the network). It needs
 the dedicated E2E PostgreSQL (`docker compose up -d --wait e2e-database`);
 run `npm run db:e2e:setup` first to create its schema and apply migrations.
-The test script supplies its `DATABASE_*` connection values and a dummy
-`BOT_TOKEN`. No real bot token or network calls to Discord/storefront APIs are
-used. The database is isolated from development data, and test tables are
-cleared between scenarios.
+Nest's `ConfigModule` loads the test connection values and dummy `BOT_TOKEN`
+from the committed `.env.test` file. No real bot token or network calls to
+Discord/storefront APIs are used. The database is isolated from development
+data, and test tables are cleared between scenarios.
 
 ### Scripts
 

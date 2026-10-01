@@ -34,15 +34,6 @@ jobs:
           --health-timeout 5s
           --health-retries 10
 
-    env:
-      DATABASE_HOST: 127.0.0.1
-      DATABASE_PORT: '5433'
-      DATABASE_NAME: steammy_e2e
-      DATABASE_USER: steammy_e2e
-      DATABASE_PASSWORD: steammy_e2e
-      DATABASE_SSL: 'false'
-      BOT_TOKEN: e2e-dummy-token
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7

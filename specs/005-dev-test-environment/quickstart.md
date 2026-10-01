@@ -72,11 +72,11 @@ What one run does:
    tests; a second run starts from the same baseline (SC-003: five consecutive
    identical runs).
 
-E2E connection values set by `npm run test:e2e`:
+E2E connection values loaded by Nest from `.env.test`:
 
 | Variable            | Value             | Source                            |
 | ------------------- | ----------------- | --------------------------------- |
-| `DATABASE_HOST`     | `127.0.0.1`       | `cross-env` in `package.json`     |
+| `DATABASE_HOST`     | `127.0.0.1`       | `.env.test`                       |
 | `DATABASE_PORT`     | `5433`            | same                              |
 | `DATABASE_NAME`     | `steammy_e2e`     | same — dedicated Compose database |
 | `DATABASE_USER`     | `steammy_e2e`     | same                              |
@@ -89,7 +89,7 @@ E2E connection values set by `npm run test:e2e`:
 | Symptom                          | Cause                              | Fix                                                                           |
 | -------------------------------- | ---------------------------------- | ----------------------------------------------------------------------------- |
 | `ECONNREFUSED 127.0.0.1:5433`    | E2E database container not running | `docker compose up -d --wait e2e-database`                                    |
-| `password authentication failed` | E2E database credentials changed   | use the values set by the E2E npm scripts                                     |
+| `password authentication failed` | E2E database credentials changed   | align `.env.test` and the `e2e-database` service in Compose                   |
 | port 5433 already in use         | another local PostgreSQL           | stop the other listener or change the E2E port in Compose and the npm scripts |
 | schema or migration missing      | database was not provisioned       | `npm run db:e2e:setup`                                                        |
 | suite hangs on migration         | two suites racing                  | not expected — `fileParallelism: false` is set; check for a second manual run |

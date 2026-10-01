@@ -55,10 +55,11 @@ npm run test:e2e -- --coverage
   `PlatformsModule` against the dedicated Compose PostgreSQL (`e2e-database`,
   port 5433, database `steammy_e2e`). Provision it with
   `docker compose up -d --wait e2e-database` then
-  `npm run db:e2e:setup` before `npm run test:e2e`; the test script supplies
-  `DATABASE_*` and a dummy `BOT_TOKEN` via `cross-env`, and Vitest has no
-  environment-mutating setup file. Outbound boundaries are mocked and nothing
-  else: a fake `Client` provided from a `@Global()` test module (mirroring how
+  `npm run db:e2e:setup` before `npm run test:e2e`; Nest's `ConfigModule`
+  loads the committed, test-only `.env.test` file for database settings and a
+  dummy `BOT_TOKEN`, and Vitest has no environment-mutating setup file.
+  Outbound boundaries are mocked and nothing else: a fake `Client` provided
+  from a `@Global()` test module (mirroring how
   Necord provides the real one), and MSW answering the storefront HTTP for the
   sync spec (`onUnhandledRequest: 'error'` — a request no handler matches
   fails the test). Raw SQL in tests must be schema-qualified by hand

@@ -52,7 +52,7 @@ export async function createTestingApp(): Promise<TestingApp> {
     imports: [
       ConfigModule.forRoot({
         isGlobal: true,
-        envFilePath: '.env',
+        envFilePath: '.env.test',
         load: [databaseConfig],
         validationSchema: envSchema,
       }),
