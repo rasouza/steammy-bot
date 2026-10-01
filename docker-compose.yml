@@ -1,6 +1,9 @@
-# Local development only: this file provides the Postgres service for the dev
-# environment and the e2e suite. The bot itself is never run from compose —
-# it ships as an image (see .github/workflows/deploy.yml → Coolify).
+# Local development only: this file provides the PostgreSQL server for both
+# the dev environment and the e2e suite — one server, two logical databases
+# (`steammy_dev` below, `steammy_test` created by `npm run db:e2e:setup`),
+# isolated from each other by Postgres itself. The bot itself is never run
+# from compose — it ships as an image (see .github/workflows/deploy.yml →
+# Coolify).
 services:
   # ==== PostgreSQL database ====
 
@@ -13,10 +16,11 @@ services:
     volumes:
       - steammy-dev-data:/var/lib/postgresql/data
     environment:
-      # Throwaway container defaults so a fresh clone can run the dev
-      # database with no DATABASE_* entries in .env (the e2e suite uses its
-      # own service below and takes its credentials from the committed
-      # .env.test).
+      # Throwaway defaults so a fresh clone can run the dev database with no
+      # DATABASE_* entries in .env. This creates `steammy_dev`; the e2e suite
+      # connects to `steammy_test` on the same server with the committed
+      # `.env.test`, which mirrors these credentials — if you override
+      # DATABASE_USER / DATABASE_PASSWORD here, align `.env.test`.
       - POSTGRES_DB=${DATABASE_NAME:-steammy_dev}
       - POSTGRES_USER=${DATABASE_USER:-steammy_dev}
       - POSTGRES_PASSWORD=${DATABASE_PASSWORD:-steammy_dev}
@@ -36,24 +40,5 @@ services:
       retries: 12
       start_period: 10s
 
-  e2e-database:
-    image: postgres:18
-    restart: unless-stopped
-    volumes:
-      - steammy-e2e-data:/var/lib/postgresql
-    environment:
-      - POSTGRES_DB=steammy_e2e
-      - POSTGRES_USER=steammy_e2e
-      - POSTGRES_PASSWORD=steammy_e2e
-    ports:
-      - 127.0.0.1:5433:5432
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U steammy_e2e -d steammy_e2e']
-      interval: 5s
-      timeout: 5s
-      retries: 12
-      start_period: 10s
-
 volumes:
   steammy-dev-data:
-  steammy-e2e-data:

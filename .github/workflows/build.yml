@@ -18,16 +18,18 @@ jobs:
     runs-on: ubuntu-latest
 
     services:
-      # The e2e suite uses its own PostgreSQL database, with Discord mocked
-      # in-process.
+      # One PostgreSQL server, mirroring compose: POSTGRES_DB creates the
+      # dev database, and `db:e2e:setup` creates the suite's `steammy_test`
+      # on it — the exact provisioning path a local run takes. Discord is
+      # mocked in-process.
       postgres:
         image: postgres:18
         env:
-          POSTGRES_DB: steammy_e2e
-          POSTGRES_USER: steammy_e2e
-          POSTGRES_PASSWORD: steammy_e2e
+          POSTGRES_DB: steammy_dev
+          POSTGRES_USER: steammy_dev
+          POSTGRES_PASSWORD: steammy_dev
         ports:
-          - 5433:5432
+          - 5432:5432
         options: >-
           --health-cmd pg_isready
           --health-interval 5s
@@ -82,7 +84,7 @@ jobs:
           files: ./coverage/lcov.info
           fail_ci_if_error: false
 
-      - name: Create E2E schema and apply migrations
+      - name: Create E2E database and schema, apply migrations
         run: npm run db:e2e:setup
 
       - name: Run e2e tests
