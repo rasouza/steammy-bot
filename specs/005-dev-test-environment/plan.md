@@ -21,14 +21,21 @@ docker-compose.yml                 # database service: postgres:18, healthcheck,
                                    # loopback port, named volume (app + mysql removed)
 test/
   setup/e2e-env.ts                 # deterministic DATABASE_* / BOT_TOKEN defaults (??= only)
-  fixtures/broadcast.fixture.ts    # dev- fixtures + schema bootstrap + purge
+  fixtures/db.fixture.ts           # schema bootstrap + schema-qualified purge (shared)
+  fixtures/broadcast.fixture.ts    # dev- broadcast rows + fake text channel
+  fixtures/http/epic.fixtures.ts   # storefront responses typed against the DTOs
+  fixtures/http/xbox.fixtures.ts
+  helpers/testing-app.ts           # shared TestingModule + fake Client spies
   broadcast.e2e-spec.ts            # the broadcast contract (4 tests)
+  sync.e2e-spec.ts                 # the sync contract (5 tests, MSW transport)
   health.e2e-spec.ts               # unchanged
 vitest.config.e2e.ts               # setupFiles + fileParallelism: false
 .github/workflows/build.yml        # build job gains a postgres:18 service
+package.json                       # + msw devDependency (test-only)
 ```
 
-Test module composition — one mocked boundary:
+Test module composition — both mocked boundaries are outbound; everything the
+suite verifies runs real:
 
 ```
 Test.createTestingModule
@@ -37,7 +44,9 @@ Test.createTestingModule
 ├── PlatformsModule                                     # registry → GenericPlatform
 │     └── BroadcastModule → BroadcastService            # real
 └── TestDiscordModule (@Global, exports Client)         # fake: channels.fetch only
-```
+
+outside the module: MSW answers axios for the storefront endpoints
+                              # (onUnhandledRequest: 'error' ⇒ offline)
 
 ## Key decisions
 
@@ -47,12 +56,13 @@ Test.createTestingModule
 | D2 | Mock `Client`, not `BroadcastService` | The stale-skip and mark-after-delivery logic live *behind* the client; mocking the service would test the mock. The fake records `channels.fetch`/`send` — exactly the production surface `BroadcastService` touches. |
 | D3 | Fake Client provided from a `@Global()` module | Necord's `NecordModule` is `@Global()`, which is how `BroadcastModule` resolves `Client` without importing anything. The test mirrors that topology instead of introducing an interface into production code. |
 | D4 | Real PostgreSQL, no SQLite/pg-mem | The behavior under test (FK cascade on departed guilds, timestamptz offer windows, `bigint` price columns, relations) is TypeORM/Postgres behavior; an emulation would verify the emulation. |
-| D5 | No MSW / storefront mocking | Broadcast reads the catalog table; Xbox/Epic HTTP is not on the path (spec clarification: never call platform APIs). Sync-path testing is a different concern, out of scope. |
+| D5 | No storefront mocking for broadcast (scope at the time; extended by D11) | Broadcast reads the catalog table; Xbox/Epic HTTP is not on the broadcast path (spec clarification: never call platform APIs). Sync-path coverage was initially out of scope. |
 | D6 | Env defaults in a Vitest setup file with `??=` | Runs before the spec module is imported, so config resolution always sees them; exported `DATABASE_*` win, so CI and developers can redirect the suite without code changes. |
 | D7 | Schema-qualified raw SQL in fixtures | TypeORM only qualifies SQL it generates; `em.query` is verbatim — `"steammy_bot".…` by hand (AGENTS note). |
 | D8 | `fileParallelism: false` for e2e | Two workers initializing migrations concurrently can race; e2e runs are seconds long, serializing costs nothing. |
 | D9 | CI service container `postgres:18` | Same major as production and the compose pin; the gate (`test:e2e`) then runs identically locally and in CI. |
 | D10 | Docs-only dev safety | Guild scoping (`NODE_ENV` + `TEST_GUILD_ID`) and `BROADCAST_ENABLED` are pre-existing production mechanisms; no guard code is added for them (spec FR-007/FR-008). |
+| D11 | MSW at the HTTP transport for the sync suite (supersedes D5's "out of scope", spec Clarifications 2026-10-01) | The faithful analogue of D2/D3: fake only what is outside the process. A Nest DI fake of `EpicApi`/`XboxApi` would skip our own adapters — URL building, pinned params, Xbox's two-call flow — which is mocking `BroadcastService` in reverse. MSW intercepts axios before the network, so the real adapters, mappers, and repositories run, and `onUnhandledRequest: 'error'` makes any stray or wrong URL a test failure (SC-007). |
 
 ## Production-code surface
 
@@ -61,7 +71,8 @@ harness, the `preview()` API, the scheduler guard and the env guard added by
 the first iteration were all reverted (FR-008, SC-005). Changed files are
 limited to `docker-compose.yml`, `.env.example`, `README.md`, `AGENTS.md`,
 `.github/workflows/build.yml`, `vitest.config.e2e.ts`, `package.json`
-(dev-script removal — reverted to stock) and `test/`.
+(dev-script removal — reverted to stock; later `+msw` as a devDependency,
+test-only) and `test/`.
 
 ## Risks
 

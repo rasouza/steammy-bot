@@ -1,18 +1,16 @@
 import { ChannelType } from 'discord.js';
-import { Pool } from 'pg';
 import type { EntityManager } from 'typeorm';
 import {
   CatalogEpic,
   Guild,
   Subscription,
 } from '../../src/database/entities/index.js';
-import { DATABASE_SCHEMA } from '../../src/config/index.js';
 import { EPIC_PLATFORM } from '../../src/gamesources/epic/index.js';
 
 /**
  * Deterministic fixtures for the broadcast e2e suite. Every row id is
- * prefixed `dev-`, which is exactly what `purgeFixtureRows` deletes — tests
- * can never touch rows they did not create.
+ * prefixed `dev-`, which is exactly what `purgeFixtureRows` (db.fixture.ts)
+ * deletes — tests can never touch rows they did not create.
  *
  * Discord ids are fake snowflakes: only their uniqueness matters, because
  * `subscription.id` (the channel id) is part of the primary key and the
@@ -23,47 +21,6 @@ export const STALE_GUILD_ID = 'dev-e2e-guild-stale';
 export const ACTIVE_CHANNEL_ID = '150000000000000001';
 export const STALE_CHANNEL_ID = '150000000000000002';
 export const PENDING_GAME_ID = 'dev-epic-pending-offer';
-
-/**
- * The Postgres schema must exist before TypeORM initializes: TypeORM never
- * creates a schema, and it creates the `migrations` bookkeeping table inside
- * it (same prerequisite as `npm run db:init`). Runs against the same
- * DATABASE_* connection the test module will use.
- */
-export async function ensureDatabaseSchema(): Promise<void> {
-  const pool = new Pool({
-    host: process.env.DATABASE_HOST,
-    port: Number(process.env.DATABASE_PORT ?? 5432),
-    database: process.env.DATABASE_NAME,
-    user: process.env.DATABASE_USER,
-    password: process.env.DATABASE_PASSWORD,
-    ssl: process.env.DATABASE_SSL === 'true',
-  });
-
-  try {
-    await pool.query(`CREATE SCHEMA IF NOT EXISTS "${DATABASE_SCHEMA}"`);
-  } finally {
-    await pool.end();
-  }
-}
-
-/**
- * Removes every fixture row from the previous test. Deleting the guilds
- * cascades to their subscriptions (FK `ON DELETE CASCADE`), so catalog rows
- * plus guilds are the whole cleanup. Raw SQL is schema-qualified by hand:
- * TypeORM only qualifies the SQL it generates itself, never `em.query`.
- */
-export async function purgeFixtureRows(em: EntityManager): Promise<void> {
-  await em.query(
-    `DELETE FROM "${DATABASE_SCHEMA}".catalog_epic WHERE id LIKE 'dev-%'`,
-  );
-  await em.query(
-    `DELETE FROM "${DATABASE_SCHEMA}".catalog_xbox WHERE id LIKE 'dev-%'`,
-  );
-  await em.query(
-    `DELETE FROM "${DATABASE_SCHEMA}".guild WHERE id LIKE 'dev-%'`,
-  );
-}
 
 export async function seedGuild(
   em: EntityManager,

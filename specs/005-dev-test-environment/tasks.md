@@ -3,7 +3,7 @@
 description: "Task list template for feature implementation"
 ---
 
-# Tasks: Dev/Test Environment — Local Database, Broadcast E2E Suite, Documented Run
+# Tasks: Dev/Test Environment — Local Database, E2E Suites (Broadcast + Sync), Documented Run
 
 **Input**: Design documents from `/specs/005-dev-test-environment/`
 
@@ -13,11 +13,13 @@ description: "Task list template for feature implementation"
 scripts, dry-run API, check runner) was superseded — see spec.md
 Clarifications. Tasks T002–T031 of that iteration were removed with the code
 they described; surviving IDs keep their identity (T001/T032/T034/T035), new
-work continues at T036.
+work continues at T036. The later sync-suite extension (same day, spec.md
+Clarifications) continues at T044.
 
 **Tests**: the project constitution (Principle V) requires colocated unit
 specs for unit-testable changes and pins both globs. This feature's primary
-deliverable IS a test — the e2e suite lives at `test/broadcast.e2e-spec.ts`.
+deliverable IS a test — the e2e suites live at `test/broadcast.e2e-spec.ts`
+and `test/sync.e2e-spec.ts`.
 
 **Organization**: Tasks are grouped by phase; each phase's output is
 verifiable on its own.
@@ -82,3 +84,16 @@ bot (US3, FR-007)
 
 - [X] T034 [US2] Run the full six-step CI gate in order — `npx prettier --check "src/**/*.ts" "test/**/*.ts"`, `npm run type:check`, `npm run lint`, `npm run build`, `npm test`, `npm run test:e2e` — all must pass; lint must stay at 0 errors (constitution Principle IV)
 - [X] T043 [US2] Acceptance proofs: SC-002 fault injection (remove the stale-guild skip in `BroadcastService.send` → exactly the regression test fails with the stale channel fetched → restore → green again); SC-003 five consecutive identical green `test:e2e` runs with no cleanup; SC-001 fresh-clone path verified end to end against a local PostgreSQL 18.6 instance (Docker unavailable on the acceptance machine — the compose path uses the identical image major and credentials) (US2 scenarios 1–5)
+
+---
+
+## Phase 6: Sync pipeline suite
+
+**Purpose**: extend the same line of thought to the fetch → map → persist
+half — real adapters/mappers/repositories, storefront HTTP mocked at the
+transport (US4, FR-003, FR-009)
+
+- [X] T044 [US4] Extract the shared e2e plumbing the second spec needs: `test/helpers/testing-app.ts` (module factory — Config + Database + Platforms + `@Global()` fake `Client` with the module-level spies) and `test/fixtures/db.fixture.ts` (schema bootstrap + schema-qualified purge moved out of `broadcast.fixture.ts`); `test/broadcast.e2e-spec.ts` switches to them and stays green (FR-003)
+- [X] T045 [US4] Add the `msw` devDependency, `test/fixtures/http/epic.fixtures.ts` and `test/fixtures/http/xbox.fixtures.ts` (typed against the DTOs, `dev-`-prefixed ids), and `test/sync.e2e-spec.ts`: five contract tests — qualifying persisted / non-qualifying dropped; idempotent re-sync with changed fields updated; announced row stays announced; Xbox id list forwarded to the products request with pinned params/body and mapped values persisted; empty id list skips the products call — `setupServer` with `onUnhandledRequest: 'error'` (FR-009)
+- [X] T046 [P] [US4] Amend the artifacts for sync coverage: `spec.md` (US4, FR-003 reword, FR-009, SC-007, clarification, assumption removed), `plan.md` (decision D11 + structure), `quickstart.md` (sync section + expected counts), README and AGENTS Tests wording (FR-007)
+- [X] T047 [US4] Re-run the full six-step gate over the extended suite (3 files / 10 e2e tests) and confirm repeat runs stay green (SC-003, SC-004)

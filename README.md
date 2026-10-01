@@ -47,9 +47,9 @@ npm install --ignore-scripts
 # Local database — PostgreSQL 18, matching production
 docker compose up -d database
 
-# Verify the broadcast pipeline end to end: no bot token, no Discord, no
-# clicking. Runs the real platform/broadcast code against the real database
-# with only the Discord client mocked in-process (see "Tests" below).
+# Verify both pipelines end to end: no bot token, no Discord, no clicking,
+# no storefront APIs. Runs the real platform code against the real database
+# with only the outbound boundaries mocked in-process (see "Tests" below).
 npm run test:e2e
 ```
 
@@ -72,13 +72,16 @@ is [specs/005-dev-test-environment/quickstart.md](specs/005-dev-test-environment
 ### Tests
 
 `npm run test:e2e` boots a Nest testing module with the real
-`DatabaseModule` (schema + migrations applied automatically) and the real
-broadcast pipeline, and substitutes exactly one boundary: a fake Discord
-`Client`. It needs a PostgreSQL — by default the bundled one
-(`docker compose up -d database`, credentials `steammy_dev`); export
-`DATABASE_*` to point it at another throwaway database. No bot token, no
-network calls to Discord or the storefront APIs, and no state survives the
-run (fixtures are `dev-`-prefixed and purged around every test).
+`DatabaseModule` (schema + migrations applied automatically), the real
+`PlatformsModule`, and both pipelines — broadcast and sync — end to end. It
+substitutes only the outbound boundaries: a fake Discord `Client`, and MSW
+answering the storefront HTTP in-process (`onUnhandledRequest: 'error'`: an
+unmocked URL fails the test, so the run never touches the network). It needs
+a PostgreSQL — by default the bundled one (`docker compose up -d database`,
+credentials `steammy_dev`); export `DATABASE_*` to point it at another
+throwaway database. No bot token, no network calls to Discord or the
+storefront APIs, and no state survives the run (fixtures are `dev-`-prefixed
+and purged around every test).
 
 ### Scripts
 
@@ -92,7 +95,7 @@ run (fixtures are `dev-`-prefixed and purged around every test).
 | `npm run type:check`                   | Typecheck without emitting                              |
 | `npm test`                             | Unit tests (Vitest)                                     |
 | `npm run test:cov`                     | Unit tests with coverage report (CI uploads to Codecov) |
-| `npm run test:e2e`                     | Integration suite (real DB, mocked Discord)             |
+| `npm run test:e2e`                     | E2E suites (real DB, mocked Discord + storefront HTTP)  |
 | `npm run db:init`                      | Create the `steammy_bot` schema if it does not exist    |
 | `npm run migration:generate -- <path>` | Generate a migration from entity changes                |
 | `npm run migration:run`                | Apply pending migrations                                |

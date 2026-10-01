@@ -45,13 +45,16 @@ npm run test:e2e
 - Unit specs construct services directly (`new GameEmbedService()`), no Nest
   testing module. E2E uses `Test.createTestingModule`; `test/health.e2e-spec.ts`
   needs neither a database nor a Discord token, but `test/broadcast.e2e-spec.ts`
-  boots the real `DatabaseModule` + `PlatformsModule` against a real PostgreSQL
-  (by default the compose database — `docker compose up -d database`; defaults
-  `steammy_dev`, set in `test/setup/e2e-env.ts`, overridable via `DATABASE_*`).
-  Discord is the only mocked boundary: a fake `Client` provided from a
-  `@Global()` test module, mirroring how Necord provides the real one. Raw SQL
-  in tests must be schema-qualified by hand (`"steammy_bot".…`) — TypeORM only
-  qualifies SQL it generates itself. `vitest.config.e2e.ts` sets
+  and `test/sync.e2e-spec.ts` boot the real `DatabaseModule` +
+  `PlatformsModule` against a real PostgreSQL (by default the compose
+  database — `docker compose up -d database`; defaults `steammy_dev`, set in
+  `test/setup/e2e-env.ts`, overridable via `DATABASE_*`). Outbound boundaries
+  are mocked and nothing else: a fake `Client` provided from a `@Global()`
+  test module (mirroring how Necord provides the real one), and MSW answering
+  the storefront HTTP for the sync spec (`onUnhandledRequest: 'error'` — a
+  request no handler matches fails the test). Raw SQL in tests must be
+  schema-qualified by hand (`"steammy_bot".…`) — TypeORM only qualifies SQL
+  it generates itself. `vitest.config.e2e.ts` sets
   `fileParallelism: false` so migrations never race.
 - `tsx` transpiles without typechecking, so `npm run typeorm` and
   `npm run db:init` do not typecheck. Run `type:check` separately.

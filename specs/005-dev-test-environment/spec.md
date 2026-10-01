@@ -1,10 +1,10 @@
-# Feature Specification: Dev/Test Environment — Local Database, Broadcast E2E Suite, Documented Run
+# Feature Specification: Dev/Test Environment — Local Database, E2E Suites (Broadcast + Sync), Documented Run
 
 **Feature Branch**: `005-dev-test-environment`
 
 **Created**: 2026-09-30
 
-**Status**: Draft (revised 2026-10-01, see Clarifications)
+**Status**: Draft (revised 2026-10-01, see Clarifications — sync coverage added same day)
 
 **Input**: User description: "Dev/test environment: one-command stack, fixtures, broadcast dry-run, smoke checks. Why: There is no documented path from a fresh clone to 'the bot did its job'. Exercising the broadcast pipeline today means hand-assembling Postgres + .env + a Discord token + real subscriptions, then clicking /sync and /broadcast in a live guild. Regressions in that pipeline — the product's core value — are only discovered in production. The broadcast-stale-subscriptions bug (.specify/bugs/) was diagnosed from a pasted production log because there was no local way to reproduce a broadcast run."
 
@@ -30,9 +30,18 @@
 - Q: A local `SCHEDULE_ENABLED` cron guard (old FR-017)? → **A: Dropped.**
   The pre-existing `BROADCAST_ENABLED` kill switch remains the only switch;
   a quiet local run sets it to `false`.
-- Q: HTTP mocking (MSW) for the storefront APIs? → **A: Not needed.** The
-  broadcast pipeline reads the catalog from the database; Xbox/Epic APIs are
-  never in its path (session 2026-09-30: never call platform APIs).
+- Q: HTTP mocking (MSW) for the storefront APIs? → **A: Not needed — for the
+  broadcast suite.** (Session 2026-09-30: never call platform APIs.) The
+  broadcast pipeline reads the catalog from the database, so Xbox/Epic are
+  never in its path.
+- Q: (Later, 2026-10-01) Extend the suite to the sync pipeline — and how? →
+  **A: Yes, same line of thought.** The sync path (`fetch → map → persist`)
+  is covered end to end against the real database, with storefront HTTP
+  mocked at the **transport** layer via MSW (axios intercepted in-process,
+  `onUnhandledRequest: 'error'` enforcing offline). Only what is outside the
+  process is faked — the Discord `Client` and the storefront wire — while the
+  Epic/Xbox API adapters, mappers, and repositories run for real. This
+  supersedes the "not needed" answer above, which was scoped to broadcast.
 - Q: Keep the compose `app` service and the commented MySQL template? →
   **A: No.** The bot is never run from compose — it ships as an image and the
   release chain hands it to Coolify; compose exists only for the local
@@ -140,6 +149,42 @@ is present.
 
 ---
 
+### User Story 4 - Sync pipeline regression suite (Priority: P4)
+
+A developer runs the same one-command suite and the fetch side of the
+pipeline is exercised against a real database too: the real Epic and Xbox API
+adapters hit a mocked storefront wire, the real mappers translate, the real
+repositories upsert — and nothing ever leaves the machine. The contract that
+re-syncs can never resurrect an already-announced offer is executable.
+
+**Why this priority**: it extends the payoff of story 2 to the other half of
+the lifecycle; it ranks last only because it builds on top of an already
+working suite and environment, not because the coverage matters less.
+
+**Independent Test**: Run the suite offline (expect pass); change a request
+URL or parameter in an adapter (expect the matching test to fail because the
+request no longer matches a handler); restore it and re-run (expect pass).
+
+**Acceptance Scenarios**:
+
+1. **Given** a mocked Epic response with one qualifying and one
+   non-qualifying offer, **When** the suite runs, **Then** exactly the
+   qualifying offer is persisted with its mapped values, and the other never
+   reaches the catalog.
+2. **Given** an already-synced row, **When** the suite re-syncs, **Then**
+   there is still exactly one row and changed fields are updated (upsert
+   semantics).
+3. **Given** an announced row, **When** the suite re-syncs, **Then** it
+   remains announced — `saveAll` never writes the `broadcasted` flag.
+4. **Given** the mocked Xbox id list, **When** the suite syncs, **Then** the
+   products request carries exactly those ids with the documented parameters
+   and the mapped products persist; with an empty id list, the products
+   endpoint is never called.
+5. **Given** a request no registered handler matches, **When** the suite
+   runs, **Then** it fails instead of reaching the network.
+
+---
+
 ### Edge Cases
 
 - The database container is not running → the suite fails immediately with a
@@ -148,15 +193,16 @@ is present.
 - A developer's `.env` points at another database → exported `DATABASE_*`
   variables win (test setup fills only what is missing), and fixtures are
   `dev-`-prefixed and purged around every test, so nothing foreign is touched.
-- Two test files initializing the database concurrently → the e2e config
+- Multiple test files initializing the database concurrently → the e2e config
   disables file parallelism so migrations cannot race.
 - The schema does not exist yet (brand-new database) → the suite creates it
   before the module boots (same prerequisite as `db:init`), then migrations
   run automatically.
 - Windows and Linux → identical behavior; the suite is pure Node/Vitest with
   no platform-specific steps.
-- The platform APIs are unreachable → irrelevant: no verification step calls
-  them (session 2026-09-30).
+- The platform APIs are unreachable → irrelevant: the suite never contacts
+  them — MSW answers axios in-process, and any URL without a registered
+  handler fails the test (FR-009).
 - Production code accidentally grows test-only paths (a dry-run flag, a dev
   script) → prevented by FR-008 and checked by inspection (SC-005).
 
@@ -174,10 +220,11 @@ is present.
   real `DatabaseModule` so the schema is created if absent and migrations run
   automatically, with deterministic connection defaults that `DATABASE_*`
   environment variables can override.
-- **FR-003**: The suite MUST mock exactly one boundary — the Discord `Client`
-  — provided in the same way production receives it (a global provider
-  mirroring Necord), and MUST never require a bot token or make any network
-  call to Discord.
+- **FR-003**: The suite MUST mock the outbound boundaries and nothing else —
+  the Discord `Client`, provided in the same way production receives it (a
+  global provider mirroring Necord), and the storefront HTTP transport (MSW
+  answering axios in-process) — and MUST never require a bot token or make
+  any network call to Discord, Epic, or Xbox.
 - **FR-004**: Fixtures MUST be deterministic, prefixed so they are
   distinguishable from any other row, and purged around every test; neither
   the suite nor any fixture path may call the real Xbox or Epic services.
@@ -200,6 +247,15 @@ is present.
   dry-run/preview API, no development scripts under `src/`, no new startup or
   scheduler guards beyond the pre-existing switches, and no test support in
   the compiled `dist/`.
+- **FR-009**: The suite MUST cover the sync pipeline end to end through the
+  real API adapters, mappers, and repositories against the real database,
+  with storefront HTTP mocked at the transport layer: qualifying offers
+  persisted with mapped values while non-qualifying ones are dropped;
+  re-sync idempotent (one row, changed fields updated); an announced row
+  still announced after re-sync; the Xbox two-call flow (id list forwarded
+  to the products request, parameters and body pinned) and its empty-id
+  short-circuit. Any request no registered handler matches MUST fail the
+  test rather than reach the network.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -207,12 +263,17 @@ is present.
   production, loopback-only, durable named volume.
 - **Fixture set (test-only)**: deterministic rows created around each test —
   an active guild and a departed (`deleted`) guild, one subscription each,
-  and a pending catalog entry inside its offer window — all prefixed `dev-`
-  and removed after the test.
+  and a pending catalog entry inside its offer window — plus HTTP response
+  bodies shaped like the real storefront payloads; all row ids prefixed
+  `dev-`, rows removed after the test.
 - **Broadcast contract**: the four behaviors FR-005 enumerates; the suite is
   their executable definition.
+- **Sync contract**: the behaviors FR-009 enumerates — the fetch → map →
+  persist half of the lifecycle, likewise executable.
 - **Discord boundary**: the `Client` seam production injects from Necord and
   tests replace with a recording fake.
+- **Storefront boundary**: the axios HTTP transport the API adapters use;
+  MSW replaces it with recorded fixture responses.
 
 ## Success Criteria *(mandatory)*
 
@@ -232,6 +293,10 @@ is present.
   `src/dev`, no `preview()` API, no dev scripts in `package.json`.
 - **SC-006**: Following the README verbatim from a fresh clone reproduces a
   green suite with no undocumented step.
+- **SC-007**: The suite performs zero network requests — any URL without a
+  registered MSW handler fails it — and a re-sync of an already-announced
+  entry leaves it announced (the executable pin of `saveAll` never writing
+  `broadcasted`).
 
 ## Assumptions
 
@@ -243,9 +308,6 @@ is present.
 - Testing the guild-scoped command registration and slash-command visibility
   against the live Discord API remains a manual, out-of-band activity — the
   suite's boundary mock makes that unnecessary for pipeline verification.
-- The storefront sync path (`/sync`) is not covered by this suite; catalog
-  rows are fixtures, and covering HTTP APIs would require a different testing
-  concern (see Clarifications 2026-10-01).
 - Fault injection for SC-002 is a one-time acceptance activity performed by
   hand, not a shipped capability.
 - If the suite exposes a broadcast pipeline defect (as the

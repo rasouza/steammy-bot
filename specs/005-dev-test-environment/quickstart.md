@@ -1,4 +1,4 @@
-# Quickstart — local database, the broadcast suite, running the bot
+# Quickstart — local database, the e2e suites, running the bot
 
 Everything below works from a fresh clone on Windows or Linux. Expected wall
 time with Docker and a warm npm cache: well under 10 minutes (SC-001).
@@ -29,7 +29,7 @@ is published on loopback only, data lives in the named volume
 `steammy-dev-data`, and the `pg_isready` healthcheck lets `--wait` block
 until the server accepts connections.
 
-## 3. Run the broadcast suite (FR-002…FR-005)
+## 3. Run the e2e suites (FR-002…FR-005, FR-009)
 
 ```bash
 npm run test:e2e
@@ -38,8 +38,8 @@ npm run test:e2e
 Expected tail:
 
 ```
- Test Files  2 passed (2)
-      Tests  5 passed (5)
+ Test Files  3 passed (3)
+      Tests  10 passed (10)
 ```
 
 What one run does:
@@ -50,17 +50,22 @@ What one run does:
    prerequisite as `npm run db:init`).
 3. `Test.createTestingModule` boots the real `DatabaseModule` — migrations run
    automatically — plus `PlatformsModule`, with a **fake Discord `Client`**
-   as the only substituted boundary (provided globally, exactly like Necord
-   provides the real one). Nothing logs in; nothing is posted.
-4. Four contract tests run against the real `GenericPlatform` +
-   `BroadcastService`:
-   - pending game → delivered to the active subscriber → marked announced;
-   - departed guild's subscription → skipped before any channel fetch, and
-     the active subscriber still receives (the production
-     `broadcast-stale-subscriptions` regression);
-   - delivery failure → the entry stays pending (delivery first, state
-     second);
-   - already-announced entry → no fetch, no send.
+   (provided globally, exactly like Necord provides the real one) and, for
+   the sync spec, **MSW** answering axios for the storefront endpoints.
+   `onUnhandledRequest: 'error'` makes the run offline by construction: an
+   unmocked URL fails the test. Nothing logs in; nothing is posted; nothing
+   reaches Epic or Xbox.
+4. Contract tests run against the real `GenericPlatform`:
+   - **broadcast (4)**: pending game → delivered to the active subscriber →
+     marked announced; departed guild's subscription skipped before any
+     channel fetch while the active subscriber still receives (the
+     production `broadcast-stale-subscriptions` regression); delivery
+     failure → the entry stays pending; already-announced entry untouched.
+   - **sync (5)**: qualifying Epic offer persisted with mapped values while
+     the non-qualifying one is dropped; re-sync idempotent (one row, changed
+     fields updated); an announced row stays announced; the Xbox id list is
+     forwarded to the products request (params and body pinned) with mapped
+     products persisted; an empty id list skips the products call.
 5. Every test purges its `dev-`-prefixed rows; a second run starts from the
    same baseline (SC-003: five consecutive identical runs).
 
@@ -111,3 +116,6 @@ docker compose down -v      # stop and wipe the database
 - **SC-002**: temporarily remove the stale-guild skip in
   `BroadcastService.resolveTargets` (comment the `outcome: 'stale'` branch) →
   the second contract test must fail; restore it → all green again.
+- **US4 / SC-007**: temporarily change the endpoint path in `EpicApi.fetch`
+  → the sync spec must fail with an unhandled-request error (the URL no
+  longer matches a handler); restore it → all green again.

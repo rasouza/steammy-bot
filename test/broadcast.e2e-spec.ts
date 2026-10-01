@@ -1,17 +1,7 @@
-import { ConfigModule } from '@nestjs/config';
-import { Global, Module, type INestApplication } from '@nestjs/common';
-import { Test, type TestingModule } from '@nestjs/testing';
-import { getDataSourceToken } from '@nestjs/typeorm';
-import { Client } from 'discord.js';
+import type { INestApplication } from '@nestjs/common';
 import type { DataSource } from 'typeorm';
-import type { Mock } from 'vitest';
-
-import { databaseConfig, envSchema } from '../src/config/index.js';
-import { DatabaseModule } from '../src/database/database.module.js';
 import { CatalogEpic } from '../src/database/entities/index.js';
 import { EPIC_PLATFORM } from '../src/gamesources/epic/index.js';
-import { PlatformsModule } from '../src/modules/platforms/platforms.module.js';
-import { PLATFORM_REGISTRY } from '../src/modules/platforms/platform.tokens.js';
 import type { PlatformRuntime } from '../src/modules/platforms/platform.types.js';
 import {
   ACTIVE_CHANNEL_ID,
@@ -19,39 +9,20 @@ import {
   PENDING_GAME_ID,
   STALE_CHANNEL_ID,
   STALE_GUILD_ID,
-  ensureDatabaseSchema,
   fakeTextChannel,
-  purgeFixtureRows,
   seedEpicSubscription,
   seedGuild,
   seedPendingEpicGame,
 } from './fixtures/broadcast.fixture.js';
-
-/**
- * Mirrors how production gets its `Client`: NecordModule is `@Global()`, so
- * `BroadcastModule` resolves the token without importing anything. The fake
- * delegates to the per-test spy, which is assigned before the module compiles.
- */
-let fetchSpy: Mock<(id: string) => Promise<unknown>>;
-let sendSpy: Mock<(payload: unknown) => Promise<unknown>>;
-
-@Global()
-@Module({
-  providers: [
-    {
-      provide: Client,
-      useValue: { channels: { fetch: (id: string) => fetchSpy(id) } },
-    },
-  ],
-  exports: [Client],
-})
-class TestDiscordModule {}
+import { purgeFixtureRows } from './fixtures/db.fixture.js';
+import { createTestingApp, fetchSpy, sendSpy } from './helpers/testing-app.js';
 
 /**
  * Broadcast pipeline contract, end to end: real `GenericPlatform` and real
  * `BroadcastService` against real PostgreSQL (schema + migrations applied by
  * `DatabaseModule`), with exactly one mocked boundary — the Discord client
- * provided here in place of Necord's. Nothing logs in, nothing is posted.
+ * provided by the shared test module in place of Necord's. Nothing logs in,
+ * nothing is posted.
  *
  * The stale-guild case is the executable regression test for the production
  * `broadcast-stale-subscriptions` bug: a subscription pointing at a guild the
@@ -60,35 +31,11 @@ class TestDiscordModule {}
  */
 describe('Broadcast pipeline (e2e)', () => {
   let app: INestApplication;
-  let moduleRef: TestingModule;
   let dataSource: DataSource;
   let runtimes: PlatformRuntime[];
 
   beforeAll(async () => {
-    fetchSpy = vi.fn<(id: string) => Promise<unknown>>();
-    sendSpy = vi.fn<(payload: unknown) => Promise<unknown>>();
-
-    await ensureDatabaseSchema();
-
-    moduleRef = await Test.createTestingModule({
-      imports: [
-        ConfigModule.forRoot({
-          isGlobal: true,
-          envFilePath: '.env',
-          load: [databaseConfig],
-          validationSchema: envSchema,
-        }),
-        DatabaseModule,
-        PlatformsModule,
-        TestDiscordModule,
-      ],
-    }).compile();
-
-    app = moduleRef.createNestApplication();
-    await app.init();
-
-    dataSource = moduleRef.get<DataSource>(getDataSourceToken());
-    runtimes = moduleRef.get<PlatformRuntime[]>(PLATFORM_REGISTRY);
+    ({ app, dataSource, runtimes } = await createTestingApp());
   });
 
   beforeEach(async () => {
