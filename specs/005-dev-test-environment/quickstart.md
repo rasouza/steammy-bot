@@ -128,10 +128,12 @@ Executed on a Docker-capable machine (Docker 29.8.1, Compose v5.5.1)
 against the current 20-test suite; results recorded here per plan risk
 "Regression test loses teeth".
 
-- **SC-001 / SC-006**: the README § E2E block verbatim — `docker compose up
--d --wait database && npm run db:e2e:setup && npm run test:e2e` — from a
-  fresh compose state → green **20/20 in ~45 s total** (compose+wait 6 s,
-  setup 16 s, suite 19 s), no bot token, zero network to Discord; far inside
+- **SC-001 / SC-006**: the README § E2E block run literally from its first
+  line — `npm install --ignore-scripts` → `docker compose up -d --wait
+database` → `npm run db:e2e:setup` → `npm run test:e2e` → green **20/20**:
+  9 s warm (install 2 s, compose 1 s, setup 2 s, suite 4 s); the first, cold
+  run against an empty Docker state took **~45 s total** (compose+wait 6 s,
+  setup 16 s, suite 19 s). No bot token, zero network to Discord; far inside
   the 10-minute budget. The first attempt caught a real defect: `postgres:18`
   now refuses a volume mounted at the legacy `/var/lib/postgresql/data` path
   and requires `/var/lib/postgresql` — fixed in `docker-compose.yml` (see the
