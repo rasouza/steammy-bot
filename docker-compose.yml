@@ -14,7 +14,12 @@ services:
     container_name: database
     restart: always
     volumes:
-      - steammy-dev-data:/var/lib/postgresql/data
+      # Mount at /var/lib/postgresql — postgres:18+ stores data in
+      # major-version-specific subdirectories and refuses a volume on the
+      # legacy /var/lib/postgresql/data path (docker-library/postgres
+      # PR #1259). Existing pre-18-layout volumes must be wiped
+      # (`docker compose down -v`); local dev data is throwaway.
+      - steammy-dev-data:/var/lib/postgresql
     environment:
       # Throwaway defaults so a fresh clone can run the dev database with no
       # DATABASE_* entries in .env. This creates `steammy_dev`; the e2e suite
