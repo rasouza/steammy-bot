@@ -73,14 +73,22 @@ outside the module: MSW answers axios for the storefront endpoints
 
 ## Production-code surface
 
-None. `src/` is byte-identical to the branch point except for nothing: the
-harness, the `preview()` API, the scheduler guard and the env guard added by
-the first iteration were all reverted (FR-008, SC-005). Changed files are
-limited to `docker-compose.yml`, `.env.example`, `README.md`, `AGENTS.md`,
-`.github/workflows/build.yml`, `vitest.config.e2e.ts`, `package.json`
-(dev-script removal — reverted to stock; later `+msw`, `+fishery` as
-devDependencies, test-only, plus the `.env.test` e2e / `db:e2e:setup`
-scripts) and `test/`.
+Exactly one production-source file changed:
+`src/database/scripts/create-schema.ts` gained an ensure-database step —
+`CREATE DATABASE` for the configured database when missing, over a
+connection to the server's maintenance database — because the
+single-server topology makes `npm run db:e2e:setup` the thing that
+provisions `steammy_test` (FR-001/FR-002). It is shared infrastructure
+(`db:init` runs the same code) and is not gated on any test environment,
+so it is not a test-only path (FR-008, SC-005): no dry-run API, no dev
+scripts, no new guards. Everything else added by the first iteration —
+`src/dev/`, the `preview()` API, the scheduler guard and the env guard —
+was reverted. Changed files are limited to that one script,
+`docker-compose.yml`, `.env.test` (new, test-only config), `.env.example`,
+`README.md`, `AGENTS.md`, `.github/workflows/build.yml`,
+`vitest.config.e2e.ts`, `package.json` (dev-script removal — reverted to
+stock; later `+msw`, `+fishery` as devDependencies, test-only, plus the
+`.env.test` e2e / `db:e2e:setup` scripts) and `test/`.
 
 ## Risks
 

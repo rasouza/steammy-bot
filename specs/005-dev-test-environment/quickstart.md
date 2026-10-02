@@ -119,16 +119,32 @@ npm run start:dev          # watch mode; pending migrations run automatically
 
 ```bash
 docker compose down         # stop; the data volume is kept
-docker compose down -v      # stop and wipe both local database volumes
+docker compose down -v      # stop and wipe all local database data (both databases share the one volume)
 ```
 
-## Acceptance proofs (one-time, by hand)
+## Acceptance proofs (performed 2026-10-02, by hand)
 
-- **SC-003**: run `npm run test:e2e` five times back to back — identical
-  results, no cleanup between runs.
-- **SC-002**: temporarily remove the stale-guild skip in
-  `BroadcastService.resolveTargets` (comment the `outcome: 'stale'` branch) →
-  the second contract test must fail; restore it → all green again.
-- **US4 / SC-007**: temporarily change the endpoint path in `EpicApi.fetch`
-  → the sync spec must fail with an unhandled-request error (the URL no
-  longer matches a handler); restore it → all green again.
+Executed on a Docker-capable machine (Docker 29.8.1, Compose v5.5.1)
+against the current 20-test suite; results recorded here per plan risk
+"Regression test loses teeth".
+
+- **SC-001 / SC-006**: the README § E2E block verbatim — `docker compose up
+-d --wait database && npm run db:e2e:setup && npm run test:e2e` — from a
+  fresh compose state → green **20/20 in ~45 s total** (compose+wait 6 s,
+  setup 16 s, suite 19 s), no bot token, zero network to Discord; far inside
+  the 10-minute budget. The first attempt caught a real defect: `postgres:18`
+  now refuses a volume mounted at the legacy `/var/lib/postgresql/data` path
+  and requires `/var/lib/postgresql` — fixed in `docker-compose.yml` (see the
+  volume comment), which is exactly the drift this proof exists to find.
+- **SC-002**: comment out the `guild.deleted` stale-skip in
+  `BroadcastService.send` → exactly 3 broadcast runs fail — both
+  departed-guild contract tests with
+  `expected "vi.fn()" to not be called with arguments: ['150000000000000002']`
+  (the stale channel _was_ fetched) and the mixed-state run; sync/health
+  unaffected → restore → 20/20 green again.
+- **SC-003**: five consecutive `npm run test:e2e` runs, no cleanup between →
+  `Test Files 3 passed / Tests 20 passed` identically every time.
+- **US4 / SC-007**: change the endpoint path in `EpicApi.fetch` → exactly the
+  3 Epic sync tests fail with MSW's unhandled-request `error` strategy
+  (`Cannot bypass a request when using the "error" strategy`), Xbox and
+  broadcast unaffected → restore → 20/20 green again.
