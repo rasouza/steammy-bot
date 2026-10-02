@@ -4,9 +4,60 @@
 
 **Created**: 2026-10-02
 
-**Status**: Draft (clarified 2026-10-02 — both open questions answered at draft time, see Assumptions)
+**Status**: Draft (clarified 2026-10-02 — two draft-time questions plus five in the `/speckit.clarify` session, all resolved; see Clarifications and Assumptions)
 
 **Input**: User description: "Add `/dev broadcast` and `/dev sync <platform>` slash commands so the sync and broadcast pipelines can be exercised by hand in the test guild. `/dev broadcast` picks one game per platform, turns `broadcasted` back to false, and then reuses the broadcast command to broadcast to TEST_GUILD_ID only. `/dev sync <PLATFORM>` reuses the registered platforms, clears all the games in the catalog for that platform, reuses the sync command to insert the records, and marks all games as broadcasted after the sync so we prevent flooding channels. These `/dev` commands can only be run in TEST_GUILD_ID alongside the admin commands."
+
+## Clarifications
+
+### Session 2026-10-02
+
+- Q: Both dev commands must make rows non-pending without ever sending a
+  message — `/dev sync` seeds a freshly fetched catalog as announced, and
+  `/dev broadcast` suppresses surplus pending rows so that exactly one is
+  delivered per platform — while Principle II forbids persisting the
+  `broadcasted` flag before a successful send. Amend the constitution to
+  permit that, or adjust the commands to stay inside the rule? →
+  **A: Amend Principle II.** Add a narrow carve-out: an operator-invoked dev
+  reset may mark rows announced without a send, **provided its reply reports
+  how many it suppressed**. FR-006 and FR-009 stand unchanged; the reporting
+  condition is imposed as FR-015. The bump type was settled separately
+  below, and this spec depends on that amendment landing (see Assumptions).
+- Q: SC-002 requires `/dev broadcast` to deliver exactly one message per
+  platform, but a freshly created development database has no subscription
+  rows — what should the command do when nothing is subscribed? →
+  **A: It never consults subscriptions.** `/dev broadcast` posts to the
+  channel the developer typed the command in, and that is safe precisely
+  because the command only registers under `TEST_GUILD_ID` (FR-001) and only
+  during local development runs (FR-014) — so the invocation channel is
+  necessarily inside the test guild. **No subscription row may be used to
+  choose a recipient.** This supersedes the earlier
+  development-database-isolation reading: confinement now comes from the
+  invocation channel, not from which channels happen to be subscribed.
+  Imposed as FR-016.
+- Q: FR-016 requires `/dev broadcast` to post to the invocation channel
+  without reading subscriptions, while FR-012 forbids any branch that
+  bypasses the production pipeline — where should that invocation-channel
+  send live? → **A: Inside the existing send, as an input.** The single
+  broadcast send gains an optional recipient that the dev command supplies;
+  recipient resolution becomes an input rather than a fork around the send.
+  One send implementation, one embed, mark-after-ack unchanged — so the
+  earlier preference for leaving `BroadcastService` untouched is superseded
+  in letter while being honoured in substance: its ordering is not altered,
+  and no second sender exists to drift out of step. FR-012 is reworded to
+  say so.
+- Q: Should the Principle II carve-out be ratified as a MAJOR, MINOR, or
+  PATCH amendment to the constitution? → **A: MAJOR** (3.1.2 → 4.0.0). The
+  versioning policy treats "relaxing one of the non-negotiable rules" as
+  MAJOR, and this carve-out relaxes a MUST-level rule that compliance review
+  enforces, so it takes the heavier path and the explicit maintainer
+  sign-off that goes with it.
+- Q: Should the dev commands acknowledge the interaction immediately and
+  update that same reply once the work finishes, or reply only when the work
+  has finished? → **A: Acknowledge immediately, then update the same reply.**
+  Uniform for both commands, so there is no fast-path/slow-path divergence to
+  test, and it stays correct however long the storefront takes or how many
+  platforms are configured. Imposed as FR-017.
 
 ## User Scenarios & Testing _(mandatory)_
 
@@ -62,7 +113,7 @@ appear and are runnable by an Administrator.
 ### User Story 2 - One real message per platform, on demand (Priority: P2)
 
 An operator in the test guild runs `/dev broadcast` and, moments later, sees
-exactly one freshly-constructed message per platform land in the subscribed
+exactly one freshly-constructed message per platform land in that same
 channel — produced by the real delivery pipeline, not a mock or a preview.
 Running it again behaves identically.
 
@@ -89,9 +140,18 @@ exactly one per platform, on every consecutive run.
 4. **Given** a successful run, **When** the operator inspects the catalog
    afterwards, **Then** every row is in the announced state — so a second
    run behaves exactly like the first.
-5. **Given** only the test guild is subscribed in the local database,
-   **When** `/dev broadcast` runs, **Then** no message appears in any other
-   guild.
+5. **Given** the command is run from a channel inside the test guild,
+   **When** `/dev broadcast` runs, **Then** the messages appear in that
+   channel and in no other — regardless of which channels are subscribed, or
+   whether any are subscribed at all.
+6. **Given** a run that marks rows announced without delivering them —
+   surplus pending rows on `/dev broadcast`, or a freshly seeded catalog on
+   `/dev sync` — **When** the reply is shown, **Then** it states how many
+   rows were suppressed, so no row is ever dropped silently.
+7. **Given** a run that takes longer than the platform's interaction window,
+   **When** `/dev broadcast` is invoked, **Then** the reply is acknowledged
+   on invocation and completed when the work ends — never replaced by the
+   platform's "application did not respond" error.
 
 ---
 
@@ -115,7 +175,9 @@ current rows remain, and a subsequent scheduled pass delivers nothing.
 
 1. **Given** a platform's catalog holds stale rows, **When**
    `/dev sync <platform>` runs successfully, **Then** afterwards the catalog
-   holds exactly the rows the storefront returned and no stale row survives.
+   holds exactly the rows the storefront returned and no stale row survives,
+   and the reply reports how many rows were seeded as announced without
+   being delivered.
 2. **Given** the reset completed, **When** the scheduled announcement pass
    next runs, **Then** nothing is announced for that platform.
 3. **Given** the storefront request fails, **When** `/dev sync <platform>`
@@ -123,6 +185,10 @@ current rows remain, and a subsequent scheduled pass delivers nothing.
    removed — and the command reports the failure instead of a reset.
 4. **Given** a successful reset, **When** `/dev broadcast` is run
    afterwards, **Then** exactly one message is delivered for that platform.
+5. **Given** the storefront request takes several seconds, **When**
+   `/dev sync <platform>` is invoked, **Then** the operator sees an
+   acknowledgement straight away and the outcome lands in that same reply —
+   never the platform's "application did not respond" error.
 
 ---
 
@@ -145,6 +211,12 @@ current rows remain, and a subsequent scheduled pass delivers nothing.
 - An invocation arrives in a non-test guild (for example from a registration
   that has not yet propagated away) → it must be refused at runtime rather
   than executed, and the refusal must not leak catalog state.
+- The command is run from a thread, or from a channel where the bot cannot
+  post → that platform's send fails and the reply reports it; the other
+  platforms are unaffected.
+- The development database holds subscriptions for other guilds → they are
+  irrelevant to `/dev broadcast`, which never reads them (FR-016); the
+  scheduled pass and admin `/broadcast` still honour them as before.
 - The scheduled announcement pass fires while `/dev broadcast` is mid-run →
   worst case the scheduled pass claims the row the command intended to
   deliver; the operator sees zero delivered for that platform and a repeat
@@ -187,9 +259,13 @@ current rows remain, and a subsequent scheduled pass delivers nothing.
   using the same platform choices already offered by `/sync` and
   `/broadcast`; an unregistered platform MUST be rejected.
 - **FR-012**: Both commands MUST reuse the existing synchronisation and
-  broadcast pipeline. They MUST NOT introduce a second delivery path, a
-  dry-run or preview mode, or any branch that bypasses the production
-  pipeline.
+  broadcast pipeline: one send implementation, one embed, and a row marked
+  announced only after that send is acknowledged. Recipient resolution is an
+  **input** to that single send rather than a fork around it — `/dev
+broadcast` supplies the invocation channel (FR-016), while the scheduled
+  pass and `/broadcast` supply subscriptions. A second sender, a dry-run or
+  preview mode, or any branch that bypasses the production pipeline remains
+  forbidden.
 - **FR-013**: `/sync` and `/broadcast` MUST be scoped to the test guild in
   every run mode, including deployed runs — the scope must not depend on
   how the process was started.
@@ -197,6 +273,24 @@ current rows remain, and a subsequent scheduled pass delivers nothing.
   development runs and MUST NOT be offered by a deployed run, even when the
   test guild is configured and the bot is a member of it. `/sync` and
   `/broadcast` are unaffected by this gate (FR-013).
+- **FR-015**: Whenever a dev command marks rows announced **without
+  delivering them** — `/dev sync` seeding a freshly fetched catalog (FR-009)
+  or `/dev broadcast` suppressing surplus pending rows (FR-006) — its reply
+  MUST state that count. This is the condition attached to the Principle II
+  carve-out the feature depends on (see Clarifications and Assumptions); a
+  suppression that goes unreported would be exactly the silent loss that
+  Principle II exists to prevent.
+- **FR-016**: `/dev broadcast` MUST post its messages to the channel the
+  command was invoked from, and MUST NOT consult subscription rows to choose
+  a recipient. It supplies that channel as the recipient input to the shared
+  send (FR-012) rather than running a sender of its own. The invocation
+  channel is always inside the test guild because the command is offered
+  only there (FR-001) and only during local development runs (FR-014).
+- **FR-017**: Both dev commands MUST acknowledge the interaction as soon as
+  they are invoked and update that same reply with the outcome when the work
+  completes. They MUST NOT reply only after finishing, which would let the
+  platform discard an interaction that went unanswered for its
+  roughly-three-second window and show an error instead of a result.
 
 ### Key Entities _(include if feature involves data)_
 
@@ -210,8 +304,11 @@ current rows remain, and a subsequent scheduled pass delivers nothing.
   drives the choices both commands offer and bounds what either command can
   act on.
 - **Subscription**: the record of a channel that wants platform
-  announcements. In a local development database only the test guild's
-  channel is subscribed, which is what confines delivery to that guild.
+  announcements, consulted by the scheduled pass and the admin `/broadcast`.
+  It plays no part in `/dev broadcast`, which never reads it to choose a
+  recipient (FR-016).
+- **Invocation channel**: the channel the operator typed the command in —
+  `/dev broadcast`'s only delivery target, and the place its reply appears.
 
 ## Success Criteria _(mandatory)_
 
@@ -240,16 +337,29 @@ current rows remain, and a subsequent scheduled pass delivers nothing.
 - **SC-008**: A deployed run registers **0** `/dev` commands regardless of
   `TEST_GUILD_ID`, while still registering `/sync` and `/broadcast` in the
   test guild — both counts verifiable from the guild's command list.
+- **SC-009**: Every invocation that suppresses unsent rows reports that
+  count in its reply; suppressed-but-unreported rows: **0**.
+- **SC-010**: Messages posted by `/dev broadcast` land in exactly one
+  channel — the one the command was run from — with messages appearing
+  anywhere else, and subscription rows consulted to pick a recipient, both
+  at **0**.
+- **SC-011**: Invocations that surface the platform's "did not respond"
+  error because the handler replied only after finishing: **0** — across
+  both dev commands, including a `/dev sync` run against a slow storefront.
 
 ## Assumptions
 
 - The test guild is the maintainer's own guild and only its Administrators
   can reach these commands; that is the access boundary, not a per-user
   allowlist.
-- Locally, only the test guild's channel is subscribed in the development
-  database, so reusing the real broadcast pipeline inherently confines
-  delivery to that guild. **No target filter is added to the delivery
-  path** — the Constitution II ordering and the send path stay untouched.
+- `/dev broadcast` takes its recipient from the invocation channel rather
+  than from subscription rows (decided 2026-10-02, see Clarifications),
+  superseding an earlier development-database-isolation reading. Delivery is
+  confined because the command is only offered inside the test guild during
+  local development runs, so the channel it is typed in is necessarily
+  inside that guild. Principle II's ordering still holds — a row is marked
+  only after the send is acknowledged — whatever the recipient happens to
+  be.
 - Failing closed when no test guild is configured follows directly from the
   requirement that these commands exist _only_ in that guild: with no such
   guild, they exist nowhere.
@@ -269,5 +379,14 @@ current rows remain, and a subsequent scheduled pass delivers nothing.
   here on the grounds that they add **no second execution path**: they
   prepare catalog state and then call the same pipeline production calls.
   No dry-run API, no preview mode, no test-only branch.
+- **This spec depends on a constitution amendment** (decided 2026-10-02,
+  see Clarifications): Principle II needs a narrow carve-out permitting an
+  operator-invoked dev reset to mark rows announced without a send, so that
+  FR-006 and FR-009 survive compliance review as written. The maintainer
+  ratified it as a **MAJOR** amendment (3.1.2 → 4.0.0) — the heaviest
+  available — because the carve-out relaxes a MUST-level rule rather than
+  merely widening guidance, and MAJOR is what carries the explicit sign-off
+  that requires. The rule governing the scheduled pipeline's delivery
+  ordering is not relaxed by it.
 - `/dev broadcast` picks rows without operator input (one per platform,
   chosen deterministically); selecting a _specific_ game is out of scope.
