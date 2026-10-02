@@ -30,9 +30,13 @@ A record MUST NOT be marked as delivered until the delivery has demonstrably suc
 the `broadcasted` flag only after Discord acknowledges the message; on failure the game MUST
 remain un-broadcast so the next run retries it.
 
-`broadcast.service.ts:65` and `:103` currently set `game.broadcasted = true` and save *before*
-calling `send()` at `:67` and `:105`. This is a known defect. New code MUST NOT reproduce the
-ordering, and touching broadcast logic without correcting it is not compliant.
+This rule is not vacuous: the codebase's historical shape wrote `game.broadcasted = true` and
+saved *before* calling `send()` — precisely the silent-loss path the first paragraph forbids.
+Delivery marking now lives in the platform lifecycle: `GenericPlatform` sets the flag only
+after `send()` reports success (`delivered > 0 || subscribers === 0`), and a total failure
+leaves the game pending for the next pass. New code MUST NOT reproduce the pre-delivery
+ordering, and touching broadcast logic without keeping marking after delivery is not
+compliant.
 
 Rationale: a transient Discord outage or rate limit otherwise marks games as announced forever
 and they are never retried — permanent, silent data loss.
@@ -95,8 +99,10 @@ Unit specs are colocated as `src/**/*.spec.ts`. End-to-end specs live in `test/*
   while executing nothing. The two suites MUST stay disjoint — zero cross-suite specs — and
   neither suite may collect files from `dist/`, `build/`, or `node_modules/`.
 - Unit specs construct services directly (`new GameEmbedService()`); no Nest testing module.
-  E2E specs use `Test.createTestingModule` with a single module and require neither a database
-  nor a Discord token.
+  E2E specs use `Test.createTestingModule` with a single module and never require a real
+  Discord token (the boundary is a provided fake `Client`). Database-backed suites (the
+  broadcast/sync contract specs) connect only to the disposable `steammy_test` database
+  provisioned by `npm run db:e2e:setup` from the committed `.env.test` (spec 005 FR-002).
 - `tsconfig.build.json` excludes `**/*spec.ts` so specs never reach `dist/`, but
   `tsc --noEmit -p tsconfig.json` does typecheck them.
 - Vitest transpiles with esbuild, which emits no `design:paramtypes` decorator metadata. The
@@ -232,4 +238,4 @@ Compliance review: the six CI steps in Principle IV are the mechanical floor. Th
 checks in "Compliance review expectations" — new platform branching, delivery ordering, and
 partial-gate passes — are not automatable and MUST be verified by a human reviewer.
 
-**Version**: 3.1.1 | **Ratified**: 2026-09-27 | **Last Amended**: 2026-09-30
+**Version**: 3.1.2 | **Ratified**: 2026-09-27 | **Last Amended**: 2026-10-02
