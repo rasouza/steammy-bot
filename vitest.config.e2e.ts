@@ -7,5 +7,16 @@ export default defineConfig({
     exclude: ['**/node_modules/**', '**/dist/**', '**/build/**'],
     globals: true,
     environment: 'node',
+    // Database-backed specs share one Postgres: migrations must not race.
+    fileParallelism: false,
+    coverage: {
+      provider: 'v8',
+      // Separate from the unit report so the unit and e2e coverage runs
+      // never clobber each other — coverage cleans only its own directory.
+      // Codecov merges both lcov uploads into one report per commit.
+      reportsDirectory: './coverage-e2e',
+      include: ['src/**/*.ts'],
+      reporter: ['text', 'lcov'],
+    },
   },
 });

@@ -239,8 +239,8 @@ npx prettier --check "src/**/*.ts" "test/**/*.ts"
 npm run type:check
 npm run lint
 npm run build
-npm run test:cov
-npm run test:e2e
+npm run test -- --coverage
+npm run test:e2e -- --coverage
 ```
 
 Self-check against the touch-point contract: `git diff --stat` should show

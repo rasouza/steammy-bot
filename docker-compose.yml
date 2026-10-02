@@ -1,58 +1,60 @@
-version: '3'
+# Local development only: this file provides the PostgreSQL server for both
+# the dev environment and the e2e suite — one server, two logical databases
+# (`steammy_dev` below, `steammy_test` created by `npm run db:e2e:setup`),
+# isolated from each other by Postgres itself. The bot itself is never run
+# from compose — it ships as an image (see .github/workflows/deploy.yml →
+# Coolify).
+#
+# Fixed project name: without it Compose derives the project from the
+# directory, so every checkout/worktree got its own volume
+# (`<dirname>_steammy-dev-data`) while all of them fought over the fixed
+# container name and the single port 5432 — switching worktrees silently
+# pointed you at a different, emptier database. Pinned, one stable dev
+# database everywhere (`steammy-bot_steammy-dev-data`). Existing
+# directory-named volumes are orphaned by this change: recreate with
+# `npm run db:init`.
+name: steammy-bot
 
 services:
-
-  # ==== Application ====
-
-  app:
-    image: ghcr.io/rasouza/steammy-bot:latest
-    pull_policy: always
-    volumes:
-        - ./logs/:/app/logs
-        - ./assets:/app/assets
-    restart: unless-stopped
-    environment:
-      - NODE_ENV=production
-      - BOT_TOKEN=${BOT_TOKEN}
-      - TEST_GUILD_ID=${TEST_GUILD_ID}
-      - DATABASE_NAME=${DATABASE_NAME}
-      - DATABASE_USER=${DATABASE_USER}
-      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
-      - DATABASE_HOST=${DATABASE_HOST}
-      - DATABASE_PORT=${DATABASE_PORT}
-      - DATABASE_SSL=${DATABASE_SSL}
-      - API_PORT=${API_PORT}
-    # depends_on:
-    #   - database
-
-  
   # ==== PostgreSQL database ====
 
   database:
-    image: postgres
+    # Pinned major: matches the production server (verified with SELECT
+    # version() → PostgreSQL 18.6) so migrations behave locally as in prod.
+    image: postgres:18
     container_name: database
     restart: always
     volumes:
-      - ./data:/var/lib/postgresql:rw
+      # Mount at /var/lib/postgresql — postgres:18+ stores data in
+      # major-version-specific subdirectories and refuses a volume on the
+      # legacy /var/lib/postgresql/data path (docker-library/postgres
+      # PR #1259). Existing pre-18-layout volumes must be wiped
+      # (`docker compose down -v`); local dev data is throwaway.
+      - steammy-dev-data:/var/lib/postgresql
     environment:
-      - POSTGRES_DB=${DATABASE_NAME}
-      - POSTGRES_USER=${DATABASE_USER}
-      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
+      # Throwaway defaults so a fresh clone can run the dev database with no
+      # DATABASE_* entries in .env. This creates `steammy_dev`; the e2e suite
+      # connects to `steammy_test` on the same server with the committed
+      # `.env.test`, which mirrors these credentials — if you override
+      # DATABASE_USER / DATABASE_PASSWORD here, align `.env.test`.
+      - POSTGRES_DB=${DATABASE_NAME:-steammy_dev}
+      - POSTGRES_USER=${DATABASE_USER:-steammy_dev}
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD:-steammy_dev}
     ports:
-      - 5432:5432
+      # Loopback only — the local database is never reachable from the network.
+      - 127.0.0.1:5432:5432
+    healthcheck:
+      # Lets `docker compose up -d --wait database` block until Postgres is
+      # ready, so db:init never races an uninitialized server.
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U ${DATABASE_USER:-steammy_dev} -d ${DATABASE_NAME:-steammy_dev}',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
 
-  # ==== MySQL database ====
-
-  # database:
-  #   image: mysql # or `mariadb`
-  #   container_name: database
-  #   restart: always
-  #   volumes:
-  #     - ./data:/var/lib/mysql:rw
-  #   environment:
-  #     - MYSQL_DATABASE=${DATABASE_NAME}
-  #     - MYSQL_USER=${DATABASE_USER}
-  #     - MYSQL_PASSWORD=${DATABASE_PASSWORD}
-  #     - MYSQL_ROOT_PASSWORD=${DATABASE_PASSWORD}
-  #   ports:
-  #     - 3306:3306
+volumes:
+  steammy-dev-data:

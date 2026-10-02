@@ -13,17 +13,23 @@ npx prettier --check "src/**/*.ts" "test/**/*.ts"
 npm run type:check
 npm run lint
 npm run build
-npm run test:cov
-npm run test:e2e
+npm run test -- --coverage
+npm run db:e2e:setup
+npm run test:e2e -- --coverage
 ```
 
 - `npm run lint` is the CI lint command: type-aware oxlint (`--type-aware`),
   read-only — it never rewrites files. `npm run format` is the writer.
 - `npm run format` writes Prettier output over `src/` and `test/`.
-- CI runs unit tests as `npm run test:cov` and uploads `coverage/lcov.info`
-  to Codecov. Uploads are informational — `fail_ci_if_error: false` plus
-  `codecov.yml` statuses keep CI green and unblocked regardless; the step
-  only reports once the `CODECOV_TOKEN` secret is set.
+- CI runs unit tests as `npm run test -- --coverage` and e2e as
+  `npm run test:e2e -- --coverage` — the plain suites with coverage passed
+  through as an argument (no `:cov` wrapper scripts). CI provisions the
+  dedicated E2E database with `npm run db:e2e:setup` before the e2e run,
+  then uploads `coverage/lcov.info` and `coverage-e2e/lcov.info` respectively.
+  Codecov merges the two uploads into one report per commit. Uploads are
+  informational — `fail_ci_if_error: false` plus `codecov.yml` statuses keep
+  CI green and unblocked regardless; the steps only report once the
+  `CODECOV_TOKEN` secret is set.
 - `npm install --ignore-scripts` is required. necord's postinstall crashes on
   Windows; CI uses `npm ci --ignore-scripts` on Linux too.
 - Node: `.nvmrc` pins `24.21.0`; `engines` sets the floor at `>=24.15.0`.
@@ -43,8 +49,24 @@ npm run test:e2e
   but `tsc --noEmit -p tsconfig.json` _does_ typecheck them. `type:check` is the
   only gate for spec files.
 - Unit specs construct services directly (`new GameEmbedService()`), no Nest
-  testing module. E2E uses `Test.createTestingModule` with a single module, so
-  it needs neither a database nor a Discord token.
+  testing module. E2E uses `Test.createTestingModule`; `test/health.e2e-spec.ts`
+  needs neither a database nor a Discord token, but `test/broadcast.e2e-spec.ts`
+  and `test/sync.e2e-spec.ts` boot the real `DatabaseModule` +
+  `PlatformsModule` against the compose PostgreSQL server's dedicated test
+  database (`steammy_test`, same `database` service as development, port
+  5432). Provision it with `docker compose up -d --wait database` then
+  `npm run db:e2e:setup` before `npm run test:e2e` — setup creates the
+  database and schema and applies migrations; Nest's `ConfigModule`
+  loads the committed, test-only `.env.test` file for database settings and a
+  dummy `BOT_TOKEN`, and Vitest has no environment-mutating setup file.
+  Outbound boundaries are mocked and nothing else: a fake `Client` provided
+  from a `@Global()` test module (mirroring how
+  Necord provides the real one), and MSW answering the storefront HTTP for the
+  sync spec (`onUnhandledRequest: 'error'` — a request no handler matches
+  fails the test). Raw SQL in tests must be schema-qualified by hand
+  (`"steammy_bot".…`) — TypeORM only qualifies SQL it generates itself.
+  `vitest.config.e2e.ts` sets `fileParallelism: false` so migrations never
+  race.
 - `tsx` transpiles without typechecking, so `npm run typeorm` and
   `npm run db:init` do not typecheck. Run `type:check` separately.
 
@@ -54,8 +76,9 @@ npm run test:e2e
   (`DATABASE_SCHEMA`) on purpose, so the schema literal baked into generated
   migrations is identical in every environment. Do not make it configurable.
 - `synchronize` is never used; schema changes go through migrations only.
-- `npm run db:init` is a prerequisite, not a convenience: TypeORM will not
-  create the Postgres schema, and it creates the `migrations` table _inside_
+- `npm run db:init` is a prerequisite, not a convenience: `create-schema.ts`
+  creates the logical database (when missing) and the Postgres schema;
+  TypeORM creates neither, it only creates the `migrations` table _inside_
   that schema. Run it once per database before any `migration:run`.
 - `npm run migration:generate` diffs entities against the **live** database. Run
   it against a fully migrated DB or it emits a wrong migration.
@@ -137,10 +160,11 @@ for the next pass. Keep that ordering intact (Constitution II).
 - `NODE_ENV` deliberately has no default, so an unset `NODE_ENV` never behaves
   like development. Necord's dev-gateway registration is gated on it plus
   `TEST_GUILD_ID`.
-- `dotenv` is imported by `src/database/data-source.ts` and
-  `src/database/scripts/create-schema.ts` but is **not** a declared dependency;
-  it resolves only because `@nestjs/config` and `typeorm` hoist it. If you touch
-  those files, add `dotenv` to `dependencies`.
+- `dotenv` is a declared dependency (`dependencies`), used by every CLI
+  entrypoint that runs outside Nest: `src/database/data-source.ts`,
+  `src/database/scripts/create-schema.ts`, and the `src/dev/*` commands,
+  which follow the same `loadEnv()` pattern. (An older note claiming it was
+  only hoisted transitively was corrected by spec 005 / T035.)
 - Catalog `price` and `size` are `bigint`, so pg returns them as strings — wrap
   in `Number()` before arithmetic, as `game-embed.service.ts` does. Prices are
   stored in cents.
@@ -171,9 +195,12 @@ manual dispatches trigger nothing: `deploy.yml` has no tag or `workflow_dispatch
 triggers, and `build.yml` no longer runs on push to `main` (it keeps its PR/dispatch
 triggers). There is no npm publish step.
 
-The Dockerfile never copies `.env`; `docker-compose.yml` injects variables
-explicitly and bind-mounts `assets/`. `.env.prod` is gitignored. Migrations run
-at container boot, so deploys have no separate migrate step.
+The Dockerfile never copies `.env`: secrets reach the deployed container as
+injected environment, never as a committed or baked-in file. `.env.prod` is
+gitignored. Migrations run at container boot, so deploys have no separate
+migrate step. `docker-compose.yml` is local-development only — it provides
+the Postgres service for the dev/e2e path and has no `app` service; the bot
+is never run from compose.
 
 ## Spec-driven workflow
 
@@ -188,8 +215,8 @@ them that way rather than porting them to PowerShell.
 `bug` provides `/speckit.bug.assess` → `.fix` → `.test`, a per-bug triage loop
 writing `.specify/bugs/<slug>/{assessment,fix,test}.md`; `assess` provides
 `/speckit.assess.intake` → `research` → `define` → `shape` → `decide`, writing
-`.specify/assessments/<slug>/`, where a *go* verdict hands off to
-`/speckit.specify` and a *kill* closes the idea. Neither registers hooks, so the
+`.specify/assessments/<slug>/`, where a _go_ verdict hands off to
+`/speckit.specify` and a _kill_ closes the idea. Neither registers hooks, so the
 Linear block below is unaffected. Beware: `specify extension add/update`
 rewrites `.specify/extensions.yml` — it strips the comment header and reflows
 the hook block — so restore the original content (keeping only the appended

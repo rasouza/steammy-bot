@@ -32,22 +32,59 @@ You can use `/unsubscribe <platform>` to stop a channel from receiving announcem
 
 ## Development
 
-Requires **Node.js >= 24.15.0** (see `.nvmrc`).
+Prerequisites:
+
+- **Node.js >= 24.15.0** (`.nvmrc` pins 24.21.0; `engines` enforces the floor)
+- **Docker** with Compose v2 — runs the local database
+- To run the bot manually: a Discord **bot token** and a **test guild** you
+  control (with the bot invited)
 
 ```bash
 # Install dependencies
 # --ignore-scripts works around a crash in necord's own postinstall on Windows.
 npm install --ignore-scripts
 
-# Start in watch mode
-npm run start:dev
+# Disposable E2E database — same compose server, separate `steammy_test` database
+docker compose up -d --wait database
+npm run db:e2e:setup
 
-# Build for production (outputs to dist/)
-npm run build
-
-# Run the compiled build
-npm run start:prod
+# Verify both pipelines end to end: no bot token, no Discord, no clicking,
+# no storefront APIs. Runs the real platform code against the real database
+# with only the outbound boundaries mocked in-process (see "Tests" below).
+npm run test:e2e
 ```
+
+### Run the bot locally
+
+```bash
+cp .env.example .env    # set BOT_TOKEN + TEST_GUILD_ID; uncomment the local DATABASE_* block
+npm run db:init         # one-time: TypeORM never creates the schema itself
+npm run start:dev       # watch mode; pending migrations run automatically on boot
+```
+
+Keep `NODE_ENV=development` in `.env`: together with `TEST_GUILD_ID` it scopes
+slash-command registration to your test guild only (`src/modules/bot`) — a
+local run never touches commands in any other guild. For a quiet local bot
+that should not post anything, also set `BROADCAST_ENABLED=false`.
+
+The full walkthrough — prerequisites, expected output, and troubleshooting —
+is [specs/005-dev-test-environment/quickstart.md](specs/005-dev-test-environment/quickstart.md).
+
+### Tests
+
+`npm run test:e2e` boots a Nest testing module with the real
+`DatabaseModule` (which applies pending migrations on startup), the real
+`PlatformsModule`, and both pipelines — broadcast and sync — end to end. It
+substitutes only the outbound boundaries: a fake Discord `Client`, and MSW
+answering the storefront HTTP in-process (`onUnhandledRequest: 'error'`: an
+unmocked URL fails the test, so the run never touches the network). It needs
+the compose PostgreSQL server (`docker compose up -d --wait database`); run
+`npm run db:e2e:setup` first to create the `steammy_test` database and
+schema and apply migrations. Nest's `ConfigModule` loads the test connection
+values and dummy `BOT_TOKEN` from the committed `.env.test` file. No real
+bot token or network calls to Discord/storefront APIs are used. The suite
+runs in its own `steammy_test` database — isolated from development data —
+and test tables are cleared between scenarios.
 
 ### Scripts
 
@@ -60,9 +97,9 @@ npm run start:prod
 | `npm run lint`                         | Type-aware lint with oxlint (read-only)                 |
 | `npm run type:check`                   | Typecheck without emitting                              |
 | `npm test`                             | Unit tests (Vitest)                                     |
-| `npm run test:cov`                     | Unit tests with coverage report (CI uploads to Codecov) |
-| `npm run test:e2e`                     | End-to-end tests (Vitest + supertest)                   |
-| `npm run db:init`                      | Create the `steammy_bot` schema if it does not exist    |
+| `npm run test:e2e`                     | E2E suites (real DB, mocked Discord + storefront HTTP)  |
+| `npm run db:e2e:setup`                 | Create `steammy_test`, schema, and migrations           |
+| `npm run db:init`                      | Create the database and `steammy_bot` schema if missing |
 | `npm run migration:generate -- <path>` | Generate a migration from entity changes                |
 | `npm run migration:run`                | Apply pending migrations                                |
 | `npm run migration:revert`             | Revert the last applied migration                       |
@@ -70,14 +107,11 @@ npm run start:prod
 
 TypeORM's CLI and `db:init` run from source through `tsx`, so migrations work
 without a separate compile step. The CI gate runs, in this exact order:
-`prettier --check` → `type:check` → `lint` → `build` → `test:cov` →
-`test:e2e`. Unit-test coverage is uploaded to Codecov as an informational
-report — it never blocks a merge.
-
-> **Testing note**: Vitest transpiles with esbuild, which does not emit
-> constructor-injection metadata (`design:paramtypes`). The current tests never
-> boot a constructor-injected class; a future test that must do so needs explicit
-> `@Inject(...)` decorators or an SWC transform plugin.
+`prettier --check` → `type:check` → `lint` → `build` →
+`test -- --coverage` → `db:e2e:setup` → `test:e2e -- --coverage` (the plain
+suites with coverage passed through as an argument). Unit and e2e coverage are
+uploaded to Codecov as two informational reports (merged per commit) —
+they never block a merge.
 
 ## Database
 
