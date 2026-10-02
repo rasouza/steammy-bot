@@ -4,6 +4,17 @@
 # isolated from each other by Postgres itself. The bot itself is never run
 # from compose — it ships as an image (see .github/workflows/deploy.yml →
 # Coolify).
+#
+# Fixed project name: without it Compose derives the project from the
+# directory, so every checkout/worktree got its own volume
+# (`<dirname>_steammy-dev-data`) while all of them fought over the fixed
+# container name and the single port 5432 — switching worktrees silently
+# pointed you at a different, emptier database. Pinned, one stable dev
+# database everywhere (`steammy-bot_steammy-dev-data`). Existing
+# directory-named volumes are orphaned by this change: recreate with
+# `npm run db:init`.
+name: steammy-bot
+
 services:
   # ==== PostgreSQL database ====
 
