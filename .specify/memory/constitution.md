@@ -38,6 +38,22 @@ leaves the game pending for the next pass. New code MUST NOT reproduce the pre-d
 ordering, and touching broadcast logic without keeping marking after delivery is not
 compliant.
 
+**Carve-out — operator-invoked dev resets.** Two commands that ship in the codebase move rows
+`false → true` without any delivery: `/dev sync`, which seeds a freshly fetched catalog as
+announced so the scheduled pass stays quiet, and `/dev broadcast`, which suppresses surplus
+pending rows so that exactly one is delivered per platform. They may do so **only** when all of
+the following hold:
+
+1. The mark is driven by an operator invoking the command in the test guild — never by the
+   scheduler, never by `/broadcast`.
+2. The reply the operator sees states how many rows were marked without being delivered. A
+   suppression that goes unreported is a violation of this principle exactly as if the carve-out
+   did not exist, because unreported suppression is the silent loss this rule exists to prevent.
+
+The carve-out is narrow on purpose: it authorises no second delivery path, no dry-run, no
+preview mode, and no relaxation of the ordering above. The scheduled pipeline and the admin
+commands keep marking only after `send()` reports success, exactly as before.
+
 Rationale: a transient Discord outage or rate limit otherwise marks games as announced forever
 and they are never retried — permanent, silent data loss.
 
@@ -205,7 +221,10 @@ Compliance review expectations:
 
 - Reviewers MUST reject changes that pass a subset of the CI gate.
 - Reviewers MUST reject new `if (platform === ...)` branching in generic services.
-- Reviewers MUST confirm no `broadcasted` flag is persisted before a successful send.
+- Reviewers MUST confirm no `broadcasted` flag is persisted before a successful send — except on
+  the two operator-invoked dev-reset paths Principle II's carve-out authorises, where reviewers
+  MUST instead confirm that the reply reports the suppressed count. A mark on any other path, or
+  an unreported suppression, is a defect.
 - Reviewers MUST reject work that bypasses the tracker of record: a feature branch with no
   `STE-x` issue, or the same `tasks.md` mirrored into GitHub Issues while Linear holds it.
 - Adding a principle, or relaxing one of the non-negotiable rules, is a MAJOR amendment and
@@ -238,4 +257,4 @@ Compliance review: the six CI steps in Principle IV are the mechanical floor. Th
 checks in "Compliance review expectations" — new platform branching, delivery ordering, and
 partial-gate passes — are not automatable and MUST be verified by a human reviewer.
 
-**Version**: 3.1.2 | **Ratified**: 2026-09-27 | **Last Amended**: 2026-10-02
+**Version**: 4.0.0 | **Ratified**: 2026-09-27 | **Last Amended**: 2026-10-03
