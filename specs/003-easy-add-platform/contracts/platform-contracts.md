@@ -177,3 +177,38 @@ Added to `envSchema` (stays `.passthrough()`); documented in `.env.example`; not
 | Xbox criteria | pending iff un-announced |
 | Scheduler isolation | one runtime throws → others still invoked (Q1) |
 | E2E smoke | `test/health.e2e-spec.ts` unchanged and passing |
+
+---
+
+## Amendment — 2026-10-03 (spec 006)
+
+Spec 006 extends `PlatformRepository<TGame>`. Its own contract document,
+[`specs/006-dev-smoke-commands/contracts/dev-command-contracts.md`](../../006-dev-smoke-commands/contracts/dev-command-contracts.md)
+§3, is authoritative for the members below; the three-member interface shown
+in §1 is this spec's original shape, retained as the record of it.
+
+Added to `PlatformRepository<TGame>`:
+
+```ts
+findDevCandidate(now: Date): Promise<TGame | null>;
+markBroadcastedExcept(candidate: TGame, now: Date): Promise<number>;
+markPending(game: Game): Promise<void>;
+clear(): Promise<void>;
+markAllBroadcasted(): Promise<number>;
+```
+
+Consequences for §1 and §8:
+
+- A new platform implements **eight** repository members, not three (006 rule R-3.4).
+- The criteria rules are unchanged and now also bind `findDevCandidate` and
+  `markBroadcastedExcept`: eligibility stays inside the platform and generic
+  code never reconstructs it (006 rule R-3.1). `epicPendingCriteria` was split
+  into `epicEligibleCriteria` + `broadcasted: false` so a dev candidate can
+  reuse the window rules with the announcement flag ignored; the exported
+  `epicPendingCriteria` keeps the shape and meaning documented above.
+- `clear()` and `markAllBroadcasted()` take no `now` (006 rule R-3.3): they are
+  unconditional whole-catalog operations.
+- Two contract-test rows join §8: one per platform covering the five new
+  primitives, in
+  `src/gamesources/epic/epic.repository.spec.ts` and
+  `src/gamesources/xbox/xbox.repository.spec.ts`.

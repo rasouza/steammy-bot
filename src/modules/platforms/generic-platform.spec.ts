@@ -29,6 +29,12 @@ function buildHarness() {
     saveAll: vi.fn<(games: Game[]) => Promise<void>>(),
     findPending: vi.fn<(now: Date) => Promise<Game[]>>(),
     markBroadcasted: vi.fn<(game: Game) => Promise<void>>(),
+    findDevCandidate: vi.fn<(now: Date) => Promise<Game | null>>(),
+    markBroadcastedExcept:
+      vi.fn<(candidate: Game, now: Date) => Promise<number>>(),
+    markPending: vi.fn<(game: Game) => Promise<void>>(),
+    clear: vi.fn<() => Promise<void>>(),
+    markAllBroadcasted: vi.fn<() => Promise<number>>(),
   };
   const broadcast = {
     send: vi.fn<
@@ -36,12 +42,18 @@ function buildHarness() {
         message: string,
         game: Game,
         platform: GamePlatformType,
+        recipient?: string,
       ) => Promise<SendOutcome>
     >(),
   };
   repository.saveAll.mockResolvedValue(undefined);
   repository.findPending.mockResolvedValue([]);
   repository.markBroadcasted.mockResolvedValue(undefined);
+  repository.findDevCandidate.mockResolvedValue(null);
+  repository.markBroadcastedExcept.mockResolvedValue(0);
+  repository.markPending.mockResolvedValue(undefined);
+  repository.clear.mockResolvedValue(undefined);
+  repository.markAllBroadcasted.mockResolvedValue(0);
   broadcast.send.mockResolvedValue({ delivered: 1, subscribers: 1 });
 
   const platform = new GenericPlatform(

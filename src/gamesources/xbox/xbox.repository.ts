@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Not, Repository } from 'typeorm';
 import { CatalogXbox } from '../../database/entities/index.js';
 import type { Game } from '../../modules/platforms/platform.types.js';
 import type { PlatformRepository } from '../../modules/platforms/platform.types.js';
@@ -31,5 +31,40 @@ export class XboxRepository implements PlatformRepository<Game> {
 
   async markBroadcasted(game: Game): Promise<void> {
     await this.repository.save({ ...game, broadcasted: true });
+  }
+
+  async findDevCandidate(_now: Date): Promise<Game | null> {
+    // `broadcasted` is the platform's only eligibility rule and a dev
+    // candidate deliberately ignores it (contracts §3, R-3.1), so every row
+    // qualifies: an empty criteria, picked deterministically by ascending id.
+    const rows = await this.repository.find({
+      where: {},
+      order: { id: 'ASC' },
+      take: 1,
+    });
+    return rows[0] ?? null;
+  }
+
+  async markBroadcastedExcept(candidate: Game, now: Date): Promise<number> {
+    const { affected } = await this.repository.update(
+      { ...xboxPendingCriteria(now), id: Not(candidate.id) },
+      { broadcasted: true },
+    );
+    return affected ?? 0;
+  }
+
+  async markPending(game: Game): Promise<void> {
+    await this.repository.update({ id: game.id }, { broadcasted: false });
+  }
+
+  async clear(): Promise<void> {
+    await this.repository.deleteAll();
+  }
+
+  async markAllBroadcasted(): Promise<number> {
+    const { affected } = await this.repository.updateAll({
+      broadcasted: true,
+    });
+    return affected ?? 0;
   }
 }
