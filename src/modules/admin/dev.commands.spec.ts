@@ -1,7 +1,7 @@
 import { Reflector } from '@nestjs/core';
-import { PermissionFlagsBits } from 'discord.js';
+import { MessageFlags, PermissionFlagsBits } from 'discord.js';
 import { SlashCommand, SlashCommandsService, Subcommand } from 'necord';
-import type { SlashCommandDiscovery } from 'necord';
+import type { SlashCommandDiscovery, SlashCommandContext } from 'necord';
 import { DevCommands } from './dev.commands.js';
 
 /**
@@ -144,5 +144,182 @@ describe('DevCommands registration', () => {
 
     expect(service.remove('dev')).toBe(true);
     expect(service.get('dev')).toBeUndefined();
+  });
+});
+
+/**
+ * The `/dev broadcast` reply contract (contracts §5, R-5.1–R-5.3, FR-015–FR-017).
+ *
+ * The obligations that matter here are *ordering* and *reporting*, neither of
+ * which is observable from the registry: Discord's three-second window is why
+ * `deferReply` has to be synchronous, and the suppression count is the only
+ * place the Principle II carve-out can be audited from.
+ */
+
+interface FakeInteraction {
+  channelId: string | null;
+  deferReply: ReturnType<typeof vi.fn>;
+  editReply: ReturnType<typeof vi.fn>;
+  reply: ReturnType<typeof vi.fn>;
+}
+
+function fakeInteraction(channelId: string | null): FakeInteraction {
+  return {
+    channelId,
+    deferReply: vi.fn<() => Promise<void>>(() => Promise.resolve()),
+    editReply: vi.fn<() => Promise<void>>(() => Promise.resolve()),
+    reply: vi.fn<() => Promise<void>>(() => Promise.resolve()),
+  };
+}
+
+interface DevOutcome {
+  delivered: number;
+  suppressed: number;
+  skipped: boolean;
+}
+
+/**
+ * A platform runtime stub carrying only what `/dev broadcast` consumes.
+ *
+ * Deliberately *not* annotated `PlatformRuntime`: that would declare
+ * `devBroadcast` as a method, and every assertion on it would then trip
+ * `unbound-method` for no reason. Inferred as a plain object it is a
+ * property, and still assignable to `PlatformRuntime` where it matters.
+ */
+function runtimeFixture(
+  type: string,
+  outcome: DevOutcome = { delivered: 1, suppressed: 0, skipped: false },
+) {
+  return {
+    type,
+    sync: vi.fn<() => Promise<void>>(() => Promise.resolve()),
+    broadcastPending: vi.fn<() => Promise<number>>(() => Promise.resolve(0)),
+    devBroadcast: vi.fn<(recipient: string) => Promise<DevOutcome>>(() =>
+      Promise.resolve(outcome),
+    ),
+  };
+}
+
+function call(
+  command: DevCommands,
+  interaction: FakeInteraction,
+): Promise<unknown> {
+  return command.onDevBroadcast([
+    interaction,
+  ] as unknown as SlashCommandContext);
+}
+
+function replyOf(interaction: FakeInteraction): string {
+  const [text] = interaction.editReply.mock.calls[0] as [string];
+  return text;
+}
+
+describe('/dev broadcast interaction contract', () => {
+  it('acknowledges with deferReply before any awaited work (R-5.2, SC-011)', async () => {
+    const interaction = fakeInteraction('invocation-channel');
+    const command = new DevCommands([runtimeFixture('epic')]);
+
+    // Deliberately not awaited: the acknowledgement has to already be in
+    // flight by the time the handler first yields, otherwise Discord can
+    // report "the application did not respond" before any work starts.
+    const pending = call(command, interaction);
+
+    expect(interaction.deferReply).toHaveBeenCalledTimes(1);
+    expect(interaction.deferReply).toHaveBeenCalledWith({
+      flags: MessageFlags.Ephemeral,
+    });
+    expect(interaction.editReply).not.toHaveBeenCalled();
+
+    await pending;
+  });
+
+  it('answers only through editReply — never a second reply (R-5.2)', async () => {
+    const interaction = fakeInteraction('invocation-channel');
+    const command = new DevCommands([runtimeFixture('epic')]);
+
+    await call(command, interaction);
+
+    expect(interaction.reply).not.toHaveBeenCalled();
+    expect(interaction.editReply).toHaveBeenCalledTimes(1);
+  });
+
+  it('passes the invocation channel id as the recipient (FR-016)', async () => {
+    const interaction = fakeInteraction('invocation-channel');
+    const runtimes = [runtimeFixture('epic'), runtimeFixture('xbox')];
+    const command = new DevCommands(runtimes);
+
+    await call(command, interaction);
+
+    // The recipient is the channel the operator typed in — never a
+    // subscription row, and the same value for every platform.
+    expect(runtimes[0].devBroadcast).toHaveBeenCalledWith('invocation-channel');
+    expect(runtimes[1].devBroadcast).toHaveBeenCalledWith('invocation-channel');
+  });
+
+  it('states the suppression count whenever rows were suppressed (R-5.1)', async () => {
+    const interaction = fakeInteraction('invocation-channel');
+    const command = new DevCommands([
+      runtimeFixture('epic', { delivered: 1, suppressed: 4, skipped: false }),
+    ]);
+
+    await call(command, interaction);
+
+    expect(replyOf(interaction)).toContain('suppressed 4');
+    expect(replyOf(interaction)).toContain('delivered 1');
+  });
+
+  it('omits the suppression clause when nothing was suppressed', async () => {
+    const interaction = fakeInteraction('invocation-channel');
+    const command = new DevCommands([
+      runtimeFixture('epic', { delivered: 1, suppressed: 0, skipped: false }),
+    ]);
+
+    await call(command, interaction);
+
+    expect(replyOf(interaction)).toContain('delivered 1');
+    expect(replyOf(interaction)).not.toContain('suppressed');
+  });
+
+  it('reports a platform with no eligible row as skipped, still succeeding (FR-007)', async () => {
+    const interaction = fakeInteraction('invocation-channel');
+    const command = new DevCommands([
+      runtimeFixture('epic', { delivered: 1, suppressed: 0, skipped: false }),
+      runtimeFixture('xbox', { delivered: 0, suppressed: 0, skipped: true }),
+    ]);
+
+    await call(command, interaction);
+
+    expect(interaction.editReply).toHaveBeenCalledTimes(1);
+    const reply = replyOf(interaction);
+    expect(reply).toMatch(/xbox/i);
+    expect(reply).toMatch(/skipped/i);
+    expect(reply).toMatch(/0 delivered/);
+    expect(reply).toMatch(/epic/i);
+  });
+
+  it('fails without naming a channel instead of messaging somewhere else', async () => {
+    const interaction = fakeInteraction(null);
+    const runtimes = [runtimeFixture('epic')];
+    const command = new DevCommands(runtimes);
+
+    await call(command, interaction);
+
+    expect(runtimes[0].devBroadcast).not.toHaveBeenCalled();
+    expect(replyOf(interaction)).toMatch(/failed/i);
+  });
+
+  it('reports a failing platform as a failure, never as a success (§5)', async () => {
+    const interaction = fakeInteraction('invocation-channel');
+    const broken = runtimeFixture('epic');
+    broken.devBroadcast = vi
+      .fn<(recipient: string) => Promise<DevOutcome>>()
+      .mockRejectedValue(new Error('nope'));
+    const command = new DevCommands([broken]);
+
+    await call(command, interaction);
+
+    const reply = replyOf(interaction);
+    expect(reply).toMatch(/failed/i);
+    expect(reply).not.toMatch(/delivered \d/);
   });
 });

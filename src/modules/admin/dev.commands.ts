@@ -1,8 +1,37 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { MessageFlags, PermissionFlagsBits } from 'discord.js';
 import { Context, Options, SlashCommand, Subcommand } from 'necord';
 import type { SlashCommandContext } from 'necord';
+import { gameSources } from '../../gamesources/index.js';
 import { PlatformOptionDto } from '../subscription/dto/platform-option.dto.js';
+import { PLATFORM_REGISTRY } from '../platforms/platform.tokens.js';
+import type {
+  DevBroadcastOutcome,
+  PlatformRuntime,
+} from '../platforms/platform.types.js';
+
+/** Display name for a runtime's type, falling back to the raw key. */
+function displayName(type: string): string {
+  return gameSources.find((source) => source.type === type)?.name ?? type;
+}
+
+/**
+ * One reply line (contracts §5 / R-5.1).
+ *
+ * The suppression clause only appears when rows really were marked announced
+ * without being delivered — stating a count that does not exist would be its
+ * own contract violation.
+ */
+function describe(outcome: DevBroadcastOutcome, name: string): string {
+  if (outcome.skipped) {
+    return `${name}: skipped (0 delivered)`;
+  }
+
+  const suppression =
+    outcome.suppressed > 0 ? `, suppressed ${outcome.suppressed}` : '';
+
+  return `${name}: delivered ${outcome.delivered}${suppression}`;
+}
 
 /**
  * The `/dev` smoke commands (specs/006-dev-smoke-commands).
@@ -35,6 +64,10 @@ import { PlatformOptionDto } from '../subscription/dto/platform-option.dto.js';
   dmPermission: false,
 })
 export class DevCommands {
+  constructor(
+    @Inject(PLATFORM_REGISTRY) private readonly registry: PlatformRuntime[],
+  ) {}
+
   /**
    * US3 — replaces a platform's catalog with a fresh storefront snapshot and
    * marks it announced so the scheduled pass stays silent.
@@ -57,16 +90,52 @@ export class DevCommands {
   /**
    * US2 — delivers exactly one message per platform into the channel the
    * command was invoked from, reading no subscription row.
+   *
+   * The reply carries what contracts §5 obliges: a line per platform, an
+   * explicit suppression count whenever rows were marked announced without
+   * being delivered (FR-015), and a skipped platform reported as skipped
+   * rather than as a failure (FR-007).
    */
   @Subcommand({
     name: 'broadcast',
     description: 'Deliver one message per platform into this channel',
   })
   async onDevBroadcast(@Context() [interaction]: SlashCommandContext) {
+    // FR-017 / R-5.2: the acknowledgement comes first and synchronously —
+    // no platform work happens before it, so Discord never reaches its
+    // roughly three-second window. `editReply` is then the only response.
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-    return interaction.editReply(
-      '`/dev broadcast` is not wired up yet (spec 006, User Story 2).',
-    );
+    // The invocation channel *is* the audience (FR-016): the recipient comes
+    // from the interaction, never from a subscription row.
+    const recipient = interaction.channelId;
+
+    if (!recipient) {
+      // Refusing beats sending somewhere the operator did not ask for.
+      return interaction.editReply(
+        'Dev broadcast failed: this command must be run inside a server channel.',
+      );
+    }
+
+    try {
+      // Sequential on purpose: one platform at a time, in registry order, so
+      // the reply lines always match the order they were run in.
+      const lines: string[] = [];
+
+      for (const runtime of this.registry) {
+        const outcome = await runtime.devBroadcast(recipient);
+        lines.push(describe(outcome, displayName(runtime.type)));
+      }
+
+      return interaction.editReply(
+        [`Dev broadcast into <#${recipient}>:`, ...lines].join('\n'),
+      );
+    } catch (error) {
+      // §5 Failure: the invocation reports a failure; a partial pass is
+      // never dressed up as a success.
+      return interaction.editReply(
+        `Dev broadcast failed: ${error instanceof Error ? error.message : error}`,
+      );
+    }
   }
 }

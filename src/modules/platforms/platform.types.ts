@@ -122,6 +122,26 @@ export interface PlatformRuntime {
   sync(): Promise<void>;
   /** findPending → send → mark; returns the number of games announced. */
   broadcastPending(): Promise<number>;
+
+  /**
+   * Dev smoke: one delivery per platform into `recipient`, surplus suppressed
+   * (contracts §4, research R6). Never called by the scheduler or `/broadcast`
+   * — only by `/dev broadcast`.
+   */
+  devBroadcast(recipient: string): Promise<DevBroadcastOutcome>;
+}
+
+/**
+ * What one `/dev broadcast` pass reports for a platform — the three things
+ * the reply is obliged to state (contracts §5, FR-007 / FR-015).
+ */
+export interface DevBroadcastOutcome {
+  /** Games that reached the invocation channel. */
+  delivered: number;
+  /** Pending rows marked announced without being delivered (FR-015). */
+  suppressed: number;
+  /** Nothing eligible to deliver — reported as skipped, not as failure (FR-007). */
+  skipped: boolean;
 }
 
 /** Result of one delivery pass — enables FR-010's mark rule (research R3). */

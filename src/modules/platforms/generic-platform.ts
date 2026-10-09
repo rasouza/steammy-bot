@@ -3,6 +3,7 @@ import chalk from 'chalk';
 import type { Game } from './platform.types.js';
 import type {
   BroadcastPort,
+  DevBroadcastOutcome,
   PlatformApi,
   PlatformDefinition,
   PlatformMapper,
@@ -61,6 +62,60 @@ export class GenericPlatform<
   }
 
   async broadcastPending(): Promise<number> {
+    return this.deliverPending();
+  }
+
+  /**
+   * `/dev broadcast` for this platform — research R6's four steps.
+   *
+   * The surplus is suppressed *before* the one delivery so the pass has
+   * exactly one eligible row, and the suppression count it returns is the
+   * number FR-015 obliges the reply to state. Nothing here introduces a
+   * second sender: step 4 is the same loop `broadcastPending` runs, only
+   * addressed at `recipient`.
+   */
+  async devBroadcast(recipient: string): Promise<DevBroadcastOutcome> {
+    const name = this.definition.name;
+    const now = new Date();
+
+    // Step 1 — deterministic pick (ascending id, FR-006). Nothing eligible
+    // means the platform contributes nothing to the reply but its absence.
+    const candidate = await this.repository.findDevCandidate(now);
+
+    if (candidate === null) {
+      this.logger.log(
+        `Dev broadcast: ${chalk.bold.green(name)} has no eligible row; skipping`,
+      );
+      return { delivered: 0, suppressed: 0, skipped: true };
+    }
+
+    // Step 2 — the surplus. Those rows are marked announced without being
+    // delivered, which is the carve-out Principle II conditions on.
+    const suppressed = await this.repository.markBroadcastedExcept(
+      candidate,
+      now,
+    );
+
+    // Step 3 — unconditional so the sequence has one shape: a no-op when the
+    // candidate was already pending, and the flip that makes a fully
+    // announced catalog deliverable again when it was not. Step 4 reads
+    // `findPending`, so without this a catalog that has nothing pending
+    // would deliver nothing and report zero forever (SC-002).
+    await this.repository.markPending(candidate);
+
+    // Step 4 — the normal loop, which now sees exactly one pending row.
+    const delivered = await this.deliverPending(recipient);
+
+    return { delivered, suppressed, skipped: false };
+  }
+
+  /**
+   * findPending → send → mark, shared by the scheduled pass and `/dev broadcast`.
+   *
+   * `recipient` is the invocation channel when this is a dev smoke pass;
+   * absent, the subscriptions are the audience exactly as before (R-4.2).
+   */
+  private async deliverPending(recipient?: string): Promise<number> {
     const name = this.definition.name;
     const games = await this.repository.findPending(new Date());
 
@@ -75,6 +130,25 @@ export class GenericPlatform<
       `Broadcasting ${games.length} new games for ${chalk.bold.green(name)}`,
     );
 
+    // R-4.2: only `devBroadcast` supplies a recipient. The scheduled pass
+    // does not merely pass `undefined` — it makes the same three-argument
+    // call it always has, so the scheduled path is untouched by this change.
+    const send =
+      recipient === undefined
+        ? (game: TGame) =>
+            this.broadcast.send(
+              this.definition.message,
+              game,
+              this.definition.type,
+            )
+        : (game: TGame) =>
+            this.broadcast.send(
+              this.definition.message,
+              game,
+              this.definition.type,
+              recipient,
+            );
+
     let announced = 0;
     for (const game of games) {
       try {
@@ -82,11 +156,7 @@ export class GenericPlatform<
         // Mark only when at least one channel received the game, or when
         // nobody subscribes at all (A-005) so the queue stays bounded —
         // otherwise leave it pending for the next pass.
-        const { delivered, subscribers } = await this.broadcast.send(
-          this.definition.message,
-          game,
-          this.definition.type,
-        );
+        const { delivered, subscribers } = await send(game);
 
         if (delivered > 0 || subscribers === 0) {
           await this.repository.markBroadcasted(game);

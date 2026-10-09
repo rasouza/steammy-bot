@@ -225,4 +225,131 @@ describe('GenericPlatform', () => {
       expect(announced).toBe(1);
     });
   });
+
+  /**
+   * `/dev broadcast` — research R6's four steps, contracts §4 / R-4.2.
+   *
+   * The sequence is the contract: pick, suppress the surplus, flip the pick
+   * back to pending, then run the *normal* loop so exactly one row is
+   * eligible. Nothing here introduces a second sender — the last step is the
+   * same `send` every other path uses, now addressed to `recipient`.
+   */
+  describe('devBroadcast', () => {
+    const RECIP = 'invocation-channel';
+
+    it('picks, suppresses, flips to pending, then sends exactly once (R6)', async () => {
+      const { platform, repository, broadcast } = buildHarness();
+      const candidate = game('pick');
+      repository.findDevCandidate.mockResolvedValue(candidate);
+      repository.markBroadcastedExcept.mockResolvedValue(4);
+      repository.findPending.mockResolvedValue([candidate]);
+
+      const result = await platform.devBroadcast(RECIP);
+
+      expect(result).toEqual({
+        delivered: 1,
+        suppressed: 4,
+        skipped: false,
+      });
+      expect(repository.markBroadcastedExcept).toHaveBeenCalledWith(
+        candidate,
+        expect.any(Date),
+      );
+      // The flip is unconditional — it is what makes a fully-announced
+      // catalog deliverable again (SC-002's "never zero-and-stuck").
+      expect(repository.markPending).toHaveBeenCalledWith(candidate);
+      expect(broadcast.send).toHaveBeenCalledTimes(1);
+      expect(broadcast.send).toHaveBeenCalledWith(
+        definition.message,
+        candidate,
+        'epic',
+        RECIP,
+      );
+    });
+
+    it('runs the four steps in order', async () => {
+      const { platform, repository, broadcast } = buildHarness();
+      const candidate = game('pick');
+      repository.findDevCandidate.mockResolvedValue(candidate);
+      repository.findPending.mockResolvedValue([candidate]);
+
+      await platform.devBroadcast(RECIP);
+
+      const at = (mock: { mock: { invocationCallOrder: number[] } }) =>
+        mock.mock.invocationCallOrder[0];
+
+      expect(at(repository.findDevCandidate)).toBeLessThan(
+        at(repository.markBroadcastedExcept),
+      );
+      expect(at(repository.markBroadcastedExcept)).toBeLessThan(
+        at(repository.markPending),
+      );
+      expect(at(repository.markPending)).toBeLessThan(at(broadcast.send));
+    });
+
+    it('reports the suppression count the repository returned', async () => {
+      const { platform, repository } = buildHarness();
+      repository.findDevCandidate.mockResolvedValue(game('pick'));
+      repository.markBroadcastedExcept.mockResolvedValue(7);
+
+      const result = await platform.devBroadcast(RECIP);
+
+      // FR-015 obliges the reply to state this number — it must not be
+      // recomputed or dropped on the way out.
+      expect(result.suppressed).toBe(7);
+    });
+
+    it('skips a platform with no eligible row and sends nothing (FR-007)', async () => {
+      const { platform, repository, broadcast } = buildHarness();
+      repository.findDevCandidate.mockResolvedValue(null);
+
+      const result = await platform.devBroadcast(RECIP);
+
+      expect(result).toEqual({
+        delivered: 0,
+        suppressed: 0,
+        skipped: true,
+      });
+      expect(repository.markBroadcastedExcept).not.toHaveBeenCalled();
+      expect(repository.markPending).not.toHaveBeenCalled();
+      expect(broadcast.send).not.toHaveBeenCalled();
+    });
+
+    it('leaves the candidate pending when the delivery fails (Principle II)', async () => {
+      const { platform, repository, broadcast } = buildHarness();
+      const candidate = game('pick');
+      repository.findDevCandidate.mockResolvedValue(candidate);
+      repository.markBroadcastedExcept.mockResolvedValue(3);
+      // One recipient that never accepts the message: the loop must not
+      // mark, because `subscribers` is 1 and `delivered` is 0.
+      repository.findPending.mockResolvedValue([candidate]);
+      broadcast.send.mockResolvedValue({ delivered: 0, subscribers: 1 });
+
+      const result = await platform.devBroadcast(RECIP);
+
+      expect(result).toEqual({
+        delivered: 0,
+        suppressed: 3,
+        skipped: false,
+      });
+      expect(repository.markBroadcasted).not.toHaveBeenCalled();
+      // The flip already ran, so the row is pending again and a later
+      // `/dev broadcast` can retry it.
+      expect(repository.markPending).toHaveBeenCalledWith(candidate);
+    });
+
+    it('never passes a recipient from the scheduled pass (R-4.2)', async () => {
+      const { platform, repository, broadcast } = buildHarness();
+      repository.findPending.mockResolvedValue([game('x')]);
+
+      await platform.broadcastPending();
+
+      const [message, , type, recipient] = broadcast.send.mock.calls[0];
+      expect([message, type]).toEqual([definition.message, 'epic']);
+      // R-4.2: `devBroadcast` is the only caller that supplies a recipient.
+      // The scheduled pass forwards the slot with nothing in it, so a real
+      // channel id here would mean the schedule had been redirected.
+      expect(recipient).toBeUndefined();
+    });
+  });
 });
