@@ -138,18 +138,20 @@ describe('EpicRepository dev primitives', () => {
       await expect(repository.findDevCandidate(now)).resolves.toBeNull();
     });
 
-    it('uses the platform eligibility with `broadcasted` ignored (R-3.1)', async () => {
+    it('ignores the announcement window so a forced delivery can always pick (R-3.1)', async () => {
       const { repository, find } = harness();
 
       await repository.findDevCandidate(now);
 
-      const { broadcasted: _announced, ...eligibility } =
-        epicPendingCriteria(now);
       const options = find.mock.calls[0][0] as {
         where: Record<string, unknown>;
       };
 
-      expect(options.where).toEqual(eligibility);
+      // `/dev broadcast` promises exactly one message per platform. Applying
+      // the window here would withhold it whenever no free offer is open —
+      // and re-applying it at delivery time would do the same. The window
+      // still governs the scheduled pass, which goes through `findPending`.
+      expect(options.where).toEqual({});
       expect(options.where).not.toHaveProperty('broadcasted');
     });
   });

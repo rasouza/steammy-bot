@@ -219,14 +219,20 @@ makes a delivery possible at all, which SC-002's "never zero-and-stuck" requires
 count returned by step 2 is the number FR-015 obliges the reply to state, covering the surplus on
 `/dev broadcast`; `markAllBroadcasted()`'s count plays the same role for `/dev sync`.
 
-**Eligibility note**: `findDevCandidate` applies the platform's own criteria with `broadcasted`
-ignored, so an expired Epic offer is never re-announced just to satisfy a count. SC-002's phrase
-"a platform that has catalog rows" is therefore read as "a platform with at least one row its own
-eligibility rules would allow announcing"; a platform holding only ineligible rows reports zero
-delivered and is not stuck — a later run against a refreshed catalog recovers. This is a
-consequence of Principle I (generic code must not decide eligibility), not a relaxation of FR-005,
-and it is recorded as an outstanding interpretation in the completion report rather than as a
-clarification, because the clarify budget was spent.
+**Eligibility note (amended 2026-10-09, operator decision)**: as written, `findDevCandidate`
+applied the platform's own criteria with `broadcasted` ignored, so an out-of-window Epic offer was
+never re-announced just to satisfy a count. That turned out to be the wrong trade for a _smoke_
+command: the Epic catalog is populated from `upcomingPromotionalOffers`, so its rows routinely carry
+a **future** `offer_start_at`, and `/dev broadcast` skipped the platform outright for days at a time.
+Forcing delivery is the whole point of the command, so the pick is now window-free.
+
+`findDevCandidate` uses an empty criteria; `markBroadcastedExcept` keeps `epicPendingCriteria`, so
+the surplus it suppresses is still exactly the set the scheduled pass would have announced. The
+announcement window now governs **only** `findPending`, which the scheduled pass and `/broadcast`
+use. SC-002's "a platform that has catalog rows" is therefore read literally: an empty catalog is
+the sole reason a platform reports skipped. Nothing about the _scheduled_ pass changed — it still
+never announces a game whose offer has not opened, so this loosens the dev path and only the dev
+path.
 
 **Alternatives considered**:
 

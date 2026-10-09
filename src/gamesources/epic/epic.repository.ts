@@ -46,9 +46,22 @@ export class EpicRepository implements PlatformRepository<EpicGame> {
     await this.repository.save({ ...game, broadcasted: true });
   }
 
-  async findDevCandidate(now: Date): Promise<EpicGame | null> {
+  /**
+   * The row `/dev broadcast` will deliver, or `null` when the catalog is
+   * empty.
+   *
+   * **Deliberately window-free.** `/dev broadcast` promises exactly one
+   * message per platform into the channel the operator is standing in, so a
+   * stored row is picked whatever its offer window says — an Epic offer that
+   * has not opened yet is still a real game, and a smoke test is about the
+   * pipeline, not about what is currently free (contracts §3, rule R-3.1).
+   * The window still governs the *scheduled* pass and `/broadcast`, which go
+   * through `findPending` and keep their window + `broadcasted: false`
+   * criteria untouched.
+   */
+  async findDevCandidate(_now: Date): Promise<EpicGame | null> {
     const rows = await this.repository.find({
-      where: epicEligibleCriteria(now),
+      where: {},
       order: { id: 'ASC' },
       take: 1,
     });

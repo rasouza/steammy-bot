@@ -242,7 +242,6 @@ describe('GenericPlatform', () => {
       const candidate = game('pick');
       repository.findDevCandidate.mockResolvedValue(candidate);
       repository.markBroadcastedExcept.mockResolvedValue(4);
-      repository.findPending.mockResolvedValue([candidate]);
 
       const result = await platform.devBroadcast(RECIP);
 
@@ -265,13 +264,43 @@ describe('GenericPlatform', () => {
         'epic',
         RECIP,
       );
+      // The candidate is delivered as picked. Sending it back through
+      // `findPending` would re-apply the platform's *announcement* window and
+      // silently drop a row the operator explicitly asked to smoke-test —
+      // which is exactly what happens when a free offer has not opened yet.
+      expect(repository.findPending).not.toHaveBeenCalled();
+    });
+
+    it('delivers a row no announcement window would allow (FR-005)', async () => {
+      const { platform, repository, broadcast } = buildHarness();
+      // Simulates the real case: a stored offer whose window has not opened,
+      // so `findPending` would return nothing for it.
+      const upcoming = game('upcoming');
+      repository.findDevCandidate.mockResolvedValue(upcoming);
+      repository.findPending.mockResolvedValue([]);
+      broadcast.send.mockResolvedValue({ delivered: 1, subscribers: 1 });
+
+      const result = await platform.devBroadcast(RECIP);
+
+      // Forced delivery is the point: exactly one message, whatever the
+      // window says. Only an empty catalog skips.
+      expect(result).toEqual({
+        delivered: 1,
+        suppressed: 0,
+        skipped: false,
+      });
+      expect(broadcast.send).toHaveBeenCalledWith(
+        definition.message,
+        upcoming,
+        'epic',
+        RECIP,
+      );
     });
 
     it('runs the four steps in order', async () => {
       const { platform, repository, broadcast } = buildHarness();
       const candidate = game('pick');
       repository.findDevCandidate.mockResolvedValue(candidate);
-      repository.findPending.mockResolvedValue([candidate]);
 
       await platform.devBroadcast(RECIP);
 
@@ -299,8 +328,10 @@ describe('GenericPlatform', () => {
       expect(result.suppressed).toBe(7);
     });
 
-    it('skips a platform with no eligible row and sends nothing (FR-007)', async () => {
+    it('skips a platform with no catalog rows at all (FR-007)', async () => {
       const { platform, repository, broadcast } = buildHarness();
+      // "Empty catalog" is now the *only* reason to skip — an out-of-window
+      // row still gets delivered, because the operator asked for one.
       repository.findDevCandidate.mockResolvedValue(null);
 
       const result = await platform.devBroadcast(RECIP);
@@ -322,7 +353,6 @@ describe('GenericPlatform', () => {
       repository.markBroadcastedExcept.mockResolvedValue(3);
       // One recipient that never accepts the message: the loop must not
       // mark, because `subscribers` is 1 and `delivered` is 0.
-      repository.findPending.mockResolvedValue([candidate]);
       broadcast.send.mockResolvedValue({ delivered: 0, subscribers: 1 });
 
       const result = await platform.devBroadcast(RECIP);

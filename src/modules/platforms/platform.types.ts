@@ -62,11 +62,14 @@ export interface PlatformRepository<TGame> {
   markBroadcasted(game: TGame): Promise<void>;
 
   /**
-   * One row this platform would allow announcing, `broadcasted` ignored,
-   * ordered by primary key ascending. `null` when nothing qualifies.
+   * The row this platform will hand to `/dev broadcast`, ordered by primary
+   * key ascending. `null` when the catalog is empty.
    *
-   * Eligibility stays inside the platform — the same criteria `findPending`
-   * uses, never reconstructed by generic code (rule R-3.1).
+   * **Window-free on purpose.** `/dev broadcast` promises exactly one message
+   * per platform into the channel the operator is standing in, so the pick
+   * ignores the announcement window and the `broadcasted` flag alike. The
+   * window still governs the scheduled pass and `/broadcast`, which reach
+   * rows through `findPending` (rule R-3.1).
    */
   findDevCandidate(now: Date): Promise<TGame | null>;
 

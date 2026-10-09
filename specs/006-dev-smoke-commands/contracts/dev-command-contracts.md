@@ -98,9 +98,13 @@ export interface PlatformRepository<TGame> {
 
 **Rules**
 
-- **R-3.1**: eligibility stays inside the platform. `findDevCandidate` and
-  `markBroadcastedExcept` use the same criteria function `findPending` uses
-  (`epicPendingCriteria`, `xboxPendingCriteria`); generic code never reconstructs it (Principle I).
+- **R-3.1**: eligibility stays inside the platform. `markBroadcastedExcept` uses the same criteria
+  function `findPending` uses (`epicPendingCriteria`, `xboxPendingCriteria`); generic code never
+  reconstructs it (Principle I). `findDevCandidate` is the deliberate exception: it uses an **empty**
+  criteria, because `/dev broadcast` must deliver exactly one message per platform on demand and a
+  free offer that has not opened yet is still a real game. The announcement window therefore governs
+  only the scheduled pass and `/broadcast`, which reach rows through `findPending`. An empty
+  catalog — not an out-of-window row — is now the sole reason a platform reports skipped.
 - **R-3.2**: no raw SQL — every member is implemented with the injected TypeORM `Repository` of
   that platform's own entity.
 - **R-3.3**: `clear()` and `markAllBroadcasted()` do not take `now`; they are unconditional

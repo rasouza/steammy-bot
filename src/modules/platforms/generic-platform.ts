@@ -126,13 +126,15 @@ export class GenericPlatform<
     const name = this.definition.name;
     const now = new Date();
 
-    // Step 1 — deterministic pick (ascending id, FR-006). Nothing eligible
-    // means the platform contributes nothing to the reply but its absence.
+    // Step 1 — deterministic pick (ascending id, FR-006). `null` means the
+    // catalog is empty — the only reason a platform is skipped. An out-of-
+    // window row is still picked: the operator asked for a message per
+    // platform, not for whatever happens to be free right now.
     const candidate = await this.repository.findDevCandidate(now);
 
     if (candidate === null) {
       this.logger.log(
-        `Dev broadcast: ${chalk.bold.green(name)} has no eligible row; skipping`,
+        `Dev broadcast: ${chalk.bold.green(name)} has no catalog rows; skipping`,
       );
       return { delivered: 0, suppressed: 0, skipped: true };
     }
@@ -146,22 +148,24 @@ export class GenericPlatform<
 
     // Step 3 — unconditional so the sequence has one shape: a no-op when the
     // candidate was already pending, and the flip that makes a fully
-    // announced catalog deliverable again when it was not. Step 4 reads
-    // `findPending`, so without this a catalog that has nothing pending
-    // would deliver nothing and report zero forever (SC-002).
+    // announced catalog deliverable again when it was not (SC-002's
+    // "never zero-and-stuck").
     await this.repository.markPending(candidate);
 
-    // Step 4 — the normal loop, which now sees exactly one pending row.
-    const delivered = await this.deliverPending(recipient);
+    // Step 4 — the same loop the scheduled pass runs, fed the *picked* row
+    // instead of whatever `findPending` would let through. Going back through
+    // `findPending` would re-apply the announcement window a second time and
+    // return nothing for a row the operator explicitly asked to smoke-test.
+    const delivered = await this.deliverGames([candidate], recipient);
 
     return { delivered, suppressed, skipped: false };
   }
 
   /**
-   * findPending → send → mark, shared by the scheduled pass and `/dev broadcast`.
+   * findPending → `deliverGames` — the scheduled pass and `/broadcast`.
    *
-   * `recipient` is the invocation channel when this is a dev smoke pass;
-   * absent, the subscriptions are the audience exactly as before (R-4.2).
+   * This is the only place the announcement window is applied, which is why
+   * `/dev broadcast` deliberately does not come through here.
    */
   private async deliverPending(recipient?: string): Promise<number> {
     const name = this.definition.name;
@@ -173,6 +177,22 @@ export class GenericPlatform<
       );
       return 0;
     }
+
+    return this.deliverGames(games, recipient);
+  }
+
+  /**
+   * send → mark. The delivery loop, fed by both callers; each chooses its own
+   * rows and neither re-filters the other's choice.
+   *
+   * `recipient` is the invocation channel when this is a dev smoke pass;
+   * absent, the subscriptions are the audience exactly as before (R-4.2).
+   */
+  private async deliverGames(
+    games: TGame[],
+    recipient?: string,
+  ): Promise<number> {
+    const name = this.definition.name;
 
     this.logger.log(
       `Broadcasting ${games.length} new games for ${chalk.bold.green(name)}`,
