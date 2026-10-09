@@ -2,6 +2,12 @@
  * Platform lifecycle contracts — the stable seams a new GameSource plugs into
  * (specs/003-easy-add-platform/contracts/platform-contracts.md).
  *
+ * `PlatformRepository` gained five dev-reset primitives in
+ * specs/006-dev-smoke-commands/contracts/dev-command-contracts.md §3, and
+ * `BroadcastPort.send` gained the optional `recipient` of §4. Both documents
+ * describe this file's surface; the 006 contracts are authoritative for the
+ * members they added.
+ *
  * Design-level interfaces: `GenericPlatform` is the only `PlatformRuntime`
  * implementation; each GameSource provides its own Api/Mapper/Repository.
  * No lifecycle logic lives here (spec FR-003). The machinery never imports
@@ -39,7 +45,14 @@ export interface PlatformMapper<TSource, TGame> {
   toGame(source: TSource): TGame | null;
 }
 
-/** Persistence + eligibility — the platform's own rules live here (FR-005). */
+/**
+ * Persistence + eligibility — the platform's own rules live here (FR-005).
+ *
+ * The last five members are the dev-reset seam
+ * (specs/006-dev-smoke-commands/contracts/dev-command-contracts.md §3).
+ * Adding a platform means implementing all eight alongside it, with no edit
+ * to generic code (rule R-3.4).
+ */
 export interface PlatformRepository<TGame> {
   /** Upsert by id; the `broadcasted` flag is never written here (FR-001 / clarification Q2). */
   saveAll(games: TGame[]): Promise<void>;
@@ -47,6 +60,48 @@ export interface PlatformRepository<TGame> {
   findPending(now: Date): Promise<TGame[]>;
   /** Called ONLY after delivery succeeded (Constitution II / spec FR-009). */
   markBroadcasted(game: TGame): Promise<void>;
+
+  /**
+   * The row this platform will hand to `/dev broadcast`, ordered by primary
+   * key ascending. `null` when the catalog is empty.
+   *
+   * **Window-free on purpose.** `/dev broadcast` promises exactly one message
+   * per platform into the channel the operator is standing in, so the pick
+   * ignores the announcement window and the `broadcasted` flag alike. The
+   * window still governs the scheduled pass and `/broadcast`, which reach
+   * rows through `findPending` (rule R-3.1).
+   */
+  findDevCandidate(now: Date): Promise<TGame | null>;
+
+  /**
+   * Marks every row matching this platform's pending criteria except
+   * `candidate` as announced. Returns how many rows it suppressed.
+   *
+   * Moves rows `false → true` without a send — permitted only by
+   * Constitution II's operator dev-reset carve-out, and only because the
+   * caller reports the count (FR-015).
+   */
+  markBroadcastedExcept(candidate: TGame, now: Date): Promise<number>;
+
+  /** Sets `broadcasted = false` for exactly one row. Idempotent. */
+  markPending(game: TGame): Promise<void>;
+
+  /**
+   * Deletes every row in this platform's catalog.
+   *
+   * Unconditional and whole-catalog: takes no `now` (rule R-3.3), and is
+   * used only by the dev reset.
+   */
+  clear(): Promise<void>;
+
+  /**
+   * Sets `broadcasted = true` for every row in this platform's catalog.
+   * Returns the number of rows affected.
+   *
+   * Unconditional and whole-catalog: takes no `now` (rule R-3.3). Same
+   * carve-out and reporting obligation as `markBroadcastedExcept`.
+   */
+  markAllBroadcasted(): Promise<number>;
 }
 
 /** Registration record — configuration only (spec FR-003). */
@@ -70,6 +125,45 @@ export interface PlatformRuntime {
   sync(): Promise<void>;
   /** findPending → send → mark; returns the number of games announced. */
   broadcastPending(): Promise<number>;
+
+  /**
+   * Dev reset: `fetch → map → (throw ⇒ abort, nothing written) → clear →
+   * saveAll → markAllBroadcasted` (research R5, contracts §4 / R-4.4).
+   *
+   * `fetch` resolving is the precondition for every write, so a storefront
+   * outage leaves the catalog byte-identical instead of empty (FR-010).
+   */
+  reset(): Promise<ResetOutcome>;
+
+  /**
+   * Dev smoke: one delivery per platform into `recipient`, surplus suppressed
+   * (contracts §4, research R6). Never called by the scheduler or `/broadcast`
+   * — only by `/dev broadcast`.
+   */
+  devBroadcast(recipient: string): Promise<DevBroadcastOutcome>;
+}
+
+/**
+ * What one `/dev sync` reset reports — `fetched` is what the storefront
+ * returned, `seeded` the rows that ended up written *and* marked announced.
+ * `seeded` is the count FR-015 obliges the reply to state (contracts §4).
+ */
+export interface ResetOutcome {
+  fetched: number;
+  seeded: number;
+}
+
+/**
+ * What one `/dev broadcast` pass reports for a platform — the three things
+ * the reply is obliged to state (contracts §5, FR-007 / FR-015).
+ */
+export interface DevBroadcastOutcome {
+  /** Games that reached the invocation channel. */
+  delivered: number;
+  /** Pending rows marked announced without being delivered (FR-015). */
+  suppressed: number;
+  /** Nothing eligible to deliver — reported as skipped, not as failure (FR-007). */
+  skipped: boolean;
 }
 
 /** Result of one delivery pass — enables FR-010's mark rule (research R3). */
@@ -82,5 +176,19 @@ export interface SendOutcome {
 
 /** The delivery surface the lifecycle depends on (contracts §4). */
 export interface BroadcastPort<TGame> {
-  send(message: string, game: TGame, platform: string): Promise<SendOutcome>;
+  /**
+   * The single send — there is no second sender (FR-012).
+   *
+   * `recipient` (contracts §4, rule R-4.1) is an *input* to this send, not a
+   * fork around it: when supplied, exactly that channel is fetched and no
+   * `subscription` query runs; when absent, behaviour is unchanged and the
+   * subscriptions resolve the audience as before. `devBroadcast` is the only
+   * caller that passes it (rule R-4.2).
+   */
+  send(
+    message: string,
+    game: TGame,
+    platform: string,
+    recipient?: string,
+  ): Promise<SendOutcome>;
 }

@@ -1,6 +1,7 @@
 import { Logger } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import type { GamePlatformType } from '../../gamesources/index.js';
+import type { DevBroadcastOutcome, ResetOutcome } from './platform.types.js';
 import { PlatformScheduler } from './platform.scheduler.js';
 
 function fakeRuntime(type: GamePlatformType) {
@@ -8,6 +9,14 @@ function fakeRuntime(type: GamePlatformType) {
     type,
     sync: vi.fn<() => Promise<void>>(),
     broadcastPending: vi.fn<() => Promise<number>>(),
+    // The scheduler never drives `/dev broadcast` or `/dev sync` — only `/dev`
+    // does — so these exist purely to satisfy the runtime contract.
+    devBroadcast: vi
+      .fn<(recipient: string) => Promise<DevBroadcastOutcome>>()
+      .mockResolvedValue({ delivered: 0, suppressed: 0, skipped: true }),
+    reset: vi
+      .fn<() => Promise<ResetOutcome>>()
+      .mockResolvedValue({ fetched: 0, seeded: 0 }),
   };
 }
 

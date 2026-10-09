@@ -5,6 +5,7 @@ import { GatewayIntentBits } from 'discord.js';
 import { NecordModule } from 'necord';
 import { Guild } from '../../database/entities/index.js';
 import { BotService } from './bot.service.js';
+import { CommandScopeService } from './command-scope.service.js';
 
 @Module({
   imports: [
@@ -24,7 +25,10 @@ import { BotService } from './bot.service.js';
       },
     }),
   ],
-  providers: [BotService],
+  // CommandScopeService owns the registry pruning (contracts §1); it must be
+  // a provider of this module so its onModuleInit runs at the distance-1
+  // position that guarantees Necord's cache is already populated (research R1).
+  providers: [BotService, CommandScopeService],
   exports: [NecordModule],
 })
 export class BotModule {}

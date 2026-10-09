@@ -40,7 +40,20 @@ function subscriptionRow(
   } as Subscription;
 }
 
-function buildHarness(subscriptions: Subscription[]) {
+interface HarnessOptions {
+  /**
+   * Contracts §4 / R-4.1: when a `recipient` is given the subscription table
+   * must not be touched at all. Making the stub reject turns that from a
+   * "should not have been called" assertion into a loud failure on the
+   * query itself, so the recipient path cannot quietly fall back to it.
+   */
+  forbidSubscriptionQuery?: boolean;
+}
+
+function buildHarness(
+  subscriptions: Subscription[],
+  options: HarnessOptions = {},
+) {
   const channels = new Map<string, FakeChannel>();
   const fetch = vi.fn<(id: string) => Promise<FakeChannel>>(async (id) => {
     const channel = channels.get(id);
@@ -50,11 +63,19 @@ function buildHarness(subscriptions: Subscription[]) {
     return channel;
   });
 
-  const subscriptionRepository = {
-    find: vi
-      .fn<(...args: unknown[]) => Promise<Subscription[]>>()
-      .mockResolvedValue(subscriptions),
-  };
+  const find = options.forbidSubscriptionQuery
+    ? vi.fn<(...args: unknown[]) => Promise<Subscription[]>>((..._args) =>
+        Promise.reject(
+          new Error(
+            'subscription repository was queried with an explicit recipient (R-4.1)',
+          ),
+        ),
+      )
+    : vi
+        .fn<(...args: unknown[]) => Promise<Subscription[]>>()
+        .mockResolvedValue(subscriptions);
+
+  const subscriptionRepository = { find };
 
   const service = new BroadcastService(
     { channels: { fetch } } as unknown as Client,
@@ -62,7 +83,7 @@ function buildHarness(subscriptions: Subscription[]) {
     new GameEmbedService(),
   );
 
-  return { service, fetch, channels };
+  return { service, fetch, channels, subscriptionRepository };
 }
 
 const XBOX_MESSAGE = 'New game available on **Xbox Game Pass**';
@@ -181,5 +202,103 @@ describe('BroadcastService', () => {
 
     expect(outcome).toEqual({ delivered: 0, subscribers: 0 });
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  /**
+   * Contracts §4, R-4.1 / R-4.2 / R-4.3 — the `recipient` `/dev broadcast`
+   * passes. The subscription repository is stubbed to *reject if queried*, so
+   * R-4.1 fails on the query itself rather than only on a call assertion.
+   */
+  describe('with an explicit recipient (dev broadcast)', () => {
+    it('fetches exactly that channel and never queries a subscription (R-4.1)', async () => {
+      const { service, fetch, channels, subscriptionRepository } = buildHarness(
+        [],
+        { forbidSubscriptionQuery: true },
+      );
+      channels.set('invocation-channel', textChannel('dev-smoke'));
+
+      const outcome = await service.send(
+        XBOX_MESSAGE,
+        game,
+        'xbox',
+        'invocation-channel',
+      );
+
+      expect(subscriptionRepository.find).not.toHaveBeenCalled();
+      expect(fetch).toHaveBeenCalledTimes(1);
+      expect(fetch).toHaveBeenCalledWith('invocation-channel');
+      expect(logs.warn).toEqual([]);
+      expect(outcome).toEqual({ delivered: 1, subscribers: 1 });
+    });
+
+    it('builds exactly one embed for the one delivery (R-4.1)', async () => {
+      const build = vi.spyOn(GameEmbedService.prototype, 'build');
+      const { service, channels } = buildHarness([], {
+        forbidSubscriptionQuery: true,
+      });
+      channels.set('invocation-channel', textChannel('dev-smoke'));
+
+      await service.send(XBOX_MESSAGE, game, 'xbox', 'invocation-channel');
+
+      expect(build).toHaveBeenCalledTimes(1);
+    });
+
+    it('reports one recipient even when the delivery fails (R-4.3)', async () => {
+      const { service, subscriptionRepository } = buildHarness([], {
+        forbidSubscriptionQuery: true,
+      });
+
+      // The channel is never registered, so the fetch rejects and nothing is
+      // delivered. `subscribers` must still be 1: `broadcastPending` marks on
+      // `delivered > 0 || subscribers === 0`, so a 0 here would read as
+      // "nobody to tell" and announce a game that Discord never saw —
+      // exactly the pre-delivery marking Principle II forbids.
+      const outcome = await service.send(
+        XBOX_MESSAGE,
+        game,
+        'xbox',
+        'missing-channel',
+      );
+
+      expect(outcome).toEqual({ delivered: 0, subscribers: 1 });
+      expect(outcome.subscribers).not.toBe(0);
+      expect(subscriptionRepository.find).not.toHaveBeenCalled();
+    });
+
+    it('reports one recipient when the channel is not a text channel', async () => {
+      const { service, channels } = buildHarness([], {
+        forbidSubscriptionQuery: true,
+      });
+      channels.set('voice-channel', {
+        type: ChannelType.GuildVoice,
+        name: 'dev-smoke',
+        guild: { name: 'Test Guild' },
+        send: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
+      });
+
+      const outcome = await service.send(
+        XBOX_MESSAGE,
+        game,
+        'xbox',
+        'voice-channel',
+      );
+
+      expect(outcome).toEqual({ delivered: 0, subscribers: 1 });
+    });
+
+    it('keeps the no-recipient path querying subscriptions (R-4.2)', async () => {
+      const { service, channels, subscriptionRepository } = buildHarness([
+        subscriptionRow('live-channel', 'xbox', 'guild-2', false),
+      ]);
+      channels.set('live-channel', textChannel('deals'));
+
+      const outcome = await service.send(XBOX_MESSAGE, game, 'xbox');
+
+      expect(subscriptionRepository.find).toHaveBeenCalledWith({
+        where: { platform: 'xbox' },
+        relations: { guild: true },
+      });
+      expect(outcome).toEqual({ delivered: 1, subscribers: 1 });
+    });
   });
 });

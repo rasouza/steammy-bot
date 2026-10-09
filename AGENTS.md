@@ -138,6 +138,13 @@ game only after `BroadcastService.send()` reports success
 (`delivered > 0 || subscribers === 0`), and a total failure leaves it pending
 for the next pass. Keep that ordering intact (Constitution II).
 
+Constitution II (4.0.0) carries **one narrow carve-out**: the operator-invoked
+`/dev sync` and `/dev broadcast` commands may mark rows announced without a
+send, but only when their reply states how many rows were suppressed, and only
+under an operator invocation — never from the scheduler. Nothing else is
+exempt: the scheduled pass and `/broadcast` still mark only after an
+acknowledged send, and a suppression that goes unreported is a defect.
+
 ## Conventions that differ from defaults
 
 - `tsconfig.json` sets `strict: false` but enables `strictNullChecks`,

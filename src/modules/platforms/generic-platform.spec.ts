@@ -29,6 +29,12 @@ function buildHarness() {
     saveAll: vi.fn<(games: Game[]) => Promise<void>>(),
     findPending: vi.fn<(now: Date) => Promise<Game[]>>(),
     markBroadcasted: vi.fn<(game: Game) => Promise<void>>(),
+    findDevCandidate: vi.fn<(now: Date) => Promise<Game | null>>(),
+    markBroadcastedExcept:
+      vi.fn<(candidate: Game, now: Date) => Promise<number>>(),
+    markPending: vi.fn<(game: Game) => Promise<void>>(),
+    clear: vi.fn<() => Promise<void>>(),
+    markAllBroadcasted: vi.fn<() => Promise<number>>(),
   };
   const broadcast = {
     send: vi.fn<
@@ -36,12 +42,18 @@ function buildHarness() {
         message: string,
         game: Game,
         platform: GamePlatformType,
+        recipient?: string,
       ) => Promise<SendOutcome>
     >(),
   };
   repository.saveAll.mockResolvedValue(undefined);
   repository.findPending.mockResolvedValue([]);
   repository.markBroadcasted.mockResolvedValue(undefined);
+  repository.findDevCandidate.mockResolvedValue(null);
+  repository.markBroadcastedExcept.mockResolvedValue(0);
+  repository.markPending.mockResolvedValue(undefined);
+  repository.clear.mockResolvedValue(undefined);
+  repository.markAllBroadcasted.mockResolvedValue(0);
   broadcast.send.mockResolvedValue({ delivered: 1, subscribers: 1 });
 
   const platform = new GenericPlatform(
@@ -211,6 +223,234 @@ describe('GenericPlatform', () => {
 
       expect(repository.markBroadcasted).toHaveBeenCalledTimes(1);
       expect(announced).toBe(1);
+    });
+  });
+
+  /**
+   * `/dev broadcast` — research R6's four steps, contracts §4 / R-4.2.
+   *
+   * The sequence is the contract: pick, suppress the surplus, flip the pick
+   * back to pending, then run the *normal* loop so exactly one row is
+   * eligible. Nothing here introduces a second sender — the last step is the
+   * same `send` every other path uses, now addressed to `recipient`.
+   */
+  describe('devBroadcast', () => {
+    const RECIP = 'invocation-channel';
+
+    it('picks, suppresses, flips to pending, then sends exactly once (R6)', async () => {
+      const { platform, repository, broadcast } = buildHarness();
+      const candidate = game('pick');
+      repository.findDevCandidate.mockResolvedValue(candidate);
+      repository.markBroadcastedExcept.mockResolvedValue(4);
+
+      const result = await platform.devBroadcast(RECIP);
+
+      expect(result).toEqual({
+        delivered: 1,
+        suppressed: 4,
+        skipped: false,
+      });
+      expect(repository.markBroadcastedExcept).toHaveBeenCalledWith(
+        candidate,
+        expect.any(Date),
+      );
+      // The flip is unconditional — it is what makes a fully-announced
+      // catalog deliverable again (SC-002's "never zero-and-stuck").
+      expect(repository.markPending).toHaveBeenCalledWith(candidate);
+      expect(broadcast.send).toHaveBeenCalledTimes(1);
+      expect(broadcast.send).toHaveBeenCalledWith(
+        definition.message,
+        candidate,
+        'epic',
+        RECIP,
+      );
+      // The candidate is delivered as picked. Sending it back through
+      // `findPending` would re-apply the platform's *announcement* window and
+      // silently drop a row the operator explicitly asked to smoke-test —
+      // which is exactly what happens when a free offer has not opened yet.
+      expect(repository.findPending).not.toHaveBeenCalled();
+    });
+
+    it('delivers a row no announcement window would allow (FR-005)', async () => {
+      const { platform, repository, broadcast } = buildHarness();
+      // Simulates the real case: a stored offer whose window has not opened,
+      // so `findPending` would return nothing for it.
+      const upcoming = game('upcoming');
+      repository.findDevCandidate.mockResolvedValue(upcoming);
+      repository.findPending.mockResolvedValue([]);
+      broadcast.send.mockResolvedValue({ delivered: 1, subscribers: 1 });
+
+      const result = await platform.devBroadcast(RECIP);
+
+      // Forced delivery is the point: exactly one message, whatever the
+      // window says. Only an empty catalog skips.
+      expect(result).toEqual({
+        delivered: 1,
+        suppressed: 0,
+        skipped: false,
+      });
+      expect(broadcast.send).toHaveBeenCalledWith(
+        definition.message,
+        upcoming,
+        'epic',
+        RECIP,
+      );
+    });
+
+    it('runs the four steps in order', async () => {
+      const { platform, repository, broadcast } = buildHarness();
+      const candidate = game('pick');
+      repository.findDevCandidate.mockResolvedValue(candidate);
+
+      await platform.devBroadcast(RECIP);
+
+      const at = (mock: { mock: { invocationCallOrder: number[] } }) =>
+        mock.mock.invocationCallOrder[0];
+
+      expect(at(repository.findDevCandidate)).toBeLessThan(
+        at(repository.markBroadcastedExcept),
+      );
+      expect(at(repository.markBroadcastedExcept)).toBeLessThan(
+        at(repository.markPending),
+      );
+      expect(at(repository.markPending)).toBeLessThan(at(broadcast.send));
+    });
+
+    it('reports the suppression count the repository returned', async () => {
+      const { platform, repository } = buildHarness();
+      repository.findDevCandidate.mockResolvedValue(game('pick'));
+      repository.markBroadcastedExcept.mockResolvedValue(7);
+
+      const result = await platform.devBroadcast(RECIP);
+
+      // FR-015 obliges the reply to state this number — it must not be
+      // recomputed or dropped on the way out.
+      expect(result.suppressed).toBe(7);
+    });
+
+    it('skips a platform with no catalog rows at all (FR-007)', async () => {
+      const { platform, repository, broadcast } = buildHarness();
+      // "Empty catalog" is now the *only* reason to skip — an out-of-window
+      // row still gets delivered, because the operator asked for one.
+      repository.findDevCandidate.mockResolvedValue(null);
+
+      const result = await platform.devBroadcast(RECIP);
+
+      expect(result).toEqual({
+        delivered: 0,
+        suppressed: 0,
+        skipped: true,
+      });
+      expect(repository.markBroadcastedExcept).not.toHaveBeenCalled();
+      expect(repository.markPending).not.toHaveBeenCalled();
+      expect(broadcast.send).not.toHaveBeenCalled();
+    });
+
+    it('leaves the candidate pending when the delivery fails (Principle II)', async () => {
+      const { platform, repository, broadcast } = buildHarness();
+      const candidate = game('pick');
+      repository.findDevCandidate.mockResolvedValue(candidate);
+      repository.markBroadcastedExcept.mockResolvedValue(3);
+      // One recipient that never accepts the message: the loop must not
+      // mark, because `subscribers` is 1 and `delivered` is 0.
+      broadcast.send.mockResolvedValue({ delivered: 0, subscribers: 1 });
+
+      const result = await platform.devBroadcast(RECIP);
+
+      expect(result).toEqual({
+        delivered: 0,
+        suppressed: 3,
+        skipped: false,
+      });
+      expect(repository.markBroadcasted).not.toHaveBeenCalled();
+      // The flip already ran, so the row is pending again and a later
+      // `/dev broadcast` can retry it.
+      expect(repository.markPending).toHaveBeenCalledWith(candidate);
+    });
+
+    it('never passes a recipient from the scheduled pass (R-4.2)', async () => {
+      const { platform, repository, broadcast } = buildHarness();
+      repository.findPending.mockResolvedValue([game('x')]);
+
+      await platform.broadcastPending();
+
+      const [message, , type, recipient] = broadcast.send.mock.calls[0];
+      expect([message, type]).toEqual([definition.message, 'epic']);
+      // R-4.2: `devBroadcast` is the only caller that supplies a recipient.
+      // The scheduled pass forwards the slot with nothing in it, so a real
+      // channel id here would mean the schedule had been redirected.
+      expect(recipient).toBeUndefined();
+    });
+  });
+
+  /**
+   * `/dev sync` — research R5, contracts §4 rule R-4.4.
+   *
+   * The ordering is the whole feature: a storefront outage must never empty a
+   * catalog (US3 scenario 3 / SC-005), which is why `fetch` has to resolve
+   * before the first write.
+   */
+  describe('reset', () => {
+    it('performs no write when the storefront fetch rejects (R-4.4)', async () => {
+      const { platform, api, mapper, repository } = buildHarness();
+      api.fetch.mockRejectedValue(new Error('storefront is down'));
+      repository.markAllBroadcasted.mockResolvedValue(3);
+
+      await expect(platform.reset()).rejects.toThrow('storefront is down');
+
+      // The point of R-4.4: a failed fetch leaves the catalog byte-identical.
+      expect(repository.clear).not.toHaveBeenCalled();
+      expect(repository.saveAll).not.toHaveBeenCalled();
+      expect(repository.markAllBroadcasted).not.toHaveBeenCalled();
+      expect(mapper.toGame).not.toHaveBeenCalled();
+    });
+
+    it('still clears when a successful fetch returns zero rows', async () => {
+      const { platform, api, repository } = buildHarness();
+      api.fetch.mockResolvedValue([]);
+
+      const result = await platform.reset();
+
+      // A successful empty response means the catalog really is empty —
+      // only a *failed* fetch preserves the old rows (R5).
+      expect(repository.clear).toHaveBeenCalledTimes(1);
+      expect(result).toEqual({ fetched: 0, seeded: 0 });
+    });
+
+    it('reports what the storefront returned and what was seeded announced', async () => {
+      const { platform, mapper, repository } = buildHarness();
+      mapper.toGame.mockReturnValueOnce(game('a')).mockReturnValueOnce(null);
+      repository.markAllBroadcasted.mockResolvedValue(1);
+
+      const result = await platform.reset();
+
+      // `fetched` is the raw storefront response (2), `seeded` the rows that
+      // ended up written and marked announced (1) — the count FR-015 obliges
+      // the reply to state.
+      expect(result).toEqual({ fetched: 2, seeded: 1 });
+    });
+
+    it('clears before it writes, then marks announced', async () => {
+      const { platform, mapper, repository } = buildHarness();
+      mapper.toGame.mockImplementation((source: FakeSource) => game(source.id));
+
+      await platform.reset();
+
+      expect(repository.clear.mock.invocationCallOrder[0]).toBeLessThan(
+        repository.saveAll.mock.invocationCallOrder[0],
+      );
+      expect(repository.saveAll.mock.invocationCallOrder[0]).toBeLessThan(
+        repository.markAllBroadcasted.mock.invocationCallOrder[0],
+      );
+      expect(repository.saveAll).toHaveBeenCalledWith([game('a'), game('b')]);
+    });
+
+    it('never touches broadcast delivery', async () => {
+      const { platform, broadcast } = buildHarness();
+
+      await platform.reset();
+
+      expect(broadcast.send).not.toHaveBeenCalled();
     });
   });
 });
