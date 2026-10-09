@@ -352,4 +352,75 @@ describe('GenericPlatform', () => {
       expect(recipient).toBeUndefined();
     });
   });
+
+  /**
+   * `/dev sync` — research R5, contracts §4 rule R-4.4.
+   *
+   * The ordering is the whole feature: a storefront outage must never empty a
+   * catalog (US3 scenario 3 / SC-005), which is why `fetch` has to resolve
+   * before the first write.
+   */
+  describe('reset', () => {
+    it('performs no write when the storefront fetch rejects (R-4.4)', async () => {
+      const { platform, api, mapper, repository } = buildHarness();
+      api.fetch.mockRejectedValue(new Error('storefront is down'));
+      repository.markAllBroadcasted.mockResolvedValue(3);
+
+      await expect(platform.reset()).rejects.toThrow('storefront is down');
+
+      // The point of R-4.4: a failed fetch leaves the catalog byte-identical.
+      expect(repository.clear).not.toHaveBeenCalled();
+      expect(repository.saveAll).not.toHaveBeenCalled();
+      expect(repository.markAllBroadcasted).not.toHaveBeenCalled();
+      expect(mapper.toGame).not.toHaveBeenCalled();
+    });
+
+    it('still clears when a successful fetch returns zero rows', async () => {
+      const { platform, api, repository } = buildHarness();
+      api.fetch.mockResolvedValue([]);
+
+      const result = await platform.reset();
+
+      // A successful empty response means the catalog really is empty —
+      // only a *failed* fetch preserves the old rows (R5).
+      expect(repository.clear).toHaveBeenCalledTimes(1);
+      expect(result).toEqual({ fetched: 0, seeded: 0 });
+    });
+
+    it('reports what the storefront returned and what was seeded announced', async () => {
+      const { platform, mapper, repository } = buildHarness();
+      mapper.toGame.mockReturnValueOnce(game('a')).mockReturnValueOnce(null);
+      repository.markAllBroadcasted.mockResolvedValue(1);
+
+      const result = await platform.reset();
+
+      // `fetched` is the raw storefront response (2), `seeded` the rows that
+      // ended up written and marked announced (1) — the count FR-015 obliges
+      // the reply to state.
+      expect(result).toEqual({ fetched: 2, seeded: 1 });
+    });
+
+    it('clears before it writes, then marks announced', async () => {
+      const { platform, mapper, repository } = buildHarness();
+      mapper.toGame.mockImplementation((source: FakeSource) => game(source.id));
+
+      await platform.reset();
+
+      expect(repository.clear.mock.invocationCallOrder[0]).toBeLessThan(
+        repository.saveAll.mock.invocationCallOrder[0],
+      );
+      expect(repository.saveAll.mock.invocationCallOrder[0]).toBeLessThan(
+        repository.markAllBroadcasted.mock.invocationCallOrder[0],
+      );
+      expect(repository.saveAll).toHaveBeenCalledWith([game('a'), game('b')]);
+    });
+
+    it('never touches broadcast delivery', async () => {
+      const { platform, broadcast } = buildHarness();
+
+      await platform.reset();
+
+      expect(broadcast.send).not.toHaveBeenCalled();
+    });
+  });
 });

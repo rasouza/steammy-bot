@@ -2,6 +2,8 @@ import { Reflector } from '@nestjs/core';
 import { MessageFlags, PermissionFlagsBits } from 'discord.js';
 import { SlashCommand, SlashCommandsService, Subcommand } from 'necord';
 import type { SlashCommandDiscovery, SlashCommandContext } from 'necord';
+import { gameSources } from '../../gamesources/index.js';
+import type { PlatformOptionDto } from '../subscription/dto/platform-option.dto.js';
 import { DevCommands } from './dev.commands.js';
 
 /**
@@ -27,7 +29,11 @@ interface CommandPayload {
   description: string;
   dmPermission?: boolean;
   defaultMemberPermissions?: unknown;
-  options: Array<{ name: string; description: string; options?: unknown[] }>;
+  options: Array<{
+    name: string;
+    description: string;
+    options?: Array<{ name: string; choices?: Array<{ value: string }> }>;
+  }>;
 }
 
 const prototype = DevCommands.prototype as unknown as Record<string, unknown>;
@@ -178,6 +184,11 @@ interface DevOutcome {
   skipped: boolean;
 }
 
+interface ResetOutcome {
+  fetched: number;
+  seeded: number;
+}
+
 /**
  * A platform runtime stub carrying only what `/dev broadcast` consumes.
  *
@@ -197,6 +208,9 @@ function runtimeFixture(
     devBroadcast: vi.fn<(recipient: string) => Promise<DevOutcome>>(() =>
       Promise.resolve(outcome),
     ),
+    reset: vi
+      .fn<() => Promise<ResetOutcome>>()
+      .mockResolvedValue({ fetched: 0, seeded: 0 }),
   };
 }
 
@@ -207,6 +221,17 @@ function call(
   return command.onDevBroadcast([
     interaction,
   ] as unknown as SlashCommandContext);
+}
+
+function callSync(
+  command: DevCommands,
+  interaction: FakeInteraction,
+  platform: string,
+): Promise<unknown> {
+  return command.onDevSync(
+    [interaction] as unknown as SlashCommandContext,
+    { platform } as unknown as PlatformOptionDto,
+  );
 }
 
 function replyOf(interaction: FakeInteraction): string {
@@ -321,5 +346,88 @@ describe('/dev broadcast interaction contract', () => {
     const reply = replyOf(interaction);
     expect(reply).toMatch(/failed/i);
     expect(reply).not.toMatch(/delivered \d/);
+  });
+});
+
+/**
+ * The `/dev sync` reset contract (contracts §5, FR-010 / FR-011 / FR-015).
+ *
+ * US3 scenario 3 is the one that matters most: a storefront outage must read
+ * as a failure with the catalog untouched, never as a reset that emptied it.
+ */
+describe('/dev sync interaction contract', () => {
+  it('acknowledges with deferReply before any awaited work (FR-017)', async () => {
+    const interaction = fakeInteraction('invocation-channel');
+    const runtime = runtimeFixture('epic');
+    const command = new DevCommands([runtime]);
+
+    const pending = callSync(command, interaction, 'epic');
+
+    expect(interaction.deferReply).toHaveBeenCalledTimes(1);
+    expect(interaction.deferReply).toHaveBeenCalledWith({
+      flags: MessageFlags.Ephemeral,
+    });
+    expect(interaction.editReply).not.toHaveBeenCalled();
+    expect(runtime.reset).not.toHaveBeenCalled();
+
+    await pending;
+  });
+
+  it('offers exactly the registered platforms, so no other value can arrive (FR-011)', () => {
+    const payload = devRoot(register()).toJSON() as unknown as CommandPayload;
+    const platform = payload.options
+      .find((option) => option.name === 'sync')
+      ?.options?.find((option) => option.name === 'platform');
+
+    // The rejection happens on Discord's side: an unregistered type is never
+    // offered, so the handler is never invoked for one.
+    expect(platform?.choices?.map((choice) => choice.value)).toEqual(
+      gameSources.map((source) => source.type),
+    );
+  });
+
+  it('rejects an unregistered platform without touching any catalog (FR-011)', async () => {
+    const interaction = fakeInteraction('invocation-channel');
+    const runtime = runtimeFixture('xbox');
+    const command = new DevCommands([runtime]);
+
+    await callSync(command, interaction, 'epic');
+
+    expect(replyOf(interaction)).toMatch(/failed/i);
+    expect(runtime.reset).not.toHaveBeenCalled();
+    expect(runtime.sync).not.toHaveBeenCalled();
+  });
+
+  it('states how many rows were seeded announced (FR-015, US3 scenario 1)', async () => {
+    const interaction = fakeInteraction('invocation-channel');
+    const runtime = runtimeFixture('epic');
+    runtime.reset = vi
+      .fn<() => Promise<ResetOutcome>>()
+      .mockResolvedValue({ fetched: 5, seeded: 3 });
+    const command = new DevCommands([runtime]);
+
+    await callSync(command, interaction, 'epic');
+
+    expect(runtime.reset).toHaveBeenCalledTimes(1);
+    const reply = replyOf(interaction);
+    expect(reply).toMatch(/epic/i);
+    expect(reply).toContain('3 seeded announced');
+    expect(reply).toContain('5 fetched');
+  });
+
+  it('reports a failed fetch as a failure, not as a reset (FR-010, US3 scenario 3)', async () => {
+    const interaction = fakeInteraction('invocation-channel');
+    const runtime = runtimeFixture('epic');
+    runtime.reset = vi
+      .fn<() => Promise<ResetOutcome>>()
+      .mockRejectedValue(new Error('storefront is down'));
+    const command = new DevCommands([runtime]);
+
+    await callSync(command, interaction, 'epic');
+
+    const reply = replyOf(interaction);
+    expect(reply).toMatch(/failed/i);
+    expect(reply).toContain('storefront is down');
+    expect(reply).not.toContain('seeded announced');
   });
 });

@@ -3,6 +3,7 @@ import { MessageFlags, PermissionFlagsBits } from 'discord.js';
 import { Context, Options, SlashCommand, Subcommand } from 'necord';
 import type { SlashCommandContext } from 'necord';
 import { gameSources } from '../../gamesources/index.js';
+import type { GamePlatformType } from '../../gamesources/index.js';
 import { PlatformOptionDto } from '../subscription/dto/platform-option.dto.js';
 import { PLATFORM_REGISTRY } from '../platforms/platform.tokens.js';
 import type {
@@ -68,9 +69,25 @@ export class DevCommands {
     @Inject(PLATFORM_REGISTRY) private readonly registry: PlatformRuntime[],
   ) {}
 
+  /** Same lookup `AdminCommands` uses — one registry, no second source (FR-011). */
+  private runtime(type: GamePlatformType): PlatformRuntime {
+    const runtime = this.registry.find((platform) => platform.type === type);
+
+    if (!runtime) {
+      throw new Error(`Platform is not registered: ${type}`);
+    }
+
+    return runtime;
+  }
+
   /**
    * US3 — replaces a platform's catalog with a fresh storefront snapshot and
-   * marks it announced so the scheduled pass stays silent.
+   * marks every row announced so the scheduled pass stays silent.
+   *
+   * The reply states the seeded count (FR-015). A storefront outage is
+   * reported as a *failure*, not as a reset: `reset()` writes nothing until
+   * `fetch()` has resolved, so the catalog behind a failed reply is untouched
+   * (FR-010 / US3 scenario 3).
    */
   @Subcommand({
     name: 'sync',
@@ -78,13 +95,22 @@ export class DevCommands {
   })
   async onDevSync(
     @Context() [interaction]: SlashCommandContext,
-    @Options() _options: PlatformOptionDto,
+    @Options() options: PlatformOptionDto,
   ) {
+    // §5 Entry: the acknowledgement comes first, before any storefront call.
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-    return interaction.editReply(
-      '`/dev sync` is not wired up yet (spec 006, User Story 3).',
-    );
+    try {
+      const { fetched, seeded } = await this.runtime(options.platform).reset();
+
+      return interaction.editReply(
+        `${displayName(options.platform)}: reset — ${seeded} seeded announced (${fetched} fetched)`,
+      );
+    } catch (error) {
+      return interaction.editReply(
+        `Dev sync failed: ${error instanceof Error ? error.message : error}`,
+      );
+    }
   }
 
   /**

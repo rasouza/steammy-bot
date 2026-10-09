@@ -9,6 +9,7 @@ import type {
   PlatformMapper,
   PlatformRepository,
   PlatformRuntime,
+  ResetOutcome,
 } from './platform.types.js';
 
 /**
@@ -40,6 +41,61 @@ export class GenericPlatform<
   }
 
   async sync(): Promise<void> {
+    const name = this.definition.name;
+    const { games } = await this.load();
+
+    this.logger.log(
+      `Fetched ${games.length} games from ${chalk.bold.green(name)}`,
+    );
+
+    if (games.length > 0) {
+      await this.repository.saveAll(games);
+      this.logger.log(`Upserted ${games.length} games into ${name} catalog`);
+    }
+  }
+
+  /**
+   * `/dev sync` — research R5's ordering, contracts §4 / R-4.4.
+   *
+   * `fetch → map → clear → saveAll → markAllBroadcasted`. The catalog is
+   * replaced, not merged: `clear()` runs even when the fetch returned zero
+   * rows, because a successful empty response means the catalog really is
+   * empty. Only a *failed* fetch preserves the old rows, and that is decided
+   * entirely by `load()` rejecting before any write exists to undo.
+   */
+  async reset(): Promise<ResetOutcome> {
+    const name = this.definition.name;
+
+    // R-4.4: nothing below runs unless this resolves, so a storefront outage
+    // leaves the catalog byte-identical rather than empty (US3 scenario 3).
+    const { fetched, games } = await this.load();
+
+    await this.repository.clear();
+
+    if (games.length > 0) {
+      await this.repository.saveAll(games);
+    }
+
+    // Whole-catalog mark: these rows were never delivered, which is the
+    // carve-out Principle II conditions on — hence the count, for FR-015.
+    const seeded = await this.repository.markAllBroadcasted();
+
+    this.logger.log(
+      `Dev reset of ${chalk.bold.green(name)}: ${fetched} fetched, ${seeded} seeded announced`,
+    );
+
+    return { fetched, seeded };
+  }
+
+  /**
+   * fetch → map, shared by `sync()` and `reset()` so the two cannot diverge.
+   *
+   * It writes nothing: mapping happens entirely in memory, and a rejected
+   * `fetch` rejects here — which is the whole of R-4.4's guarantee.
+   * `fetched` is the raw storefront response; `games` is what survived
+   * mapping, which is what both callers actually store.
+   */
+  private async load(): Promise<{ fetched: number; games: TGame[] }> {
     const sources = await this.api.fetch();
 
     const games: TGame[] = [];
@@ -50,15 +106,7 @@ export class GenericPlatform<
       }
     }
 
-    const name = this.definition.name;
-    this.logger.log(
-      `Fetched ${games.length} games from ${chalk.bold.green(name)}`,
-    );
-
-    if (games.length > 0) {
-      await this.repository.saveAll(games);
-      this.logger.log(`Upserted ${games.length} games into ${name} catalog`);
-    }
+    return { fetched: sources.length, games };
   }
 
   async broadcastPending(): Promise<number> {

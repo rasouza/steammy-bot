@@ -124,11 +124,30 @@ export interface PlatformRuntime {
   broadcastPending(): Promise<number>;
 
   /**
+   * Dev reset: `fetch → map → (throw ⇒ abort, nothing written) → clear →
+   * saveAll → markAllBroadcasted` (research R5, contracts §4 / R-4.4).
+   *
+   * `fetch` resolving is the precondition for every write, so a storefront
+   * outage leaves the catalog byte-identical instead of empty (FR-010).
+   */
+  reset(): Promise<ResetOutcome>;
+
+  /**
    * Dev smoke: one delivery per platform into `recipient`, surplus suppressed
    * (contracts §4, research R6). Never called by the scheduler or `/broadcast`
    * — only by `/dev broadcast`.
    */
   devBroadcast(recipient: string): Promise<DevBroadcastOutcome>;
+}
+
+/**
+ * What one `/dev sync` reset reports — `fetched` is what the storefront
+ * returned, `seeded` the rows that ended up written *and* marked announced.
+ * `seeded` is the count FR-015 obliges the reply to state (contracts §4).
+ */
+export interface ResetOutcome {
+  fetched: number;
+  seeded: number;
 }
 
 /**
