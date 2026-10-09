@@ -29,6 +29,8 @@ You can use `/unsubscribe <platform>` to stop a channel from receiving announcem
 - `/help` - View command help
 - `/sync <platform>` - Manually sync catalog (Admin only)
 - `/broadcast <platform>` - Manually trigger broadcast (Admin only)
+- `/dev sync <platform>` - Replace a platform's catalog from the storefront (Admin, local dev only)
+- `/dev broadcast` - Deliver one message per platform into this channel (Admin, local dev only)
 
 ## Development
 
@@ -66,6 +68,23 @@ Keep `NODE_ENV=development` in `.env`: together with `TEST_GUILD_ID` it scopes
 slash-command registration to your test guild only (`src/modules/bot`) — a
 local run never touches commands in any other guild. For a quiet local bot
 that should not post anything, also set `BROADCAST_ENABLED=false`.
+
+#### `/dev` smoke commands
+
+`/dev sync <platform>` and `/dev broadcast` are offered **only** when both
+`NODE_ENV=development` and `TEST_GUILD_ID` are set, they require the
+Administrator permission, and they are registered into the test guild alone.
+A deployed run never offers them — `NODE_ENV` is deliberately unset in
+production, and `CommandScopeService` drops the `dev` root rather than
+registering it (FR-014).
+
+- `/dev sync <platform>` clears that platform's catalog, refills it from the
+  storefront, and marks every row announced so the scheduled pass stays
+  silent afterwards. Nothing is written when the storefront fetch fails.
+- `/dev broadcast` posts into **the channel you ran it from** and reads no
+  subscription row, so it never disturbs a real subscriber. Exactly one
+  message per platform is delivered; the reply states how many pending rows
+  were suppressed and which platforms were skipped.
 
 The full walkthrough — prerequisites, expected output, and troubleshooting —
 is [specs/005-dev-test-environment/quickstart.md](specs/005-dev-test-environment/quickstart.md).

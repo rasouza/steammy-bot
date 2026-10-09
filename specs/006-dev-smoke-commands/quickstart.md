@@ -146,3 +146,54 @@ The automated gate above is the evidence: every suite that passed on `main` pass
 | `Platform is not registered: …`                            | platform removed from `gameSources`             | FR-011 rejection is working; the platform is not registered                                                                   |
 | `/dev broadcast` reports `0` delivered for one platform    | the channel is unreachable from the bot         | row stays pending; a repeat run recovers — no data lost (spec Edge Cases)                                                     |
 | A platform reports `0` delivered although it has rows      | none of its rows pass its own eligibility rules | expected; see the eligibility note in [research R6](./research.md#r6--which-row-dev-broadcast-picks-and-what-gets-suppressed) |
+
+## Validation record
+
+**Executed**: 2026-10-03 · **Branch**: `STE-185-006-dev-smoke-commands` · **Constitution**: 4.0.0 ✓
+
+### S8 — no pre-existing check regresses · proves SC-007 ✅ executed
+
+All six steps of the automated gate, in order (a partial run is not a pass):
+
+| #   | Step                        | Result                                       |
+| --- | --------------------------- | -------------------------------------------- |
+| 1   | `prettier --check`          | pass — all matched files use Prettier style  |
+| 2   | `npm run type:check`        | pass — clean                                 |
+| 3   | `npm run lint`              | pass — **0 errors / 22 warnings** (baseline) |
+| 4   | `npm run build`             | pass — `nest build` exit 0                   |
+| 5   | `npm test`                  | pass — 10 files, **101** tests               |
+| 6   | `db:e2e:setup` + `test:e2e` | pass — 4 files, **24** tests                 |
+
+Prerequisite confirmed: `.specify/memory/constitution.md` reads
+`**Version**: 4.0.0`, so the Principle II carve-out was in place before any
+FR-006/FR-009 code was written (research R11 / Task 0).
+
+### S1–S7 — manual scenarios ⏳ not executed in this environment
+
+**Blocker**: this run has no `.env` and therefore no `BOT_TOKEN`, and no
+Discord guild the bot has joined. S1–S7 observe Discord's _integration command
+list_ and live message deliveries in a test guild plus a second guild; neither
+exists here, so **no counts are recorded for them — none were observed rather
+than assumed.**
+
+They remain required evidence for the scenarios below. What _was_ executed is
+the automated half of each criterion, which is what CI will keep enforcing:
+
+| Scenario | Criterion              | Automated evidence executed here                                                                                                                                                                                                                                                                                                    | Manual step outstanding                      |
+| -------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| S1       | SC-001                 | `command-scope.service.spec` — "pins every root to the test guild in a development run", "scopes to exactly one guild, never to a global registration"; `test/command-scope.e2e-spec` — "pins the admin and dev roots to the test guild in a development run"                                                                       | command counts in two guilds                 |
+| S2       | SC-008                 | `command-scope.service.spec` — "removes dev from a deployed run even when the guild is configured"; `test/command-scope.e2e-spec` — "keeps the admin pair in the test guild and drops the dev pair when deployed"                                                                                                                   | run the image with `NODE_ENV=production`     |
+| S3       | SC-001                 | same scope tests as S1 — the `dev`/`sync`/`broadcast` roots are never global                                                                                                                                                                                                                                                        | manual `/sync` in the second guild           |
+| S4       | SC-002, SC-006, SC-010 | `generic-platform.spec` — "picks, suppresses, flips to pending, then sends exactly once (R6)", "skips a platform with no eligible row and sends nothing (FR-007)"; `broadcast.service.spec` — "fetches exactly that channel and never queries a subscription (R-4.1)", "keeps the no-recipient path querying subscriptions (R-4.2)" | five consecutive live runs in the test guild |
+| S5       | SC-003, SC-004, SC-009 | `generic-platform.spec` — "never touches broadcast delivery", "clears before it writes, then marks announced", "still clears when a successful fetch returns zero rows"; `dev.commands.spec` — "states how many rows were seeded announced (FR-015)"                                                                                | row counts + the scheduled pass on Discord   |
+| S6       | SC-005                 | `generic-platform.spec` — "performs no write when the storefront fetch rejects (R-4.4)"; `dev.commands.spec` — "reports a failed fetch as a failure, not as a reset (FR-010)"                                                                                                                                                       | break the network and compare row counts     |
+| S7       | SC-011                 | `dev.commands.spec` — "acknowledges with deferReply before any awaited work (R-5.2, SC-011)" and its FR-017 twin, plus "answers only through editReply — never a second reply (R-5.2)"                                                                                                                                              | a genuinely slow storefront                  |
+
+Research **R8**'s propagation caveat applies to the _removal_ half of S1/S2 and
+to post-deploy checklist item 3: a command removed from one guild can stay
+visible for up to about an hour, so a stale listing is not evidence of a bug —
+refresh the client or wait before judging.
+
+**Honest status**: S8 done; S1–S7 pending a run from a machine with `.env`
+credentials and a test guild. Nothing in this record claims an observation that
+was not made.

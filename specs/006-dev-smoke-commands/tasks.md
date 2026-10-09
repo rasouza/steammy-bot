@@ -39,14 +39,14 @@ without sending, which Principle II forbids as written; the maintainer ratified 
 amendment (research R11, Clarification 4) and the constitution's amendment procedure requires it
 to land before the work it authorises.
 
-- [ ] T001 Amend Principle II in `.specify/memory/constitution.md` as a **MAJOR** bump
+- [X] T001 Amend Principle II in `.specify/memory/constitution.md` as a **MAJOR** bump
   `3.1.2 → 4.0.0`: add the narrow carve-out permitting an operator-invoked dev reset to mark rows
   announced without a send, **provided its reply reports how many rows it suppressed**, and state
   explicitly that the rule governing the scheduled pipeline's delivery ordering is *not* relaxed.
   Follow the amendment procedure verbatim — affected principle, rationale, bump type, explicit
   maintainer sign-off already recorded 2026-10-02, `**Last Amended**` updated, and the Sync Impact
   Report scratch block removed before committing. Commit this alone as `docs:`.
-- [ ] T002 Update `AGENTS.md` where it repeats Principle II's delivery-ordering rule (the
+- [X] T002 Update `AGENTS.md` where it repeats Principle II's delivery-ordering rule (the
   "delivery-before-state" paragraph and the plan-ordering note) so it states the carve-out and
   points at the constitution version, per amendment-procedure step 3. Same commit as T001 — the
   two files are one logical change.
@@ -64,7 +64,7 @@ this.
 **⚠️ NOTE FOR THIS FEATURE**: User Story 1 (command registration) does **not** depend on this phase
 and may start immediately or in parallel. User Stories 2 and 3 MUST NOT begin until it is complete.
 
-- [ ] T003 Extend `PlatformRepository<TGame>` in `src/modules/platforms/platform.types.ts` with
+- [X] T003 Extend `PlatformRepository<TGame>` in `src/modules/platforms/platform.types.ts` with
   the five primitives named verbatim in contracts §3 — `findDevCandidate(now)`,
   `markBroadcastedExcept(candidate, now)`, `markPending(game)`, `clear()`,
   `markAllBroadcasted()` — honouring rule **R-3.3**: *"`clear()` and `markAllBroadcasted()` do not
@@ -73,22 +73,22 @@ and may start immediately or in parallel. User Stories 2 and 3 MUST NOT begin un
   and update the file-header comment to cite `specs/006-dev-smoke-commands/contracts/dev-command-contracts.md`
   alongside the existing spec-003 contract reference. `PlatformRuntime` is **not** touched here —
   its two methods belong to US2/US3.
-- [ ] T004 [P] Add unit coverage for the five new Epic primitives in
+- [X] T004 [P] Add unit coverage for the five new Epic primitives in
   `src/gamesources/epic/epic.repository.spec.ts`, asserting rule **R-3.1**: *"`findDevCandidate`
   and `markBroadcastedExcept` use the same criteria function `findPending` uses
   (`epicPendingCriteria`); generic code never reconstructs it."* Cover `findDevCandidate` ordering
   by ascending primary key, its `null` when nothing qualifies, and the suppression count returned
   by `markBroadcastedExcept`.
-- [ ] T005 [P] Add the equivalent unit coverage for the five Xbox primitives in
+- [X] T005 [P] Add the equivalent unit coverage for the five Xbox primitives in
   `src/gamesources/xbox/xbox.repository.spec.ts`, reusing `xboxPendingCriteria` under the same
   **R-3.1** constraint.
-- [ ] T006 Implement the five primitives in `src/gamesources/epic/epic.repository.ts` using the
+- [X] T006 Implement the five primitives in `src/gamesources/epic/epic.repository.ts` using the
   injected TypeORM `Repository` of `CatalogEpic` — rule **R-3.2**: *"no raw SQL — every member is
   implemented with the injected TypeORM `Repository` of that platform's own entity."* Satisfies
   T004.
-- [ ] T007 Implement the five primitives in `src/gamesources/xbox/xbox.repository.ts` against
+- [X] T007 Implement the five primitives in `src/gamesources/xbox/xbox.repository.ts` against
   `CatalogXbox` under the same **R-3.2** constraint. Satisfies T005.
-- [ ] T008 [P] Record the interface amendment in
+- [X] T008 [P] Record the interface amendment in
   `specs/003-easy-add-platform/contracts/platform-contracts.md` as a short dated section pointing
   at `specs/006-dev-smoke-commands/contracts/dev-command-contracts.md` §3, so the contract document
   the type file cites does not go stale.
@@ -114,7 +114,7 @@ and all four are absent (SC-001, SC-008; quickstart S1–S3).
 
 ### Tests for User Story 1
 
-- [ ] T009 [P] [US1] Write the decision-function spec first in
+- [X] T009 [P] [US1] Write the decision-function spec first in
   `src/modules/bot/command-scope.service.spec.ts`, covering all three roots against the three env
   states (`TEST_GUILD_ID` unset / set + `NODE_ENV=development` / set + any other), asserting
   contracts §2 verbatim: *"`undefined` is never treated as `development`; the absence of `NODE_ENV`
@@ -123,25 +123,25 @@ and all four are absent (SC-001, SC-008; quickstart S1–S3).
 
 ### Implementation for User Story 1
 
-- [ ] T010 [US1] Implement `selectCommandScope(rootName, testGuildId, nodeEnv)` and
+- [X] T010 [US1] Implement `selectCommandScope(rootName, testGuildId, nodeEnv)` and
   `CommandScopeService.onModuleInit` in `src/modules/bot/command-scope.service.ts`. Read both
   values through `ConfigService`, never `process.env`: research R1 requires the hook to run after
   `SlashCommandsModule` has populated its cache and before `client.login()`. Apply
   `slashCommands.remove(...)` when a root is removed and `slashCommands.get(...).setGuilds([testGuildId])`
   otherwise. Satisfies T009.
-- [ ] T011 [US1] Register `CommandScopeService` in the `providers` array of
+- [X] T011 [US1] Register `CommandScopeService` in the `providers` array of
   `src/modules/bot/bot.module.ts`. Leave the existing
   `development: isDev && testGuildId ? [testGuildId] : false` option exactly as it is — research R1
   depends on that option still covering the five always-global commands in a dev run.
-- [ ] T012 [P] [US1] Create `src/modules/admin/dev.commands.ts`: one `@SlashCommand({ name: 'dev' })`
+- [X] T012 [P] [US1] Create `src/modules/admin/dev.commands.ts`: one `@SlashCommand({ name: 'dev' })`
   root carrying `defaultMemberPermissions: PermissionFlagsBits.Administrator` and
   `dmPermission: false` (FR-004 / contract G4), with `@SubCommand` `sync` and `broadcast` handlers
   that `deferReply({ flags: MessageFlags.Ephemeral })` and reply that the command is not wired up
   yet. US2 and US3 replace those two handler bodies. Uses `PlatformOptionDto` for both, so the
   platform choices are the same ones `/sync` and `/broadcast` offer (FR-011).
-- [ ] T013 [US1] Provide `DevCommands` in the `providers` array of
+- [X] T013 [US1] Provide `DevCommands` in the `providers` array of
   `src/modules/admin/admin.module.ts` alongside the existing `AdminCommands`.
-- [ ] T014 [US1] Add `test/command-scope.e2e-spec.ts`: a testing module that includes the **real**
+- [X] T014 [US1] Add `test/command-scope.e2e-spec.ts`: a testing module that includes the **real**
   `SlashCommandsModule` alongside `CommandScopeService`, with a fake `Client` provided from a
   `@Global()` test module — no Discord token. Assert contract **G1** (`sync`/`broadcast`/`dev`
   never global), **G2** (all three absent when `TEST_GUILD_ID` is unset), **G3** (`dev` absent when
@@ -166,33 +166,33 @@ succeeds, zero messages (SC-002, SC-006, SC-009, SC-010, SC-011; quickstart S4).
 
 ### Tests for User Story 2
 
-- [ ] T015 [P] [US2] Extend `src/modules/broadcast/broadcast.service.spec.ts` first: stub the
+- [X] T015 [P] [US2] Extend `src/modules/broadcast/broadcast.service.spec.ts` first: stub the
   subscription repository so it **throws if queried**, then assert contracts **R-4.1** (*"When
   [`recipient`] is present, `send` fetches exactly that channel and performs **no** `subscription`
   query"*) and **R-4.3** (*"with an explicit recipient `subscribers` is the number of recipients
   given (1), so a failed dev delivery leaves the row pending and never masquerades as 'no
   subscribers ⇒ success'"*), plus the unchanged no-recipient path.
-- [ ] T016 [P] [US2] Extend `src/modules/platforms/generic-platform.spec.ts` first with the
+- [X] T016 [P] [US2] Extend `src/modules/platforms/generic-platform.spec.ts` first with the
   `devBroadcast` sequence from research R6: `findDevCandidate` → `markBroadcastedExcept` →
   `markPending` → a **single** `send`; the returned `suppressed` equals the number the repository
   reported; a rejected send leaves the candidate pending; `candidate === null` yields
   `skipped: true` with `delivered: 0` (FR-007).
-- [ ] T017 [P] [US2] Create `src/modules/admin/dev.commands.spec.ts` first, asserting contracts §5:
+- [X] T017 [P] [US2] Create `src/modules/admin/dev.commands.spec.ts` first, asserting contracts §5:
   `deferReply` is called before any awaited work (FR-017 / SC-011), the invocation channel id is
   passed as the recipient (FR-016), and the reply text contains the suppression count (FR-015 /
   SC-009).
 
 ### Implementation for User Story 2
 
-- [ ] T018 [P] [US2] Honour the optional `recipient` in
+- [X] T018 [P] [US2] Honour the optional `recipient` in
   `src/modules/broadcast/broadcast.service.ts` — fetch that channel, skip the subscription query
   entirely, keep one `embed.build`, and return `{ delivered, subscribers }` per rules R-4.1/R-4.2.
   The no-recipient path stays byte-for-byte identical. Satisfies T015.
-- [ ] T019 [P] [US2] Add `devBroadcast(recipient)` to `PlatformRuntime` in
+- [X] T019 [P] [US2] Add `devBroadcast(recipient)` to `PlatformRuntime` in
   `src/modules/platforms/platform.types.ts` and implement it in
   `src/modules/platforms/generic-platform.ts` following research R6's four steps, with the
   deterministic pick "ascending primary key". Satisfies T016.
-- [ ] T020 [US2] Replace the stub body of `onDevBroadcast` in `src/modules/admin/dev.commands.ts`:
+- [X] T020 [US2] Replace the stub body of `onDevBroadcast` in `src/modules/admin/dev.commands.ts`:
   `deferReply` first, resolve the platform from `PLATFORM_REGISTRY` through the existing
   `runtime(type)` lookup, pass the invocation channel's id, then `editReply` with delivered and
   suppressed counts, reporting a platform with no eligible row as skipped rather than failing the
@@ -216,23 +216,23 @@ the next scheduled pass delivers nothing. Break the storefront and repeat: row c
 
 ### Tests for User Story 3
 
-- [ ] T021 [P] [US3] Extend `src/modules/platforms/generic-platform.spec.ts` first with `reset()`
+- [X] T021 [P] [US3] Extend `src/modules/platforms/generic-platform.spec.ts` first with `reset()`
   covering research R5: a rejected `fetch` means `clear` is **never** called (rule **R-4.4**,
   *"no write before `fetch()` has resolved"*), a successful fetch with **zero** rows still clears,
   and the return value reports `fetched` and `seeded`.
-- [ ] T022 [P] [US3] Extend `src/modules/admin/dev.commands.spec.ts` first: `deferReply` precedes
+- [X] T022 [P] [US3] Extend `src/modules/admin/dev.commands.spec.ts` first: `deferReply` precedes
   work, an unregistered platform is rejected through `PlatformOptionDto` before any handler work
   (FR-011), the reply carries the seeded count (FR-015 / US3 scenario 1), and a failed fetch
   reports a failure rather than a reset (FR-010 / US3 scenario 3).
 
 ### Implementation for User Story 3
 
-- [ ] T023 [US3] Add `reset()` to `PlatformRuntime` in `src/modules/platforms/platform.types.ts`
+- [X] T023 [US3] Add `reset()` to `PlatformRuntime` in `src/modules/platforms/platform.types.ts`
   and implement it in `src/modules/platforms/generic-platform.ts` per research R5:
   `fetch → map → (throw ⇒ abort, nothing written) → clear → saveAll → markAllBroadcasted`. Factor
   the shared `fetch → map → saveAll` steps out of `sync()` so the two paths cannot diverge, and
   **do not** skip `clear()` when the mapped result is empty. Satisfies T021.
-- [ ] T024 [US3] Replace the stub body of `onDevSync` in `src/modules/admin/dev.commands.ts`:
+- [X] T024 [US3] Replace the stub body of `onDevSync` in `src/modules/admin/dev.commands.ts`:
   `deferReply` first, `PlatformOptionDto` choices, the existing `runtime(type)` lookup, then
   `editReply` with the seeded-as-announced count, or the failure message with the catalog untouched
   when the fetch threw. Satisfies T022.
@@ -245,25 +245,25 @@ the next scheduled pass delivers nothing. Break the storefront and repeat: row c
 
 **Purpose**: Cross-story verification and documentation. Depends on every story you intend to ship.
 
-- [ ] T025 [P] Document the dev commands in `README.md`: add `/dev sync <platform>` and
+- [X] T025 [P] Document the dev commands in `README.md`: add `/dev sync <platform>` and
   `/dev broadcast` under `### Available Commands`, and under `## Development` / `### Run the bot
   locally` state that both require `NODE_ENV=development` **and** `TEST_GUILD_ID`, that
   `/dev broadcast` posts into the channel it was run from, and that a deployed run never offers
   them (FR-014).
-- [ ] T026 [P] Verify `### Available Commands` and the `/help` embed in
+- [X] T026 [P] Verify `### Available Commands` and the `/help` embed in
   `src/modules/general/general.commands.ts` list **only** the shipped commands. `/dev sync` and
   `/dev broadcast` must not be advertised to end users; if a change is needed, make it here rather
   than in the dev command class.
-- [ ] T027 [P] Execute quickstart scenarios **S1–S8** in `specs/006-dev-smoke-commands/quickstart.md`
+- [X] T027 [P] Execute quickstart scenarios **S1–S8** in `specs/006-dev-smoke-commands/quickstart.md`
   and record the observed counts against SC-001…SC-011. Note the propagation caveat from research
   R8 when judging removed commands in a second guild.
-- [ ] T028 [P] Confirm zero schema change per research R9: `git diff main --stat` contains **no**
+- [X] T028 [P] Confirm zero schema change per research R9: `git diff main --stat` contains **no**
   file under `src/database/`, no migration, and no edit to `src/database/entities/index.ts` or
   `src/database/data-source-options.ts`.
-- [ ] T029 [P] Re-validate `specs/006-dev-smoke-commands/checklists/requirements.md` after
+- [X] T029 [P] Re-validate `specs/006-dev-smoke-commands/checklists/requirements.md` after
   implementation: still **16/16**, with no `[NEEDS CLARIFICATION]` marker reintroduced into
   `specs/006-dev-smoke-commands/spec.md`.
-- [ ] T030 Run the full CI sequence locally **in order** (Principle IV), all six steps passing —
+- [X] T030 Run the full CI sequence locally **in order** (Principle IV), all six steps passing —
   `npx prettier --check "src/**/*.ts" "test/**/*.ts"`, `npm run type:check`, `npm run lint`,
   `npm run build`, `npm test`, `npm run db:e2e:setup && npm run test:e2e`. Do not pass `--fix` to
   `npm run lint`.
