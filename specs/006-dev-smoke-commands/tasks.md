@@ -399,10 +399,15 @@ the technical-constraint and deployment blocks) and produced no violation.
   of that task rather than a new one. If a scenario genuinely cannot be run, record why beside it
   rather than leaving it unmarked — the current record's honesty about what was *not* observed is
   the property to preserve. Per T027 (partial).
-  > **Status 2026-10-18 (convergence)**: still not executed. S1–S7 need a live Discord guild, a
-  > second guild and `BOT_TOKEN`, none of which exist in this environment; the quickstart says so
-  > beside S1–S7 instead of leaving them unmarked, and the S8 half is recorded as executed twice
-  > (2026-10-03 and 2026-10-18). Closed only by an operator run from a machine with `.env`.
+  > **Status 2026-10-18 (convergence, second pass)**: still not executed. S1–S7 need a live
+  > Discord guild, a second guild and `BOT_TOKEN`, none of which exist in this environment; the
+  > quickstart says so beside S1–S7 instead of leaving them unmarked, and the S8 half is recorded
+  > as executed twice (2026-10-03 and 2026-10-18). Closed only by an operator run from a machine
+  > with `.env`.
+  >
+  > A second converge pass re-verified T031–T035 against the tree and appended Phase 8: **T036**
+  > supersedes the manual half of T027, which delivered only its automated half, and **T037** (the
+  > PR-note justification) is closed. This task and T036 remain blocked on the same operator run.
 - [x] T034 Correct `specs/006-dev-smoke-commands/research.md` **R8** and step 3 of the quickstart's
   post-deploy checklist: `application.commands.set(...)` replaces the global set only for the
   application its token belongs to, and a development run leaves Necord nothing global to write
