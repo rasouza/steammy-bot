@@ -261,22 +261,47 @@ guild is configured") and `test/command-scope.e2e-spec` ("keeps the admin pair
 in the test guild and drops the dev pair when deployed"); the live count is
 **not yet observed** and stays open pending a deploy of this branch.
 
-### S2b — Runtime refusal in the second guild · proves US1/AC7, spec edge case
+### S3 — Runtime refusal outside the test guild · proves US1/AC7 ✅ executed 2026-10-18
 
-T031's check, and the one thing S1's clean `0` cannot prove: a command that
-*should* not be reachable can still be **invoked** from a stale registration
-until propagation catches up, and a DM carries no `guildId` at all. S1 shows the
-registration is scoped; this shows the handler refuses anyway. Deferred to
-Phase 8 as part of T033/T036 — it needs an operator to invoke `/sync` by hand
-in the second guild.
+Two halves, both observed.
+
+**Registration scoping.** The second guild (`1561489788027011164`) held **0** guild
+commands on the dev application, confirmed by a direct registry read, so research
+R8's propagation delay was not in play — nothing was lingering to be invoked.
+
+**Runtime refusal.** Because a cleanly-removed command cannot exercise the guard,
+a temporary `/sync` registration (`1561493007818166332`) was written into the
+second guild under the dev application to make the command invokable there —
+the exact shape T031 exists for: a registration that *should* not be reachable
+still is, until propagation or a re-registration removes it. Invoking it
+returned, ephemerally:
+
+> These commands only run in the test guild.
+
+which is `TEST_GUILD_REFUSAL` in
+`src/modules/admin/test-guild.guard.ts` verbatim. The temporary registration was
+deleted immediately afterwards (`0` remaining); the test guild's 8 scoped
+registrations were confirmed unchanged, so the out-of-band write never leaked
+into the scoped set.
+
+**Catalog state.** No before/after diff is claimed here, because the catalog was
+fingerprinted only *after* the invocation rather than before it. What the
+refusal's safety rests on is structural and was verified in the source:
+`TestGuildGuard.allow()` is the first statement of the handler, ahead of the
+`runtime()` lookup and any `BroadcastService` call, so a `false` return cannot
+reach a catalog read, write, or message. Post-invocation state was
+`epic 2/0 pending, xbox 521/0 pending, subscription 54`. The colocated specs
+(`test-guild.guard.spec.ts`, `admin.commands.spec.ts`) assert no
+`runtime.*` and no `BroadcastService.send` call in the refusing cases.
 
 ### S1–S4 status · 2026-10-18 operator run
 
 **Observed**: S1 ✅ (second guild `0`, test guild scoped roots exactly
-`sync`/`broadcast`/`dev` = 4 invocable admin/dev commands), plus the dev
-application's global set confirmed empty.
+`sync`/`broadcast`/`dev` = 4 invocable admin/dev commands), the dev
+application's global set confirmed empty, and S3 ✅ (runtime refusal live, exact
+refusal string returned, temp registration cleaned up).
 
-**Not yet observed**: S1b, S2 live count, S2b, S4, S5, S6, S7. Each is marked
+**Not yet observed**: S1b, S2 live count, S4, S5, S6, S7. Each is marked
 above with why, rather than left unmarked — the record's honesty about what was
 *not* observed is the property this record protects.
 
@@ -302,9 +327,10 @@ token belongs to**: stale globals on a second application are never purged by
 any boot and have to be cleared by hand.
 
 **Honest status**: S8 executed twice — 2026-10-03 and 2026-10-18, both recorded
-above. **S1 executed 2026-10-18** (second guild created for the run, counts read
-from the live registry). Still open: S1b, S2's live count (blocked on a deploy of
-this branch — the running image is `v3.4.0`, which predates it), S2b, S4, S5, S6
-and S7, each marked with its reason above rather than left unmarked. Convergence
-tasks **T033** and **T036** track the remainder. Nothing in this record claims an
-observation that was not made.
+above. **S1 and S3 executed 2026-10-18** (second guild created for the run;
+counts read from the live registry; runtime refusal provoked with a temporary
+registration that was cleaned up afterwards). Still open: S1b, S2's live count
+(blocked on a deploy of this branch — the running image is `v3.4.0`, which
+predates it), S4, S5, S6 and S7, each marked with its reason above rather than
+left unmarked. Convergence tasks **T033** and **T036** track the remainder.
+Nothing in this record claims an observation that was not made.
