@@ -399,18 +399,22 @@ the technical-constraint and deployment blocks) and produced no violation.
   of that task rather than a new one. If a scenario genuinely cannot be run, record why beside it
   rather than leaving it unmarked — the current record's honesty about what was *not* observed is
   the property to preserve. Per T027 (partial).
-  > **Status 2026-10-18 (operator run)**: **partially executed.** **S1**, **S3** and **S4** are
-  > done — a second guild (`Nazaré's server`, `1561489788027011164`) was created for the run.
-  > Registry reads show **0** commands there and the 3 scoped roots (`sync`, `broadcast`, `dev` =
+  > **Status 2026-10-18/19 (operator run)**: **partially executed.** **S1**, **S3**, **S4** and
+  > **SC-006** are done — a second guild (`Nazaré's server`, `1561489788027011164`) was created for
+  > the run. Registry reads show **0** commands there and the 3 scoped roots (`sync`, `broadcast`, `dev` =
   > 4 invocable admin/dev commands) in the test guild, with the dev application's global set
   > confirmed empty. For S3 a temporary `/sync` registration was written into the second guild to
   > make the command invokable there, and invoking it returned the refusal string verbatim; the
   > registration was deleted immediately and the test guild's 8 scoped registrations were
   > confirmed unchanged. For S4, five consecutive `/dev broadcast` runs each delivered exactly 2
   > messages (one Epic, one Xbox) into the invocation channel only, with the reply stating
-  > `delivered 1` and no suppression clause — correct, since nothing was surplus.
+  > `delivered 1` and no suppression clause — correct, since nothing was surplus. For SC-006,
+  > Epic's catalog was emptied to four rows deleted and one invocation reported
+  > `Epic Games: skipped (0 delivered)` while `Xbox Game Pass: delivered 1` still delivered, with
+  > no error — the skip branch. A preceding run also showed the suppression clause firing with
+  > the correct number (`suppressed 5`), the first live confirmation of FR-015's other arm.
   > Still open: S1b, S2's live count (blocked on a deploy — the running image is `v3.4.0`, which
-  > predates this branch), SC-006's empty-catalog skip, S5, S6 and S7. Recorded in quickstart.md
+  > predates this branch), S5, S6 and S7. Recorded in quickstart.md
   > with a reason beside each rather than left unmarked.
   >
   > A second converge pass re-verified T031–T035 against the tree and appended Phase 8: **T036**

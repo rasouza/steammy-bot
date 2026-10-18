@@ -326,19 +326,62 @@ SC-002 says "never zero-and-stuck" rather than "starts empty".
 **Still open within S4**: SC-006 — the genuine *skip* path, where a platform has
 **zero catalog rows** and must report skipped with 0 delivered without failing
 the invocation. That requires emptying a catalog first and is recorded separately
-below; the five runs above exercise the delivery path, not the skip path.
+below; the five runs above exercise the delivery path, not the skip path. **Since
+observed: see SC-006 below.**
 
-### S1–S4 status · 2026-10-18 operator run
+### SC-006 — A platform with no catalog rows skips · proves SC-006 ✅ executed 2026-10-19
+
+The skip branch in `devBroadcast`, reached by deleting all four Epic rows and
+leaving Xbox at 526 — so one platform genuinely had nothing while the other had
+stock. Operator-screenshot observation:
+
+```
+Dev broadcast into #general:
+Epic Games: skipped (0 delivered)
+Xbox Game Pass: delivered 1
+```
+
+| Criterion | Expected | Observed | Verdict |
+| --------- | -------- | -------- | ------- |
+| SC-006 — empty platform | reports skipped, 0 delivered | **`Epic Games: skipped (0 delivered)`** | ✅ |
+| SC-006 — invocation survives | the other platform still delivers, no error | **`Xbox Game Pass: delivered 1`**, no error, ephemeral reply intact | ✅ |
+
+**A first staging attempt of this scenario was wrong and was discarded, not
+recorded as evidence.** Marking Epic's rows `broadcasted = true` was tried on the
+assumption it would make them ineligible; it did not, because `findDevCandidate`
+is deliberately `broadcasted`-agnostic (`where: {}`, `order: { id: 'ASC' }`,
+`take: 1` in `epic.repository.ts`). It returns the first row whatever its state,
+so a catalog holding rows always has a candidate and can never skip. The only
+state that yields `null` is a catalog with **zero rows**, which is what SC-006's
+"every catalog is empty" means literally. The attempt's own output —
+`Epic Games: delivered 1` — is what exposed the mistake.
+
+**Side effect of the staging, recorded because it is real**: four Epic rows were
+deleted from the live catalog. The hourly sync (`0 * * * *`) refetches from the
+storefront and repopulates; `saveAll` only writes rows the storefront returns, so
+the cron cannot resurrect the deleted ids but does restore the catalog itself.
+
+**Also observed incidentally, and it belongs to SC-009** — in the run immediately
+preceding this one, the Xbox line read **`delivered 1` with a suppression
+clause** (`suppressed 5`), against five pending surplus rows. That is the first
+live confirmation that the clause fires *and* states the right number, which S4
+could not show because suppression was 0 there. Together the two runs cover both
+arms of FR-015: absent when the count is zero, present and correct when it is
+not.
+
+### S1–S4 status · 2026-10-18/19 operator run
 
 **Observed**: S1 ✅ (second guild `0`, test guild scoped roots exactly
 `sync`/`broadcast`/`dev` = 4 invocable admin/dev commands), the dev
 application's global set confirmed empty, S3 ✅ (runtime refusal live, exact
-refusal string returned, temp registration cleaned up) and S4 ✅ (five runs,
-2 messages per run, invocation channel only, suppression correctly absent).
+refusal string returned, temp registration cleaned up), S4 ✅ (five runs,
+2 messages per run, invocation channel only, suppression correctly absent) and
+SC-006 ✅ (a platform with zero catalog rows reports `skipped (0 delivered)`
+while the other still delivers, with no error).
 
-**Not yet observed**: S1b, S2 live count, S6, S7, and SC-006's empty-catalog
-skip. Each is marked above with why, rather than left unmarked — the record's
-honesty about what was *not* observed is the property this record protects.
+**Not yet observed**: S1b, S2 live count, S5, S6, S7. Each is marked above with
+why, rather than left unmarked — the record's honesty about what was *not*
+observed is the property this record protects.
 
 Automated evidence backing every one of the outstanding scenarios, which is
 what CI keeps enforcing:
@@ -348,7 +391,7 @@ what CI keeps enforcing:
 | S1       | SC-001                 | `command-scope.service.spec` — "pins every root to the test guild in a development run", "scopes to exactly one guild, never to a global registration"; `test/command-scope.e2e-spec` — "pins the admin and dev roots to the test guild in a development run"                                                                       | ✅ observed 2026-10-18 — see S1 above; S1b (revoke `TEST_GUILD_ID`) still open |
 | S2       | SC-008                 | `command-scope.service.spec` — "removes dev from a deployed run even when the guild is configured"; `test/command-scope.e2e-spec` — "keeps the admin pair in the test guild and drops the dev pair when deployed"                                                                                                                   | run the image with `NODE_ENV=production`     |
 | S3       | SC-001                 | same scope tests as S1 — the `dev`/`sync`/`broadcast` roots are never global                                                                                                                                                                                                                                                        | manual `/sync` in the second guild           |
-| S4       | SC-002, SC-006, SC-010 | `generic-platform.spec` — "picks, suppresses, flips to pending, then sends exactly once (R6)", "skips a platform with no catalog rows at all (FR-007)"; `broadcast.service.spec` — "fetches exactly that channel and never queries a subscription (R-4.1)", "keeps the no-recipient path querying subscriptions (R-4.2)" | five consecutive live runs in the test guild |
+| S4       | SC-002, SC-006, SC-010 | `generic-platform.spec` — "picks, suppresses, flips to pending, then sends exactly once (R6)", "skips a platform with no catalog rows at all (FR-007)"; `broadcast.service.spec` — "fetches exactly that channel and never queries a subscription (R-4.1)", "keeps the no-recipient path querying subscriptions (R-4.2)" | ✅ observed 2026-10-18/19 — five runs plus a zero-row Epic catalog; see S4 and SC-006 |
 | S5       | SC-003, SC-004, SC-009 | `generic-platform.spec` — "never touches broadcast delivery", "clears before it writes, then marks announced", "still clears when a successful fetch returns zero rows"; `dev.commands.spec` — "states how many rows were seeded announced (FR-015)"                                                                                | row counts + the scheduled pass on Discord   |
 | S6       | SC-005                 | `generic-platform.spec` — "performs no write when the storefront fetch rejects (R-4.4)"; `dev.commands.spec` — "reports a failed fetch as a failure, not as a reset (FR-010)"                                                                                                                                                       | break the network and compare row counts     |
 | S7       | SC-011                 | `dev.commands.spec` — "acknowledges with deferReply before any awaited work (R-5.2, SC-011)" and its FR-017 twin, plus "answers only through editReply — never a second reply (R-5.2)"                                                                                                                                              | a genuinely slow storefront                  |
@@ -361,13 +404,13 @@ states explicitly is that the overwrite reaches **only the application its
 token belongs to**: stale globals on a second application are never purged by
 any boot and have to be cleared by hand.
 
-**Honest status**: S8 executed twice — 2026-10-03 and 2026-10-18. **S1, S3 and
-S4 executed 2026-10-18** (second guild created for the run; counts read from the
-live registry; runtime refusal provoked with a temporary registration that was
-cleaned up afterwards; five consecutive `/dev broadcast` runs observed by the
-operator and corroborated by a catalog read). Still open: S1b, S2's live count
-(blocked on a deploy of this branch — the running image is `v3.4.0`, which
-predates it), SC-006's empty-catalog skip, S5, S6 and S7, each marked with its
-reason above rather than left unmarked. Convergence tasks **T033** and **T036**
-track the remainder. Nothing in this record claims an observation that was not
-made.
+**Honest status**: S8 executed twice — 2026-10-03 and 2026-10-18. **S1, S3, S4
+and SC-006 executed 2026-10-18/19** (second guild created for the run; counts
+read from the live registry; runtime refusal provoked with a temporary
+registration that was cleaned up afterwards; five consecutive `/dev broadcast`
+runs observed by the operator and corroborated by a catalog read; then a
+zero-row Epic catalog to reach the skip branch). Still open: S1b, S2's live
+count (blocked on a deploy of this branch — the running image is `v3.4.0`,
+which predates it), S5, S6 and S7, each marked with its reason above rather
+than left unmarked. Convergence tasks **T033** and **T036** track the
+remainder. Nothing in this record claims an observation that was not made.
