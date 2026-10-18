@@ -399,15 +399,17 @@ the technical-constraint and deployment blocks) and produced no violation.
   of that task rather than a new one. If a scenario genuinely cannot be run, record why beside it
   rather than leaving it unmarked — the current record's honesty about what was *not* observed is
   the property to preserve. Per T027 (partial).
-  > **Status 2026-10-18 (convergence, second pass)**: still not executed. S1–S7 need a live
-  > Discord guild, a second guild and `BOT_TOKEN`, none of which exist in this environment; the
-  > quickstart says so beside S1–S7 instead of leaving them unmarked, and the S8 half is recorded
-  > as executed twice (2026-10-03 and 2026-10-18). Closed only by an operator run from a machine
-  > with `.env`.
+  > **Status 2026-10-18 (operator run)**: **partially executed.** S1 is done — a second guild
+  > (`Nazaré's server`, `1561489788027011164`) was created for the run, and counts read from the
+  > live registry show **0** commands there and the 3 scoped roots (`sync`, `broadcast`, `dev` =
+  > 4 invocable admin/dev commands) in the test guild, with the dev application's global set
+  > confirmed empty. Still open: S1b, S2's live count (blocked on a deploy — the running image is
+  > `v3.4.0`, which predates this branch), S2b, S4, S5, S6 and S7. Recorded in quickstart.md with a
+  > reason beside each rather than left unmarked.
   >
   > A second converge pass re-verified T031–T035 against the tree and appended Phase 8: **T036**
   > supersedes the manual half of T027, which delivered only its automated half, and **T037** (the
-  > PR-note justification) is closed. This task and T036 remain blocked on the same operator run.
+  > PR-note justification) is closed. This task and T036 track the remainder of the same run.
 - [x] T034 Correct `specs/006-dev-smoke-commands/research.md` **R8** and step 3 of the quickstart's
   post-deploy checklist: `application.commands.set(...)` replaces the global set only for the
   application its token belongs to, and a development run leaves Necord nothing global to write

@@ -198,20 +198,94 @@ Evidence this run added, which is what S1/S3 (SC-001) and US1/AC5 now rest on:
 the ready-time cases in `src/modules/bot/command-scope.service.spec.ts`, and the unreachable-guild
 cases in `test/command-scope.e2e-spec.ts`.
 
-### S1–S7 — manual scenarios ⏳ not executed in this environment
+### S1 — Command counts by guild and run mode · proves SC-001 ✅ executed 2026-10-18
 
-**Blocker**: this run has no `.env` and therefore no `BOT_TOKEN`, and no
-Discord guild the bot has joined. S1–S7 observe Discord's _integration command
-list_ and live message deliveries in a test guild plus a second guild; neither
-exists here, so **no counts are recorded for them — none were observed rather
-than assumed.**
+Run from a machine with `.env`, against the dev application
+`SteammyBotDEV#1402` (`863117639207223298`) on branch `STE-185-006-dev-smoke-commands`.
+Two guilds: the test guild `The Lab` (`1284541904209444894`) and a second guild
+`Nazaré's server` (`1561489788027011164`), created for this run.
 
-They remain required evidence for the scenarios below. What _was_ executed is
-the automated half of each criterion, which is what CI will keep enforcing:
+Counts were taken from the **live registry** via
+`REST.get Routes.applicationCommands / applicationGuildCommands` rather than by
+eyeballing the client list, so they are exact rather than subject to the
+propagation delay R8 describes.
+
+| Step | Guild | Observed | Expected | Verdict |
+| ---- | ----- | -------- | -------- | ------- |
+| 1 | second (`1561489788027011164`) | **0** guild commands | `0` of the four | ✅ |
+| 2 | test (`1284541904209444894`) | **8** total: `subscribe`, `unsubscribe`, `sync`, `broadcast`, `ping`, `invite`, `help`, `dev` | `4` admin/dev | ✅ |
+
+**How the second guild's 8 reconciles with the expected 4.** The list is the
+application's full set: the 5 always-global commands plus the 3 scoped roots.
+SC-001 counts only the admin/dev set, which is `sync`, `broadcast` and `dev` —
+`dev` is **one root carrying two subcommands**, so that is 3 registry entries and
+**4 invocable commands** (`/sync`, `/broadcast`, `/dev sync`, `/dev broadcast`),
+exactly SC-001's 4. `/dev sync` and `/dev broadcast` are not separate registry
+entries (research R2).
+
+**Stale-global check.** The dev application's **global** command set is **empty**
+(`Routes.applicationCommands` → 0), so the 8 are guild registrations and the
+scoped roots were never written globally. This is the shape research R1
+predicts: Necord's `development` option pins to the test guild, so a dev run
+leaves nothing global to purge.
+
+**Not observed here**: S1 step 3 (revoke `TEST_GUILD_ID`, restart) — not yet
+run; see S1b below.
+
+### S1b — No test guild configured · proves FR-002, FR-003 ⏳ not yet executed
+
+S1's step 3. Requires stopping the dev run, removing `TEST_GUILD_ID` from
+`.env`, and restarting. Expected: the bot boots normally (FR-003) and all four
+are absent everywhere while the other five remain (FR-002).
+
+### S2 — Deployed run offers only the admin pair · proves SC-008 ⚠️ partially observed
+
+The production application is a **separate Discord application** —
+`Steammy#8458` (`1284565018788106273`) — running the Coolify app `steammy-bot`,
+which is `running:healthy`. It is a member of the test guild. The deployed bot's
+own command registrations were **not read**, because that requires its
+`BOT_TOKEN` and this run only holds the dev token; a token is never written into
+a record.
+
+The relevant structural fact **was** verified: because production is a separate
+application, `application.commands.set` reached by a production boot touches
+only `Steammy#8458`'s registrations and can never rewrite the dev application's
+— the exact isolation research R8 (amended 2026-10-18) now states. And the
+deployed build at the time of this run is `v3.4.0`, which **predates the code
+under test** (PR #44), so a deployed-run observation here would not evidence
+this branch's behaviour anyway.
+
+**Status**: the 2-command expectation is confirmed by the automated evidence in
+`command-scope.service.spec` ("removes dev from a deployed run even when the
+guild is configured") and `test/command-scope.e2e-spec` ("keeps the admin pair
+in the test guild and drops the dev pair when deployed"); the live count is
+**not yet observed** and stays open pending a deploy of this branch.
+
+### S2b — Runtime refusal in the second guild · proves US1/AC7, spec edge case
+
+T031's check, and the one thing S1's clean `0` cannot prove: a command that
+*should* not be reachable can still be **invoked** from a stale registration
+until propagation catches up, and a DM carries no `guildId` at all. S1 shows the
+registration is scoped; this shows the handler refuses anyway. Deferred to
+Phase 8 as part of T033/T036 — it needs an operator to invoke `/sync` by hand
+in the second guild.
+
+### S1–S4 status · 2026-10-18 operator run
+
+**Observed**: S1 ✅ (second guild `0`, test guild scoped roots exactly
+`sync`/`broadcast`/`dev` = 4 invocable admin/dev commands), plus the dev
+application's global set confirmed empty.
+
+**Not yet observed**: S1b, S2 live count, S2b, S4, S5, S6, S7. Each is marked
+above with why, rather than left unmarked — the record's honesty about what was
+*not* observed is the property this record protects.
+
+Automated evidence backing every one of the outstanding scenarios, which is
+what CI keeps enforcing:
 
 | Scenario | Criterion              | Automated evidence executed here                                                                                                                                                                                                                                                                                                    | Manual step outstanding                      |
 | -------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| S1       | SC-001                 | `command-scope.service.spec` — "pins every root to the test guild in a development run", "scopes to exactly one guild, never to a global registration"; `test/command-scope.e2e-spec` — "pins the admin and dev roots to the test guild in a development run"                                                                       | command counts in two guilds                 |
+| S1       | SC-001                 | `command-scope.service.spec` — "pins every root to the test guild in a development run", "scopes to exactly one guild, never to a global registration"; `test/command-scope.e2e-spec` — "pins the admin and dev roots to the test guild in a development run"                                                                       | ✅ observed 2026-10-18 — see S1 above; S1b (revoke `TEST_GUILD_ID`) still open |
 | S2       | SC-008                 | `command-scope.service.spec` — "removes dev from a deployed run even when the guild is configured"; `test/command-scope.e2e-spec` — "keeps the admin pair in the test guild and drops the dev pair when deployed"                                                                                                                   | run the image with `NODE_ENV=production`     |
 | S3       | SC-001                 | same scope tests as S1 — the `dev`/`sync`/`broadcast` roots are never global                                                                                                                                                                                                                                                        | manual `/sync` in the second guild           |
 | S4       | SC-002, SC-006, SC-010 | `generic-platform.spec` — "picks, suppresses, flips to pending, then sends exactly once (R6)", "skips a platform with no catalog rows at all (FR-007)"; `broadcast.service.spec` — "fetches exactly that channel and never queries a subscription (R-4.1)", "keeps the no-recipient path querying subscriptions (R-4.2)" | five consecutive live runs in the test guild |
@@ -228,6 +302,9 @@ token belongs to**: stale globals on a second application are never purged by
 any boot and have to be cleared by hand.
 
 **Honest status**: S8 executed twice — 2026-10-03 and 2026-10-18, both recorded
-above; S1–S7 still pending a run from a machine with `.env` credentials, a test
-guild and a second guild (convergence task **T033**). Nothing in this record
-claims an observation that was not made.
+above. **S1 executed 2026-10-18** (second guild created for the run, counts read
+from the live registry). Still open: S1b, S2's live count (blocked on a deploy of
+this branch — the running image is `v3.4.0`, which predates it), S2b, S4, S5, S6
+and S7, each marked with its reason above rather than left unmarked. Convergence
+tasks **T033** and **T036** track the remainder. Nothing in this record claims an
+observation that was not made.
