@@ -132,8 +132,10 @@ The automated gate above is the evidence: every suite that passed on `main` pass
 1. Principle IV's six steps green on the PR.
 2. Constitution shows `4.0.0` and the PR description records the MAJOR sign-off.
 3. After the first production boot, confirm from a **second guild** that `/sync` and
-   `/broadcast` are gone (their old global copies are purged by that boot's overwrite — allow for
-   propagation delay).
+   `/broadcast` are gone. They are, because that boot overwrote **this application's** global
+   set — allow for Discord's propagation delay (research R8). A **second application** is not
+   covered by that overwrite: its stale globals are never purged by any boot, so remove them
+   from that application's Developer Portal before judging `0` there (R8, amended 2026-10-18).
 4. Confirm `0` `/dev` commands in the test guild of the deployed bot.
 5. Linear `STE-185` reflects the state the hooks report.
 
@@ -145,15 +147,16 @@ The automated gate above is the evidence: every suite that passed on `main` pass
 | Commands still visible in another guild right after deploy | Discord client cache                            | wait for propagation or refresh, then re-check (research R8)                                                                  |
 | `Platform is not registered: …`                            | platform removed from `gameSources`             | FR-011 rejection is working; the platform is not registered                                                                   |
 | `/dev broadcast` reports `0` delivered for one platform    | the channel is unreachable from the bot         | row stays pending; a repeat run recovers — no data lost (spec Edge Cases)                                                     |
-| A platform reports `0` delivered although it has rows      | none of its rows pass its own eligibility rules | expected; see the eligibility note in [research R6](./research.md#r6--which-row-dev-broadcast-picks-and-what-gets-suppressed) |
+| A platform reports `0` delivered although it has rows      | **no longer expected** — `findDevCandidate` ignores the announcement window, so any row is deliverable            | the reply says `skipped`, which means the catalog is empty; otherwise suspect the unreachable-channel row above, then a bug |
 
 ## Validation record
 
 **Executed**: 2026-10-03 · **Branch**: `STE-185-006-dev-smoke-commands` · **Constitution**: 4.0.0 ✓
 
-### S8 — no pre-existing check regresses · proves SC-007 ✅ executed
+### S8 — no pre-existing check regresses · proves SC-007 ✅ executed 2026-10-03
 
-All six steps of the automated gate, in order (a partial run is not a pass):
+All six steps of the automated gate, in order (a partial run is not a pass), as run against the
+tree at `ef5ec54`:
 
 | #   | Step                        | Result                                       |
 | --- | --------------------------- | -------------------------------------------- |
@@ -167,6 +170,33 @@ All six steps of the automated gate, in order (a partial run is not a pass):
 Prerequisite confirmed: `.specify/memory/constitution.md` reads
 `**Version**: 4.0.0`, so the Principle II carve-out was in place before any
 FR-006/FR-009 code was written (research R11 / Task 0).
+
+> This table is the record of **that** run, kept as history rather than rewritten. The suite has
+> since grown — `60b0486` took it to 102, and the convergence phase below to 129 — and the S4
+> evidence cell cited a test that has since been renamed. The current numbers are in the
+> convergence run directly below; a validation record that quietly renumbers itself would be
+> claiming observations that were not made.
+
+### S8 — convergence run · proves SC-007 ✅ executed 2026-10-18
+
+All six steps re-run, in order, against the tree carrying `60b0486` (forced delivery) and the
+Phase 7 convergence fixes (T031 runtime refusal, T032 unreachable-guild degradation, T034/T035
+document corrections):
+
+| #   | Step                        | Result                                       |
+| --- | --------------------------- | -------------------------------------------- |
+| 1   | `prettier --check`          | pass — all matched files use Prettier style  |
+| 2   | `npm run type:check`        | pass — clean                                 |
+| 3   | `npm run lint`              | pass — **0 errors / 22 warnings** (baseline) |
+| 4   | `npm run build`             | pass — `nest build` exit 0                   |
+| 5   | `npm test`                  | pass — 12 files, **129** tests               |
+| 6   | `db:e2e:setup` + `test:e2e` | pass — 4 files, **28** tests                 |
+
+Evidence this run added, which is what S1/S3 (SC-001) and US1/AC5 now rest on:
+`src/modules/admin/test-guild.guard.spec.ts`, the refusal block added to
+`src/modules/admin/dev.commands.spec.ts`, the new `src/modules/admin/admin.commands.spec.ts`,
+the ready-time cases in `src/modules/bot/command-scope.service.spec.ts`, and the unreachable-guild
+cases in `test/command-scope.e2e-spec.ts`.
 
 ### S1–S7 — manual scenarios ⏳ not executed in this environment
 
@@ -184,7 +214,7 @@ the automated half of each criterion, which is what CI will keep enforcing:
 | S1       | SC-001                 | `command-scope.service.spec` — "pins every root to the test guild in a development run", "scopes to exactly one guild, never to a global registration"; `test/command-scope.e2e-spec` — "pins the admin and dev roots to the test guild in a development run"                                                                       | command counts in two guilds                 |
 | S2       | SC-008                 | `command-scope.service.spec` — "removes dev from a deployed run even when the guild is configured"; `test/command-scope.e2e-spec` — "keeps the admin pair in the test guild and drops the dev pair when deployed"                                                                                                                   | run the image with `NODE_ENV=production`     |
 | S3       | SC-001                 | same scope tests as S1 — the `dev`/`sync`/`broadcast` roots are never global                                                                                                                                                                                                                                                        | manual `/sync` in the second guild           |
-| S4       | SC-002, SC-006, SC-010 | `generic-platform.spec` — "picks, suppresses, flips to pending, then sends exactly once (R6)", "skips a platform with no eligible row and sends nothing (FR-007)"; `broadcast.service.spec` — "fetches exactly that channel and never queries a subscription (R-4.1)", "keeps the no-recipient path querying subscriptions (R-4.2)" | five consecutive live runs in the test guild |
+| S4       | SC-002, SC-006, SC-010 | `generic-platform.spec` — "picks, suppresses, flips to pending, then sends exactly once (R6)", "skips a platform with no catalog rows at all (FR-007)"; `broadcast.service.spec` — "fetches exactly that channel and never queries a subscription (R-4.1)", "keeps the no-recipient path querying subscriptions (R-4.2)" | five consecutive live runs in the test guild |
 | S5       | SC-003, SC-004, SC-009 | `generic-platform.spec` — "never touches broadcast delivery", "clears before it writes, then marks announced", "still clears when a successful fetch returns zero rows"; `dev.commands.spec` — "states how many rows were seeded announced (FR-015)"                                                                                | row counts + the scheduled pass on Discord   |
 | S6       | SC-005                 | `generic-platform.spec` — "performs no write when the storefront fetch rejects (R-4.4)"; `dev.commands.spec` — "reports a failed fetch as a failure, not as a reset (FR-010)"                                                                                                                                                       | break the network and compare row counts     |
 | S7       | SC-011                 | `dev.commands.spec` — "acknowledges with deferReply before any awaited work (R-5.2, SC-011)" and its FR-017 twin, plus "answers only through editReply — never a second reply (R-5.2)"                                                                                                                                              | a genuinely slow storefront                  |
@@ -192,8 +222,12 @@ the automated half of each criterion, which is what CI will keep enforcing:
 Research **R8**'s propagation caveat applies to the _removal_ half of S1/S2 and
 to post-deploy checklist item 3: a command removed from one guild can stay
 visible for up to about an hour, so a stale listing is not evidence of a bug —
-refresh the client or wait before judging.
+refresh the client or wait before judging. What R8 (amended 2026-10-18) now
+states explicitly is that the overwrite reaches **only the application its
+token belongs to**: stale globals on a second application are never purged by
+any boot and have to be cleared by hand.
 
-**Honest status**: S8 done; S1–S7 pending a run from a machine with `.env`
-credentials and a test guild. Nothing in this record claims an observation that
-was not made.
+**Honest status**: S8 executed twice — 2026-10-03 and 2026-10-18, both recorded
+above; S1–S7 still pending a run from a machine with `.env` credentials, a test
+guild and a second guild (convergence task **T033**). Nothing in this record
+claims an observation that was not made.
