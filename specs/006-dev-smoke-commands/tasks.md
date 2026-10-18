@@ -420,3 +420,52 @@ the technical-constraint and deployment blocks) and produced no violation.
   holds **102**, and the "Expected failures" row asserting that a platform reporting `0` delivered
   despite holding rows is *expected* is no longer true now that `findDevCandidate` is window-free —
   the only remaining reason for that observation is an empty catalog. Per quickstart.md (contradicts).
+
+---
+
+## Phase 8: Convergence
+
+**Purpose**: Remaining work found by `/speckit.converge` on 2026-10-18, after Phase 7 was
+implemented. Assessment is against the present state of the tree, not against the checkboxes:
+completion claims are not evidence. All 35 prior tasks were re-verified — T031's guard, T032's
+ready-time degradation, T034's R8 amendment and T035's record split are all present and
+behaving as written. The constitution was re-checked in full (I–V plus the technical-constraint,
+data-representation, deployment and workflow blocks) and produced **no violation**.
+
+The whole of what remains is the same gap T033 names from the other side: every behavioural
+obligation is pinned by an automated spec and **none of them has ever been observed against a
+live Discord guild**. The quickstart says so itself rather than claiming an observation, and
+preserving that honesty is the property this phase protects.
+
+- [ ] T036 Execute quickstart scenarios **S1–S7** from a machine holding `.env` credentials, the
+  test guild, and a second guild the bot has joined, and record every observed count in the
+  validation record of `specs/006-dev-smoke-commands/quickstart.md`, replacing the
+  "S1–S7 — manual scenarios ⏳ not executed in this environment" block with a dated run. Cover,
+  in this order: **S1/SC-001** — command counts of 0 in the second guild, 4 in the test guild
+  under `npm run start:dev`; **S2/SC-008** — a run with `NODE_ENV=production` offering exactly
+  `/sync` and `/broadcast` and 0 `/dev` commands (take this from the deployed bot; do **not** run
+  a local process with `NODE_ENV=production` against the dev token, because that rewrites the
+  application's global command set and corrupts the S1/S3 counts — research R8); **S3/SC-001** —
+  no `/sync`, `/broadcast` or `/dev` invocation succeeds in the second guild, with the runtime
+  refusal from T031 confirmed to leave catalog state untouched; **S4/SC-002, SC-006, SC-010** —
+  five consecutive `/dev broadcast` invocations delivering exactly 1 message per platform into
+  the invocation channel every time, then an emptied catalog reporting skipped with 0 delivered
+  and no error; **S5/SC-003, SC-004, SC-009** — `/dev sync <platform>` leaving exactly the
+  storefront's rows, the reply stating the seeded-as-announced count, and the next scheduled pass
+  delivering 0 (the announce cron is `10 * * * *`, so this can need up to ~70 minutes); 
+  **S6/SC-005** — a broken storefront leaving the row count byte-identical before and after;
+  **S7/SC-011** — no invocation surfacing Discord's "application did not respond", including a
+  slow `/dev sync`. Note research **R8**'s propagation caveat when judging removed commands in the
+  second guild: a removed listing can persist for up to about an hour, so refresh or wait before
+  calling it a defect. If a scenario genuinely cannot be run, record **why** beside it rather than
+  leaving it unmarked — the record's honesty about what was *not* observed is the property to
+  preserve. Per T027 (partial), which delivered only its automated half, and T033 (partial).
+- [x] T037 Record in the PR description for this branch the justification for the two classes the
+  plan's Project Structure did not anticipate: `src/modules/admin/test-guild.guard.ts` and the
+  ready-time degradation added to `src/modules/bot/command-scope.service.ts`. Both are traceable
+  to Phase 7 tasks (T031, T032) rather than being scope creep, and both satisfy Principle I —
+  `TestGuildGuard` holds the refusal rule in exactly one place consulted by all four handlers, and
+  neither class names a platform — but the plan still declares only 1 new service and 1 new
+  command class, so the divergence is surfaced here for review rather than left silent. State the
+  justification or remove the divergence; do neither silently. Per plan §Project Structure
+  (unrequested).
