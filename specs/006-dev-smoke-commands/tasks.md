@@ -354,3 +354,69 @@ Task: "onDevBroadcast — src/modules/admin/dev.commands.ts (T020)"
 - Avoid: running the gate between T003 and T007; starting US3 before US2 on the shared files;
   introducing any `if (platform === ...)` branch in generic code (Principle I); writing a
   `broadcasted` flag before a successful send outside the two carve-out methods (Principle II).
+
+---
+
+## Phase 7: Convergence
+
+**Purpose**: Remaining work found by `/speckit.converge` on 2026-10-09, after every earlier phase
+reported done. Assessment is against the present state of the tree (commit `60b0486`), not against
+the checkboxes: completion claims are not evidence. The constitution was checked in full (I–V plus
+the technical-constraint and deployment blocks) and produced no violation.
+
+- [x] T031 Refuse at runtime any invocation of `/sync`, `/broadcast`, `/dev sync` or
+  `/dev broadcast` whose `interaction.guildId` is absent or differs from `TEST_GUILD_ID`, before any
+  catalog read, write, or message — replying with a refusal and leaving catalog state and
+  subscriptions untouched. Registration scoping is not sufficient on its own: the spec's edge case
+  "an invocation arrives in a non-test guild" names a stale registration as its cause, and the
+  operator's environment demonstrably has stale global copies. The check belongs behind one shared
+  guard consulted by all four handlers (Principle I: no per-command copy), reads `TEST_GUILD_ID`
+  through `ConfigService`, and treats an unset `TEST_GUILD_ID` as refusing everything — the same
+  failing-closed shape `selectCommandScope` already has. Prove it with a colocated spec covering
+  DM (`guildId` undefined), the test guild, and a second guild, asserting no `runtime.*` method and
+  no `BroadcastService.send` call in the refusing cases; extend
+  `src/modules/admin/dev.commands.spec.ts` and add coverage for the admin pair (there is currently
+  no `src/modules/admin/admin.commands.spec.ts`). Per US1/AC7, the spec Edge Cases entry, and
+  FR-001 (missing).
+- [x] T032 Degrade to "not offered" when `TEST_GUILD_ID` names a guild the bot has not joined, so
+  startup survives (FR-003, US1/AC5). Today `CommandScopeService.onModuleInit` pins the three
+  roots unconditionally and Necord's `registerCommandsInGuild` logs then **rethrows** a rejected
+  `application.commands.set`, from a bare `clientReady` listener — a `Missing Access` therefore
+  escapes as an unhandled rejection rather than as a missing command. Confirm the ordering before
+  choosing the mechanism: `onModuleInit` runs before `client.login()`, so guild membership is not
+  yet knowable there and a listener that runs ahead of Necord's own registration (for example a
+  `clientOnce`/`prependOnceListener` on `clientReady`) is what can act on it. Whatever mechanism is
+  chosen, it MUST leave the five always-global commands registered and MUST be pinned by
+  `test/command-scope.e2e-spec.ts` against a fake `Client` whose guild cache lacks the configured
+  guild — the assertion that fails open if the guard regresses. Per FR-003, US1/AC5, and the
+  "test guild configured but the bot is not a member" edge case (missing).
+- [ ] T033 Execute quickstart scenarios **S1–S7** in
+  `specs/006-dev-smoke-commands/quickstart.md` from a machine that has `.env` credentials, a test
+  guild, and a second guild, and record the observed counts for SC-001, SC-002, SC-003, SC-004,
+  SC-005, SC-006, SC-008, SC-009, SC-010 and SC-011 in the validation record. S8 is already
+  recorded as executed; the record's "S1–S7 not executed in this environment" block is what this
+  closes. T027 is checked but only delivered its automated half, so this is a partial completion
+  of that task rather than a new one. If a scenario genuinely cannot be run, record why beside it
+  rather than leaving it unmarked — the current record's honesty about what was *not* observed is
+  the property to preserve. Per T027 (partial).
+  > **Status 2026-10-18 (convergence)**: still not executed. S1–S7 need a live Discord guild, a
+  > second guild and `BOT_TOKEN`, none of which exist in this environment; the quickstart says so
+  > beside S1–S7 instead of leaving them unmarked, and the S8 half is recorded as executed twice
+  > (2026-10-03 and 2026-10-18). Closed only by an operator run from a machine with `.env`.
+- [x] T034 Correct `specs/006-dev-smoke-commands/research.md` **R8** and step 3 of the quickstart's
+  post-deploy checklist: `application.commands.set(...)` replaces the global set only for the
+  application its token belongs to, and a development run leaves Necord nothing global to write
+  (it early-returns), so **a development bot's stale global commands are never purged by any
+  boot** — not by a production boot, and not by a later development boot either. R8 currently
+  concludes "nothing extra is needed" from the production pairing alone, which is the reading the
+  operator's own environment disproved: `/sync` and `/broadcast` remained globally registered on
+  the dev application indefinitely. State the real invariant and what an operator must do about
+  stale globals on a second application, keeping the propagation-delay caveat intact. Do not
+  reinstate the deleted purge script — the operator decided against it — but the document must
+  stop implying one is unnecessary in every case. Per SC-001 and R8 (contradicts).
+- [x] T035 Refresh `specs/006-dev-smoke-commands/quickstart.md` for the behaviour change in commit
+  `60b0486`: the S4 automated-evidence cell cites the test since renamed to "skips a platform with
+  no catalog rows at all (FR-007)", the S8 record states **101** unit tests where the suite now
+  holds **102**, and the "Expected failures" row asserting that a platform reporting `0` delivered
+  despite holding rows is *expected* is no longer true now that `findDevCandidate` is window-free —
+  the only remaining reason for that observation is an empty catalog. Per quickstart.md (contradicts).

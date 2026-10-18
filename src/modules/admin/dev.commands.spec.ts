@@ -1,3 +1,4 @@
+import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { MessageFlags, PermissionFlagsBits } from 'discord.js';
 import { SlashCommand, SlashCommandsService, Subcommand } from 'necord';
@@ -5,6 +6,26 @@ import type { SlashCommandDiscovery, SlashCommandContext } from 'necord';
 import { gameSources } from '../../gamesources/index.js';
 import type { PlatformOptionDto } from '../subscription/dto/platform-option.dto.js';
 import { DevCommands } from './dev.commands.js';
+import { TestGuildGuard } from './test-guild.guard.js';
+
+const TEST_GUILD = '111111111111111111';
+
+/**
+ * A guard over a two-string config stub — the same direct-construction shape
+ * the rest of the suite uses (Principle V, no Nest testing module).
+ */
+function guardFor(testGuildId: string | undefined): TestGuildGuard {
+  return new TestGuildGuard({
+    get: (key: string) => (key === 'TEST_GUILD_ID' ? testGuildId : undefined),
+  } as unknown as ConfigService);
+}
+
+/**
+ * Every test below that is about replies, ordering, or reporting is *not*
+ * about scoping, so it gets the guild it expects to be in. The refusal cases
+ * build their own guard instead.
+ */
+const inTestGuild = guardFor(TEST_GUILD);
 
 /**
  * The `/dev` registration contract (contracts §1, FR-004, FR-005).
@@ -164,14 +185,24 @@ describe('DevCommands registration', () => {
 
 interface FakeInteraction {
   channelId: string | null;
+  guildId: string | null | undefined;
   deferReply: ReturnType<typeof vi.fn>;
   editReply: ReturnType<typeof vi.fn>;
   reply: ReturnType<typeof vi.fn>;
 }
 
-function fakeInteraction(channelId: string | null): FakeInteraction {
+/**
+ * Defaults to the test guild, so the existing reply/ordering assertions keep
+ * exercising the *allowed* path — scoping is opted into per test by passing
+ * another guild id (or `undefined` for a DM-shaped interaction).
+ */
+function fakeInteraction(
+  channelId: string | null,
+  guildId: string | null | undefined = TEST_GUILD,
+): FakeInteraction {
   return {
     channelId,
+    guildId,
     deferReply: vi.fn<() => Promise<void>>(() => Promise.resolve()),
     editReply: vi.fn<() => Promise<void>>(() => Promise.resolve()),
     reply: vi.fn<() => Promise<void>>(() => Promise.resolve()),
@@ -242,7 +273,7 @@ function replyOf(interaction: FakeInteraction): string {
 describe('/dev broadcast interaction contract', () => {
   it('acknowledges with deferReply before any awaited work (R-5.2, SC-011)', async () => {
     const interaction = fakeInteraction('invocation-channel');
-    const command = new DevCommands([runtimeFixture('epic')]);
+    const command = new DevCommands(inTestGuild, [runtimeFixture('epic')]);
 
     // Deliberately not awaited: the acknowledgement has to already be in
     // flight by the time the handler first yields, otherwise Discord can
@@ -260,7 +291,7 @@ describe('/dev broadcast interaction contract', () => {
 
   it('answers only through editReply — never a second reply (R-5.2)', async () => {
     const interaction = fakeInteraction('invocation-channel');
-    const command = new DevCommands([runtimeFixture('epic')]);
+    const command = new DevCommands(inTestGuild, [runtimeFixture('epic')]);
 
     await call(command, interaction);
 
@@ -271,7 +302,7 @@ describe('/dev broadcast interaction contract', () => {
   it('passes the invocation channel id as the recipient (FR-016)', async () => {
     const interaction = fakeInteraction('invocation-channel');
     const runtimes = [runtimeFixture('epic'), runtimeFixture('xbox')];
-    const command = new DevCommands(runtimes);
+    const command = new DevCommands(inTestGuild, runtimes);
 
     await call(command, interaction);
 
@@ -283,7 +314,7 @@ describe('/dev broadcast interaction contract', () => {
 
   it('states the suppression count whenever rows were suppressed (R-5.1)', async () => {
     const interaction = fakeInteraction('invocation-channel');
-    const command = new DevCommands([
+    const command = new DevCommands(inTestGuild, [
       runtimeFixture('epic', { delivered: 1, suppressed: 4, skipped: false }),
     ]);
 
@@ -295,7 +326,7 @@ describe('/dev broadcast interaction contract', () => {
 
   it('omits the suppression clause when nothing was suppressed', async () => {
     const interaction = fakeInteraction('invocation-channel');
-    const command = new DevCommands([
+    const command = new DevCommands(inTestGuild, [
       runtimeFixture('epic', { delivered: 1, suppressed: 0, skipped: false }),
     ]);
 
@@ -307,7 +338,7 @@ describe('/dev broadcast interaction contract', () => {
 
   it('reports a platform with no eligible row as skipped, still succeeding (FR-007)', async () => {
     const interaction = fakeInteraction('invocation-channel');
-    const command = new DevCommands([
+    const command = new DevCommands(inTestGuild, [
       runtimeFixture('epic', { delivered: 1, suppressed: 0, skipped: false }),
       runtimeFixture('xbox', { delivered: 0, suppressed: 0, skipped: true }),
     ]);
@@ -325,7 +356,7 @@ describe('/dev broadcast interaction contract', () => {
   it('fails without naming a channel instead of messaging somewhere else', async () => {
     const interaction = fakeInteraction(null);
     const runtimes = [runtimeFixture('epic')];
-    const command = new DevCommands(runtimes);
+    const command = new DevCommands(inTestGuild, runtimes);
 
     await call(command, interaction);
 
@@ -339,7 +370,7 @@ describe('/dev broadcast interaction contract', () => {
     broken.devBroadcast = vi
       .fn<(recipient: string) => Promise<DevOutcome>>()
       .mockRejectedValue(new Error('nope'));
-    const command = new DevCommands([broken]);
+    const command = new DevCommands(inTestGuild, [broken]);
 
     await call(command, interaction);
 
@@ -359,7 +390,7 @@ describe('/dev sync interaction contract', () => {
   it('acknowledges with deferReply before any awaited work (FR-017)', async () => {
     const interaction = fakeInteraction('invocation-channel');
     const runtime = runtimeFixture('epic');
-    const command = new DevCommands([runtime]);
+    const command = new DevCommands(inTestGuild, [runtime]);
 
     const pending = callSync(command, interaction, 'epic');
 
@@ -389,7 +420,7 @@ describe('/dev sync interaction contract', () => {
   it('rejects an unregistered platform without touching any catalog (FR-011)', async () => {
     const interaction = fakeInteraction('invocation-channel');
     const runtime = runtimeFixture('xbox');
-    const command = new DevCommands([runtime]);
+    const command = new DevCommands(inTestGuild, [runtime]);
 
     await callSync(command, interaction, 'epic');
 
@@ -404,7 +435,7 @@ describe('/dev sync interaction contract', () => {
     runtime.reset = vi
       .fn<() => Promise<ResetOutcome>>()
       .mockResolvedValue({ fetched: 5, seeded: 3 });
-    const command = new DevCommands([runtime]);
+    const command = new DevCommands(inTestGuild, [runtime]);
 
     await callSync(command, interaction, 'epic');
 
@@ -421,7 +452,7 @@ describe('/dev sync interaction contract', () => {
     runtime.reset = vi
       .fn<() => Promise<ResetOutcome>>()
       .mockRejectedValue(new Error('storefront is down'));
-    const command = new DevCommands([runtime]);
+    const command = new DevCommands(inTestGuild, [runtime]);
 
     await callSync(command, interaction, 'epic');
 
@@ -429,5 +460,89 @@ describe('/dev sync interaction contract', () => {
     expect(reply).toMatch(/failed/i);
     expect(reply).toContain('storefront is down');
     expect(reply).not.toContain('seeded announced');
+  });
+});
+
+/**
+ * The invocation half of contracts §1/§2 — US1 acceptance scenario 7 and the
+ * spec's "an invocation arrives in a non-test guild" edge case.
+ *
+ * Registration only decides where Discord *offers* these commands; a command
+ * left over from an earlier registration stays invocable everywhere until
+ * propagation catches up, and a DM carries no guild id at all. So the refusal
+ * has to be observable here, in the handler, *before* anything is deferred or
+ * any catalog is touched.
+ */
+describe('test-guild refusal (US1/AC7)', () => {
+  it('refuses an out-of-guild `/dev broadcast` before any deferred work', async () => {
+    const interaction = fakeInteraction(
+      'invocation-channel',
+      '999999999999999999',
+    );
+    const runtimes = [runtimeFixture('epic')];
+    const command = new DevCommands(guardFor(TEST_GUILD), runtimes);
+
+    const pending = call(command, interaction);
+
+    // The refusal is the whole response: nothing deferred, nothing edited —
+    // asserted before the handler has even been awaited.
+    expect(interaction.reply).toHaveBeenCalledTimes(1);
+    expect(interaction.deferReply).not.toHaveBeenCalled();
+
+    await pending;
+
+    expect(interaction.editReply).not.toHaveBeenCalled();
+    expect(runtimes[0].devBroadcast).not.toHaveBeenCalled();
+  });
+
+  it('refuses an out-of-guild `/dev sync` without touching the catalog', async () => {
+    const interaction = fakeInteraction(
+      'invocation-channel',
+      '999999999999999999',
+    );
+    const runtime = runtimeFixture('epic');
+    const command = new DevCommands(guardFor(TEST_GUILD), [runtime]);
+
+    await callSync(command, interaction, 'epic');
+
+    expect(interaction.reply).toHaveBeenCalledTimes(1);
+    expect(interaction.deferReply).not.toHaveBeenCalled();
+    expect(runtime.reset).not.toHaveBeenCalled();
+    expect(runtime.sync).not.toHaveBeenCalled();
+  });
+
+  it('refuses a DM, where there is no guild id to match', async () => {
+    const interaction = fakeInteraction('invocation-channel', null);
+    const runtimes = [runtimeFixture('epic')];
+    const command = new DevCommands(guardFor(TEST_GUILD), runtimes);
+
+    await call(command, interaction);
+
+    expect(interaction.reply).toHaveBeenCalledTimes(1);
+    expect(interaction.deferReply).not.toHaveBeenCalled();
+    expect(runtimes[0].devBroadcast).not.toHaveBeenCalled();
+  });
+
+  /** contracts §2 failing closed: with no test guild, nothing is permitted. */
+  it('refuses everything when `TEST_GUILD_ID` is unset', async () => {
+    const interaction = fakeInteraction('invocation-channel', TEST_GUILD);
+    const runtimes = [runtimeFixture('epic')];
+    const command = new DevCommands(guardFor(undefined), runtimes);
+
+    await call(command, interaction);
+
+    expect(interaction.reply).toHaveBeenCalledTimes(1);
+    expect(runtimes[0].devBroadcast).not.toHaveBeenCalled();
+  });
+
+  it('permits the same invocation once it is in the test guild', async () => {
+    const interaction = fakeInteraction('invocation-channel', TEST_GUILD);
+    const runtimes = [runtimeFixture('epic')];
+    const command = new DevCommands(guardFor(TEST_GUILD), runtimes);
+
+    await call(command, interaction);
+
+    expect(interaction.reply).not.toHaveBeenCalled();
+    expect(runtimes[0].devBroadcast).toHaveBeenCalledTimes(1);
   });
 });

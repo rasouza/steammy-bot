@@ -63,10 +63,15 @@ apply `development`, so the mechanism is one Necord already relies on — not a 
 - _`skipRegistration: true` plus hand-rolled `application.commands.set(...)`_ — rejected: it would
   duplicate ~40 lines of Necord's registration logic and contradict the repo convention that there
   is no manual slash-command registration. It was only being considered to purge stale global
-  commands, which R8 shows happens on its own.
-- _Runtime pruning inside a `clientReady` handler_ — rejected: ordering against Necord's own
-  `client.once('clientReady', registerAllCommands)` is not guaranteed, so the commands could be
-  registered and then removed, leaving a propagation window in which FR-001/FR-014 are violated.
+  commands, which R8 shows happens on its own within a single application — and no code in this
+  application can reach a second application's command set in any case (R8, amended 2026-10-18).
+- _Runtime pruning inside a `clientReady` handler_ — rejected **as the primary mechanism**:
+  ordering against Necord's own `client.once('clientReady', registerAllCommands)` is not
+  guaranteed by default, so the commands could be registered and then removed, leaving a
+  propagation window in which FR-001/FR-014 are violated. The shipped design keeps `onModuleInit`
+  as the decision point and reaches `clientReady` only for the one thing that hook cannot know —
+  whether the guild is reachable (FR-003) — using `prependOnceListener` precisely because prepending
+  is what makes the ordering guaranteed rather than hoped for (convergence task T032, 2026-10-18).
 
 ---
 
@@ -274,8 +279,15 @@ to test. `/dev sync` waits on live storefront APIs, so a reply-when-done handler
 registered **globally**. FR-013 moves them into the test guild. Does anything remove the old
 global copies? SC-001 requires exactly 0 in every other guild.
 
-**Decision**: nothing extra is needed — Necord purges them on the next boot by overwrite, and the
-quickstart documents the propagation delay.
+**Decision**: within a single application nothing extra is needed — Necord purges that
+application's stale globals on the next boot by overwrite. **Across two applications it is not
+automatic**: a development bot's stale global commands are never purged by _any_ boot, so clearing
+them is a manual operator action.
+
+> **Amended 2026-10-18** (convergence task T034). The original conclusion — "nothing extra is
+> needed" — was drawn from the production pairing alone and did not survive the operator's own
+> environment, where `/sync` and `/broadcast` stayed globally registered on the dev application
+> indefinitely.
 
 **Rationale**: `registerAllCommands()` runs `registerGlobalCommands()` and the per-guild
 registrations together. `registerGlobalCommands()` calls `application.commands.set(rawCommands)`
@@ -285,24 +297,41 @@ the previously-global `sync`/`broadcast`/`dev` drop out automatically. Only the 
 are added. Discord propagates command-list changes within about an hour for anything a client has
 already cached.
 
-Two consequences are recorded rather than engineered around:
+The invariant is narrower than that first paragraph suggests, and both halves of the narrowing are
+load-bearing:
 
+- `application.commands.set(...)` replaces the global set **only for the application its token
+  belongs to.** The two bots in play are separate applications with separate tokens, so a
+  production boot cannot reach — let alone clear — the dev application's command set.
 - In a local development run `development: [testGuildId]` makes _every_ command guild-scoped, so
-  `registerGlobalCommands()` finds none and returns early without writing. Stale globals are
-  therefore only purged by a production boot — which is the boot that created them, so this is the
-  correct pairing.
-- The quickstart instructs the operator to wait for propagation (or refresh the client) before
-  asserting SC-001 in another guild.
+  `registerGlobalCommands()` finds none and returns early **without writing anything**. A
+  development boot therefore neither overwrites nor clears.
+
+Combining them: the production application's stale globals are purged by the next production boot
+— the boot that created them, so that pairing is correct — while **the development application's
+stale globals are never purged by any boot**: not by a production boot (wrong application), and not
+by a later development boot (nothing is written).
+
+**What an operator does about it**: once a command has moved to guild scope on a second
+application, remove its global copy out of band — in that application's Discord Developer Portal,
+or with a one-off `application.commands.set(...)` issued using that application's token and
+including its five still-global commands. Until then SC-001 fails there, because the stale copy
+keeps being offered in every other guild. The propagation-delay caveat applies to that removal
+exactly as it does to any command-list change.
 
 **Alternatives considered**:
 
 - _An explicit `application.commands.set([])` from our own `clientReady` listener_ — rejected: it
   would delete `ping`/`invite`/`help`/`subscribe`/`unsubscribe` too, and it races Necord's own
   listener for no benefit.
-- _A one-time documented purge script_ — rejected: SC-001 would fail on any deployment where the
-  operator forgot to run it, and the automatic overwrite already does the job.
-- _`skipRegistration` + full manual registration_ — rejected for the same reasons as R1; the only
-  thing it would add beyond the automatic purge is control that is already achieved.
+- _A one-time documented purge script committed to the repository_ — rejected as a **shipped
+  artifact** by operator decision (convergence task T034, 2026-10-18). That rejection is about not
+  shipping one; it is not a finding that none is ever needed, and this section no longer implies
+  otherwise. Nothing in this application can reach a second application's command set, so the
+  clearing stays an operator action performed out of band.
+- _`skipRegistration` + full manual registration_ — rejected for the same reasons as R1; it would
+  add control over which commands are registered, and still could not reach a different
+  application.
 
 ---
 

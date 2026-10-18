@@ -36,9 +36,10 @@ The set of commands Discord is told about is decided once, before login, by
   scoping silently skipped), which is why §5 includes a test for it.
 
 **Not in this contract**: application command _propagation_. Moving `sync`/`broadcast` from global
-to guild scope leaves stale global copies until the next production boot overwrites the global set
-with the five still-global commands; Discord caches command lists for up to about an hour
-(research R8).
+to guild scope leaves stale global copies until the next boot of **the same application** overwrites
+that application's global set with the five still-global commands; Discord caches command lists for
+up to about an hour (research R8). The overwrite reaches no other application — a second bot on
+its own token keeps its stale globals until an operator removes them (R8, amended 2026-10-18).
 
 ---
 

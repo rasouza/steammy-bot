@@ -9,15 +9,22 @@ import {
 import { PLATFORM_REGISTRY } from '../platforms/platform.tokens.js';
 import type { PlatformRuntime } from '../platforms/platform.types.js';
 import { PlatformOptionDto } from '../subscription/dto/platform-option.dto.js';
+import { TestGuildGuard } from './test-guild.guard.js';
 
 /**
  * Admin commands resolve their target from the platform registry instead of
  * branching on `platform === ...` (spec A-002, FR-011). Reply wording,
  * ephemeral flags, and display-name lookups are unchanged (FR-015).
+ *
+ * `CommandScopeService` pins `sync` and `broadcast` to `TEST_GUILD_ID`
+ * (FR-001), but registration only decides where Discord *offers* them — a
+ * stale copy stays invocable everywhere until propagation catches up, so both
+ * handlers ask `TestGuildGuard` first (US1/AC7, contracts §2).
  */
 @Injectable()
 export class AdminCommands {
   constructor(
+    private readonly guard: TestGuildGuard,
     @Inject(PLATFORM_REGISTRY) private readonly registry: PlatformRuntime[],
   ) {}
 
@@ -41,6 +48,9 @@ export class AdminCommands {
     @Context() [interaction]: SlashCommandContext,
     @Options() { platform }: PlatformOptionDto,
   ) {
+    // §1 Refusal: answered before any catalog work begins.
+    if (!this.guard.allow(interaction)) return;
+
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     try {
@@ -66,6 +76,9 @@ export class AdminCommands {
     @Context() [interaction]: SlashCommandContext,
     @Options() { platform }: PlatformOptionDto,
   ) {
+    // §1 Refusal: answered before any catalog work begins.
+    if (!this.guard.allow(interaction)) return;
+
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     try {
