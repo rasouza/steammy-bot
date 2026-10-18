@@ -294,16 +294,51 @@ reach a catalog read, write, or message. Post-invocation state was
 (`test-guild.guard.spec.ts`, `admin.commands.spec.ts`) assert no
 `runtime.*` and no `BroadcastService.send` call in the refusing cases.
 
+### S4 — One message per platform, repeatedly · proves SC-002, SC-006, SC-010 ✅ executed 2026-10-18
+
+Five consecutive `/dev broadcast` invocations in one test-guild channel, against
+catalogs of 2 Epic rows and 521 Xbox rows. Operator observations, corroborated by
+a catalog read taken afterwards.
+
+| Criterion | Expected | Observed | Verdict |
+| --------- | -------- | -------- | ------- |
+| SC-002 — messages per run | exactly 1 per platform | **exactly 2 per run** (one Epic, one Xbox), all five runs, never zero-and-stuck | ✅ |
+| SC-010 — delivery confined | the invocation channel only | **only the invocation channel**; nothing in `general`, `xbox` or `epic` | ✅ |
+| SC-009 — suppression reported | any surplus must be stated | reply read `delivered 1` with **no suppression clause** — correct, since `suppressed` was 0 | ✅ |
+
+**Why the absence of a suppression clause is the correct answer here**, and not a
+missed report. `devBroadcast` suppresses only the *surplus* — every eligible row
+other than the one picked. With one candidate per platform there is no surplus,
+so `suppressed` is 0 and the clause is correctly omitted. FR-015 obliges the
+reply to state the count *when rows were marked announced without being
+delivered*; stating a count that does not exist would itself violate the
+contract (`describe()` in `dev.commands.ts` gates the clause on
+`outcome.suppressed > 0`).
+
+**Catalog state after the five runs**: `epic 2 / 0 pending`, `xbox 521 /
+0 pending` — fully announced, as FR-006 requires so that consecutive invocations
+behave identically. This is *not* evidence that the runs skipped: `devBroadcast`
+is deliberately window-free, so it picks a row regardless of `broadcasted`,
+flips it to pending unconditionally, and delivers it — net zero pending at the
+end of each run. Zero pending is the expected resting state, which is why
+SC-002 says "never zero-and-stuck" rather than "starts empty".
+
+**Still open within S4**: SC-006 — the genuine *skip* path, where a platform has
+**zero catalog rows** and must report skipped with 0 delivered without failing
+the invocation. That requires emptying a catalog first and is recorded separately
+below; the five runs above exercise the delivery path, not the skip path.
+
 ### S1–S4 status · 2026-10-18 operator run
 
 **Observed**: S1 ✅ (second guild `0`, test guild scoped roots exactly
 `sync`/`broadcast`/`dev` = 4 invocable admin/dev commands), the dev
-application's global set confirmed empty, and S3 ✅ (runtime refusal live, exact
-refusal string returned, temp registration cleaned up).
+application's global set confirmed empty, S3 ✅ (runtime refusal live, exact
+refusal string returned, temp registration cleaned up) and S4 ✅ (five runs,
+2 messages per run, invocation channel only, suppression correctly absent).
 
-**Not yet observed**: S1b, S2 live count, S4, S5, S6, S7. Each is marked
-above with why, rather than left unmarked — the record's honesty about what was
-*not* observed is the property this record protects.
+**Not yet observed**: S1b, S2 live count, S6, S7, and SC-006's empty-catalog
+skip. Each is marked above with why, rather than left unmarked — the record's
+honesty about what was *not* observed is the property this record protects.
 
 Automated evidence backing every one of the outstanding scenarios, which is
 what CI keeps enforcing:
@@ -326,11 +361,13 @@ states explicitly is that the overwrite reaches **only the application its
 token belongs to**: stale globals on a second application are never purged by
 any boot and have to be cleared by hand.
 
-**Honest status**: S8 executed twice — 2026-10-03 and 2026-10-18, both recorded
-above. **S1 and S3 executed 2026-10-18** (second guild created for the run;
-counts read from the live registry; runtime refusal provoked with a temporary
-registration that was cleaned up afterwards). Still open: S1b, S2's live count
+**Honest status**: S8 executed twice — 2026-10-03 and 2026-10-18. **S1, S3 and
+S4 executed 2026-10-18** (second guild created for the run; counts read from the
+live registry; runtime refusal provoked with a temporary registration that was
+cleaned up afterwards; five consecutive `/dev broadcast` runs observed by the
+operator and corroborated by a catalog read). Still open: S1b, S2's live count
 (blocked on a deploy of this branch — the running image is `v3.4.0`, which
-predates it), S4, S5, S6 and S7, each marked with its reason above rather than
-left unmarked. Convergence tasks **T033** and **T036** track the remainder.
-Nothing in this record claims an observation that was not made.
+predates it), SC-006's empty-catalog skip, S5, S6 and S7, each marked with its
+reason above rather than left unmarked. Convergence tasks **T033** and **T036**
+track the remainder. Nothing in this record claims an observation that was not
+made.
