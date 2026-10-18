@@ -10,6 +10,7 @@ import type {
   DevBroadcastOutcome,
   PlatformRuntime,
 } from '../platforms/platform.types.js';
+import { TestGuildGuard } from './test-guild.guard.js';
 
 /** Display name for a runtime's type, falling back to the raw key. */
 function displayName(type: string): string {
@@ -39,9 +40,11 @@ function describe(outcome: DevBroadcastOutcome, name: string): string {
  *
  * Registration scope is **not** decided here: `CommandScopeService` pins the
  * `dev` root to `TEST_GUILD_ID` and removes it outright outside a local
- * development run (FR-001, FR-014), so this class can assume it only ever
- * runs inside the test guild. Permission and DM metadata sit on the root, so
- * one declaration covers both subcommands (FR-004 / contracts G4).
+ * development run (FR-001, FR-014). Registration alone cannot be relied on —
+ * a command left over from an earlier registration is still invocable
+ * everywhere until Discord's propagation catches up — so both handlers call
+ * `TestGuildGuard` first (US1/AC7). Permission and DM metadata sit on the
+ * root, so one declaration covers both subcommands (FR-004 / contracts G4).
  *
  * One root with two subcommands, not two roots: Discord forbids spaces in
  * root names, and removing the single `dev` root drops both subcommands in
@@ -66,6 +69,7 @@ function describe(outcome: DevBroadcastOutcome, name: string): string {
 })
 export class DevCommands {
   constructor(
+    private readonly guard: TestGuildGuard,
     @Inject(PLATFORM_REGISTRY) private readonly registry: PlatformRuntime[],
   ) {}
 
@@ -97,6 +101,10 @@ export class DevCommands {
     @Context() [interaction]: SlashCommandContext,
     @Options() options: PlatformOptionDto,
   ) {
+    // §1 Refusal: the test-guild check answers first, so an out-of-guild
+    // invocation costs Discord one reply and this handler zero work.
+    if (!this.guard.allow(interaction)) return;
+
     // §5 Entry: the acknowledgement comes first, before any storefront call.
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
@@ -127,9 +135,13 @@ export class DevCommands {
     description: 'Deliver one message per platform into this channel',
   })
   async onDevBroadcast(@Context() [interaction]: SlashCommandContext) {
-    // FR-017 / R-5.2: the acknowledgement comes first and synchronously —
-    // no platform work happens before it, so Discord never reaches its
-    // roughly three-second window. `editReply` is then the only response.
+    // §1 Refusal, before anything else — including the acknowledgement.
+    if (!this.guard.allow(interaction)) return;
+
+    // FR-017 / R-5.2: with the guard already answered, the acknowledgement
+    // is the first asynchronous thing this handler does — no platform work
+    // happens before it, so Discord never reaches its roughly three-second
+    // window. `editReply` is then the only response.
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     // The invocation channel *is* the audience (FR-016): the recipient comes
