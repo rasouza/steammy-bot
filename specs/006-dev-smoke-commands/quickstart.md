@@ -145,6 +145,47 @@ offer-window columns on `catalog_xbox` at all — so Xbox is the platform on whi
 SC-003's silence is a clean, unconfounded observation. S5's remaining steps are
 being run there instead; the outcome is recorded below when observed.
 
+#### S5 on Xbox — the unconfounded run · 2026-10-19
+
+Operator ran `/dev sync platform: Xbox Game Pass` at 00:31, against a catalog of
+526 Xbox rows and the test guild subscribed to **both** platforms on channel
+`#general` (`1284868608123736116`) — so the scheduled pass's silence is directly
+observable there.
+
+Reply, verbatim:
+
+```
+Xbox Game Pass: reset — 515 seeded announced (515 fetched)
+```
+
+| Step | Expected | Observed | Verdict |
+| ---- | -------- | -------- | ------- |
+| 1. reply counts (SC-009) | states how many rows were seeded announced | **`515 seeded announced (515 fetched)`** | ✅ |
+| 2. catalog equals storefront, stale rows 0 (SC-004) | row count matches the seeded count; nothing survives from before | **`xbox 515 rows, 0 pending`**; the catalog held **526** rows before, so the 11 removed were replaced wholesale and none survived | ✅ |
+| 3. scheduled pass delivers 0 (SC-003) | 0 messages in `#general` at minute 10 | **pending — see the probe below** | ⏳ |
+
+**The two counts matching here is the correct expectation, and it is the
+opposite of Epic's.** `EpicMapper.toGame` can return `null`, so Epic's `fetched`
+(14) and `seeded` (2) differ by the filter. `XboxMapper.toGame` returns a `Game`
+unconditionally — never `null` — so every raw element qualifies and `fetched`
+must equal `seeded`. Both numbers printed **515**, as the code requires.
+
+**A prior count of 526 became 515 on reset.** That is the reset doing its job:
+`clear()` then `saveAll()`, so the catalog reflects exactly what the storefront
+returns at that moment rather than a merge with what was there before. Eleven
+rows left because the storefront no longer listed them.
+
+**How SC-003 is being measured, and why a single reading would not do.** If the
+01:10 pass delivered anything it would mark those rows announced, so a probe
+taken *after* the pass alone would read `0 pending` whether or not a message was
+sent — silence and success would look identical. The probe therefore samples
+twice: once just before minute 10 to capture what the pass will find eligible,
+and once after, diffing row ids against a 515-id baseline saved at 00:31. Any
+row still pending afterwards is classified as either **new since baseline**
+(inserted by the 01:00 sync cron — correct behaviour, not a defect) or
+**baseline** (a delivery or marking defect). `updated_at` is compared per row for
+the same reason.
+
 ### S6 — A failed fetch removes nothing · proves SC-005
 
 Point `DATABASE_*` at the running database, note the platform's row count, then break the
