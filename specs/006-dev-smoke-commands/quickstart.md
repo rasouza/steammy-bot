@@ -107,6 +107,44 @@ Then:
 3. Let the scheduled announcement pass run. **Expected**: `0` messages for that platform (SC-003).
 4. Run `/dev broadcast`. **Expected**: exactly one message for that platform (US3 scenario 4).
 
+### S5 — Reset leaves silence · proves SC-003, SC-004, SC-009 ⚠️ partially observed 2026-10-19
+
+Operator ran `/dev sync platform: Epic Games` against a catalog of 0 Epic rows
+(it had been emptied to stage SC-006), 526 Xbox rows, 54 subscriptions.
+
+Reply, verbatim:
+
+```
+Epic Games: reset — 2 seeded announced (14 fetched)
+```
+
+| Step | Expected | Observed | Verdict |
+| ---- | -------- | -------- | ------- |
+| 1. reply counts (SC-009) | states how many rows were seeded announced | **`2 seeded announced (14 fetched)`** | ✅ |
+| 2. catalog equals storefront, stale rows 0 (SC-004) | row count matches the seeded count; nothing survives from before | **`epic 2 rows, 0 pending`**; both rows `broadcasted = true` at row level; the catalog held **0** rows before the reset, so nothing could be stale | ✅ |
+| 3. scheduled pass delivers 0 (SC-003) | 0 messages for that platform | **not observed on Epic — see the confound below** | ⏳ |
+| 4. `/dev broadcast` gives one message | exactly one per platform | not yet run | ⏳ |
+
+**`fetched` and `seeded` are different numbers by design, and an initial
+expectation that they would match was wrong.** `load()` returns
+`{ fetched: sources.length, games }` — `fetched` counts the **raw** elements
+the storefront returns (14), while `games` is only what the mapper qualified as
+eligible (2). The gap of 12 is the eligibility filter doing its job, not a
+mismatch. The reply's two numbers are therefore correct as printed.
+
+**Why SC-003 cannot be proven on Epic, and why this is a property of the data
+rather than a defect.** `epicPendingCriteria` requires `broadcasted: false`
+**and** an offer window containing `now`. Both rows this reset seeded carry
+`offer_start_at = 2026-10-22 15:00 UTC` — four days in the future. A silent
+announce pass would therefore be **confounded**: those rows cannot be delivered
+whether or not the reset marked them announced, because the window excludes
+them independently. Silence would evidence nothing about the reset.
+
+**`xboxPendingCriteria` is window-free** — `{ broadcasted: false }`, with no
+offer-window columns on `catalog_xbox` at all — so Xbox is the platform on which
+SC-003's silence is a clean, unconfounded observation. S5's remaining steps are
+being run there instead; the outcome is recorded below when observed.
+
 ### S6 — A failed fetch removes nothing · proves SC-005
 
 Point `DATABASE_*` at the running database, note the platform's row count, then break the
