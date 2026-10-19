@@ -390,7 +390,7 @@ the technical-constraint and deployment blocks) and produced no violation.
   `test/command-scope.e2e-spec.ts` against a fake `Client` whose guild cache lacks the configured
   guild — the assertion that fails open if the guard regresses. Per FR-003, US1/AC5, and the
   "test guild configured but the bot is not a member" edge case (missing).
-- [ ] T033 Execute quickstart scenarios **S1–S7** in
+- [x] T033 Execute quickstart scenarios **S1–S7** in
   `specs/006-dev-smoke-commands/quickstart.md` from a machine that has `.env` credentials, a test
   guild, and a second guild, and record the observed counts for SC-001, SC-002, SC-003, SC-004,
   SC-005, SC-006, SC-008, SC-009, SC-010 and SC-011 in the validation record. S8 is already
@@ -429,6 +429,16 @@ the technical-constraint and deployment blocks) and produced no violation.
   > predates this branch), S5/SC-003 and S6. Recorded in quickstart.md
   > with a reason beside each rather than left unmarked.
   >
+  > **Closed 2026-10-19 by operator decision, not by full completion.** The operator judged the
+  > evidence sufficient and closed the ticket with three scenarios unfinished. This checkbox means
+  > "the validation record is complete and honest", **not** "every scenario passed". Final state:
+  > **S1 ✅, S3 ✅, S4 ✅, SC-006 ✅** observed live; **S5 ⚠️ partial** (SC-009 and SC-004 observed
+  > on both platforms, SC-003 not observed — the announce pass never actually executed, since the
+  > bot was not running at either attempted window); **S2 ⚠️ not observed** (blocked on a deploy of
+  > this branch); **S6 not run**; **S7 ⛔ dropped by decision** (no axios timeout exists, so a slow
+  > storefront is an unbounded hang); **S1b inconclusive** (the unset-`TEST_GUILD_ID` attempt could
+  > not be cold-started). Every one of those is recorded beside its scenario with a reason.
+  >
   > A second converge pass re-verified T031–T035 against the tree and appended Phase 8: **T036**
   > supersedes the manual half of T027, which delivered only its automated half, and **T037** (the
   > PR-note justification) is closed. This task and T036 track the remainder of the same run.
@@ -466,7 +476,7 @@ obligation is pinned by an automated spec and **none of them has ever been obser
 live Discord guild**. The quickstart says so itself rather than claiming an observation, and
 preserving that honesty is the property this phase protects.
 
-- [ ] T036 Execute quickstart scenarios **S1–S7** from a machine holding `.env` credentials, the
+- [x] T036 Execute quickstart scenarios **S1–S7** from a machine holding `.env` credentials, the
   test guild, and a second guild the bot has joined, and record every observed count in the
   validation record of `specs/006-dev-smoke-commands/quickstart.md`, replacing the
   "S1–S7 — manual scenarios ⏳ not executed in this environment" block with a dated run. Cover,
@@ -489,6 +499,13 @@ preserving that honesty is the property this phase protects.
   calling it a defect. If a scenario genuinely cannot be run, record **why** beside it rather than
   leaving it unmarked — the record's honesty about what was *not* observed is the property to
   preserve. Per T027 (partial), which delivered only its automated half, and T033 (partial).
+  **Closed 2026-10-19 by operator decision alongside T033 — see T033's closure note for the full
+  per-scenario outcome.** This task's ordering was followed where it mattered: S2 was *not* run
+  locally with `NODE_ENV=production` against the dev token (that would have rewritten the
+  application's global command set and corrupted the S1/S3 counts, per R8); it remains blocked on
+  a deploy of this branch instead. S5's ~70-minute wait for the `10 * * * *` announce cron was
+  attempted twice and both times the bot was found not running at the pass, so SC-003 is recorded
+  as not observed rather than inferred.
 - [x] T037 Record in the PR description for this branch the justification for the two classes the
   plan's Project Structure did not anticipate: `src/modules/admin/test-guild.guard.ts` and the
   ready-time degradation added to `src/modules/bot/command-scope.service.ts`. Both are traceable

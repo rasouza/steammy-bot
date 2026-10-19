@@ -531,13 +531,28 @@ registration that was cleaned up afterwards; five consecutive `/dev broadcast`
 runs observed by the operator and corroborated by a catalog read; then a
 zero-row Epic catalog to reach the skip branch). **S5 partially observed**
 2026-10-19: its reset reply count (SC-009) and catalog state (SC-004) were
-observed on *both* platforms, but its scheduled-pass silence (SC-003) was lost
-when the host session restarted during the measurement — recorded as not
-observed rather than inferred. **S7 deliberately not executed** 2026-10-19: no
-axios timeout exists anywhere in the codebase, so a "slow storefront" is an
-unbounded hang, and SC-011 follows from `deferReply` being the first statement
-in both handlers. Still open: S1b, S2's live count (blocked on a deploy of this
-branch — the running image is `v3.4.0`, which predates it), S5/SC-003 and S6,
-each marked with its reason above rather than left unmarked. Convergence tasks
-**T033** and **T036** track the remainder. Nothing in this record claims an
-observation that was not made.
+observed on *both* platforms, but SC-003 was not — see below. **S7
+deliberately not executed** 2026-10-19: no axios timeout exists anywhere in
+the codebase, so a "slow storefront" is an unbounded hang, and SC-011 follows
+from `deferReply` being the first statement in both handlers.
+
+**SC-003 was attempted twice and observed neither time.** The first attempt
+(01:10) lost its post-pass sample to a host-session restart. The second (12:10)
+produced two clean database readings — 515 rows, `0` pending both before and
+after, no row touched — **but the bot was not running at that hour**, so the
+announce pass never executed and the silence measured is vacuous: it shows the
+catalog was correctly left with nothing pending, and says nothing about what the
+pass would have done. A clean database reading and a proven pass are different
+things, and the second attempt is recorded as *not observed* precisely because
+the numbers alone looked like a pass.
+
+**What the two attempts did establish, and it is real**: the reset's effect
+persists. The catalog held 515 rows / `0 pending` across a twelve-hour gap with
+the bot down — no drift, nothing reverting — which supports SC-004's "never
+pending".
+
+**Closed 2026-10-19 by operator decision**, who judged the evidence sufficient
+with S2, S5/SC-003, S6, S7 and S1b unfinished. Each is marked with its reason
+above rather than left unmarked; convergence tasks **T033** and **T036** are
+checked on that basis. Nothing in this record claims an observation that was
+not made.
