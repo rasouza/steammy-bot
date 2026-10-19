@@ -390,7 +390,7 @@ the technical-constraint and deployment blocks) and produced no violation.
   `test/command-scope.e2e-spec.ts` against a fake `Client` whose guild cache lacks the configured
   guild — the assertion that fails open if the guard regresses. Per FR-003, US1/AC5, and the
   "test guild configured but the bot is not a member" edge case (missing).
-- [ ] T033 Execute quickstart scenarios **S1–S7** in
+- [x] T033 Execute quickstart scenarios **S1–S7** in
   `specs/006-dev-smoke-commands/quickstart.md` from a machine that has `.env` credentials, a test
   guild, and a second guild, and record the observed counts for SC-001, SC-002, SC-003, SC-004,
   SC-005, SC-006, SC-008, SC-009, SC-010 and SC-011 in the validation record. S8 is already
@@ -399,10 +399,49 @@ the technical-constraint and deployment blocks) and produced no violation.
   of that task rather than a new one. If a scenario genuinely cannot be run, record why beside it
   rather than leaving it unmarked — the current record's honesty about what was *not* observed is
   the property to preserve. Per T027 (partial).
-  > **Status 2026-10-18 (convergence)**: still not executed. S1–S7 need a live Discord guild, a
-  > second guild and `BOT_TOKEN`, none of which exist in this environment; the quickstart says so
-  > beside S1–S7 instead of leaving them unmarked, and the S8 half is recorded as executed twice
-  > (2026-10-03 and 2026-10-18). Closed only by an operator run from a machine with `.env`.
+  > **Status 2026-10-18/19 (operator run)**: **partially executed.** **S1**, **S3**, **S4** and
+  > **SC-006** are done — a second guild (`Nazaré's server`, `1561489788027011164`) was created for
+  > the run. Registry reads show **0** commands there and the 3 scoped roots (`sync`, `broadcast`, `dev` =
+  > 4 invocable admin/dev commands) in the test guild, with the dev application's global set
+  > confirmed empty. For S3 a temporary `/sync` registration was written into the second guild to
+  > make the command invokable there, and invoking it returned the refusal string verbatim; the
+  > registration was deleted immediately and the test guild's 8 scoped registrations were
+  > confirmed unchanged. For S4, five consecutive `/dev broadcast` runs each delivered exactly 2
+  > messages (one Epic, one Xbox) into the invocation channel only, with the reply stating
+  > `delivered 1` and no suppression clause — correct, since nothing was surplus. For SC-006,
+  > Epic's catalog was emptied to four rows deleted and one invocation reported
+  > `Epic Games: skipped (0 delivered)` while `Xbox Game Pass: delivered 1` still delivered, with
+  > no error — the skip branch. A preceding run also showed the suppression clause firing with
+  > the correct number (`suppressed 5`), the first live confirmation of FR-015's other arm.
+  > **S5** is partial: `/dev sync` was run on both platforms and the reply count plus catalog state
+  > were observed (Epic `2 seeded announced (14 fetched)`; Xbox `515 seeded announced (515
+  > fetched)`, matching because Xbox's mapper filters nothing), with `0` pending rows afterwards on
+  > both — so SC-009 and SC-004 are observed. Its scheduled-pass silence (SC-003) was **not**
+  > observed: the host session restarted mid-measurement and killed the post-pass probe, and the
+  > bot was later found not running, so "no messages" could not be distinguished from "the pass
+  > never ran". Epic could not have proven it anyway — both its rows start 2026-10-22 and are
+  > outside their offer window, which is why the run moved to Xbox, whose pending rule is
+  > window-free. **S7** is dropped by decision, not oversight: the codebase sets no axios timeout,
+  > so a slow storefront is an unbounded hang, while SC-011 itself follows from `deferReply` being
+  > the first statement in both handlers and is already asserted by `dev.commands.spec` and seen
+  > incidentally in five live invocations.
+  > Still open: S1b, S2's live count (blocked on a deploy — the running image is `v3.4.0`, which
+  > predates this branch), S5/SC-003 and S6. Recorded in quickstart.md
+  > with a reason beside each rather than left unmarked.
+  >
+  > **Closed 2026-10-19 by operator decision, not by full completion.** The operator judged the
+  > evidence sufficient and closed the ticket with three scenarios unfinished. This checkbox means
+  > "the validation record is complete and honest", **not** "every scenario passed". Final state:
+  > **S1 ✅, S3 ✅, S4 ✅, SC-006 ✅** observed live; **S5 ⚠️ partial** (SC-009 and SC-004 observed
+  > on both platforms, SC-003 not observed — the announce pass never actually executed, since the
+  > bot was not running at either attempted window); **S2 ⚠️ not observed** (blocked on a deploy of
+  > this branch); **S6 not run**; **S7 ⛔ dropped by decision** (no axios timeout exists, so a slow
+  > storefront is an unbounded hang); **S1b inconclusive** (the unset-`TEST_GUILD_ID` attempt could
+  > not be cold-started). Every one of those is recorded beside its scenario with a reason.
+  >
+  > A second converge pass re-verified T031–T035 against the tree and appended Phase 8: **T036**
+  > supersedes the manual half of T027, which delivered only its automated half, and **T037** (the
+  > PR-note justification) is closed. This task and T036 track the remainder of the same run.
 - [x] T034 Correct `specs/006-dev-smoke-commands/research.md` **R8** and step 3 of the quickstart's
   post-deploy checklist: `application.commands.set(...)` replaces the global set only for the
   application its token belongs to, and a development run leaves Necord nothing global to write
@@ -420,3 +459,59 @@ the technical-constraint and deployment blocks) and produced no violation.
   holds **102**, and the "Expected failures" row asserting that a platform reporting `0` delivered
   despite holding rows is *expected* is no longer true now that `findDevCandidate` is window-free —
   the only remaining reason for that observation is an empty catalog. Per quickstart.md (contradicts).
+
+---
+
+## Phase 8: Convergence
+
+**Purpose**: Remaining work found by `/speckit.converge` on 2026-10-18, after Phase 7 was
+implemented. Assessment is against the present state of the tree, not against the checkboxes:
+completion claims are not evidence. All 35 prior tasks were re-verified — T031's guard, T032's
+ready-time degradation, T034's R8 amendment and T035's record split are all present and
+behaving as written. The constitution was re-checked in full (I–V plus the technical-constraint,
+data-representation, deployment and workflow blocks) and produced **no violation**.
+
+The whole of what remains is the same gap T033 names from the other side: every behavioural
+obligation is pinned by an automated spec and **none of them has ever been observed against a
+live Discord guild**. The quickstart says so itself rather than claiming an observation, and
+preserving that honesty is the property this phase protects.
+
+- [x] T036 Execute quickstart scenarios **S1–S7** from a machine holding `.env` credentials, the
+  test guild, and a second guild the bot has joined, and record every observed count in the
+  validation record of `specs/006-dev-smoke-commands/quickstart.md`, replacing the
+  "S1–S7 — manual scenarios ⏳ not executed in this environment" block with a dated run. Cover,
+  in this order: **S1/SC-001** — command counts of 0 in the second guild, 4 in the test guild
+  under `npm run start:dev`; **S2/SC-008** — a run with `NODE_ENV=production` offering exactly
+  `/sync` and `/broadcast` and 0 `/dev` commands (take this from the deployed bot; do **not** run
+  a local process with `NODE_ENV=production` against the dev token, because that rewrites the
+  application's global command set and corrupts the S1/S3 counts — research R8); **S3/SC-001** —
+  no `/sync`, `/broadcast` or `/dev` invocation succeeds in the second guild, with the runtime
+  refusal from T031 confirmed to leave catalog state untouched; **S4/SC-002, SC-006, SC-010** —
+  five consecutive `/dev broadcast` invocations delivering exactly 1 message per platform into
+  the invocation channel every time, then an emptied catalog reporting skipped with 0 delivered
+  and no error; **S5/SC-003, SC-004, SC-009** — `/dev sync <platform>` leaving exactly the
+  storefront's rows, the reply stating the seeded-as-announced count, and the next scheduled pass
+  delivering 0 (the announce cron is `10 * * * *`, so this can need up to ~70 minutes); 
+  **S6/SC-005** — a broken storefront leaving the row count byte-identical before and after;
+  **S7/SC-011** — no invocation surfacing Discord's "application did not respond", including a
+  slow `/dev sync`. Note research **R8**'s propagation caveat when judging removed commands in the
+  second guild: a removed listing can persist for up to about an hour, so refresh or wait before
+  calling it a defect. If a scenario genuinely cannot be run, record **why** beside it rather than
+  leaving it unmarked — the record's honesty about what was *not* observed is the property to
+  preserve. Per T027 (partial), which delivered only its automated half, and T033 (partial).
+  **Closed 2026-10-19 by operator decision alongside T033 — see T033's closure note for the full
+  per-scenario outcome.** This task's ordering was followed where it mattered: S2 was *not* run
+  locally with `NODE_ENV=production` against the dev token (that would have rewritten the
+  application's global command set and corrupted the S1/S3 counts, per R8); it remains blocked on
+  a deploy of this branch instead. S5's ~70-minute wait for the `10 * * * *` announce cron was
+  attempted twice and both times the bot was found not running at the pass, so SC-003 is recorded
+  as not observed rather than inferred.
+- [x] T037 Record in the PR description for this branch the justification for the two classes the
+  plan's Project Structure did not anticipate: `src/modules/admin/test-guild.guard.ts` and the
+  ready-time degradation added to `src/modules/bot/command-scope.service.ts`. Both are traceable
+  to Phase 7 tasks (T031, T032) rather than being scope creep, and both satisfy Principle I —
+  `TestGuildGuard` holds the refusal rule in exactly one place consulted by all four handlers, and
+  neither class names a platform — but the plan still declares only 1 new service and 1 new
+  command class, so the divergence is surfaced here for review rather than left silent. State the
+  justification or remove the divergence; do neither silently. Per plan §Project Structure
+  (unrequested).
