@@ -162,7 +162,7 @@ Xbox Game Pass: reset — 515 seeded announced (515 fetched)
 | ---- | -------- | -------- | ------- |
 | 1. reply counts (SC-009) | states how many rows were seeded announced | **`515 seeded announced (515 fetched)`** | ✅ |
 | 2. catalog equals storefront, stale rows 0 (SC-004) | row count matches the seeded count; nothing survives from before | **`xbox 515 rows, 0 pending`**; the catalog held **526** rows before, so the 11 removed were replaced wholesale and none survived | ✅ |
-| 3. scheduled pass delivers 0 (SC-003) | 0 messages in `#general` at minute 10 | **pending — see the probe below** | ⏳ |
+| 3. scheduled pass delivers 0 (SC-003) | 0 messages in `#general` at minute 10 | **not observed — the window was lost; see below** | ⏳ |
 
 **The two counts matching here is the correct expectation, and it is the
 opposite of Epic's.** `EpicMapper.toGame` can return `null`, so Epic's `fetched`
@@ -185,6 +185,24 @@ row still pending afterwards is classified as either **new since baseline**
 (inserted by the 01:00 sync cron — correct behaviour, not a defect) or
 **baseline** (a delivery or marking defect). `updated_at` is compared per row for
 the same reason.
+
+**Step 3 was attempted and the observation was lost; it is not recorded as
+observed.** The pre-pass sample succeeded — **01:09:16, `xbox 515, pending 0`**,
+so the pass would have found nothing eligible. The post-pass sample never
+happened: the host session restarted at that moment and killed the probe.
+
+A later reading at **10:17** showed `xbox 515, pending 0`, with **0 rows new and
+0 rows gone** against the 00:31 baseline. That is *not* a substitute for the
+post-pass reading, because **the bot was not running at 10:17** — no `dist/main`
+process was alive. Without proof the process was up at 01:10, "no messages
+appeared" is indistinguishable from "the pass never executed", which is exactly
+the confound the two-sample design existed to avoid and which a lost sample
+cannot be repaired after the fact.
+
+So SC-003 stands on its **automated** evidence (`generic-platform.spec` — "never
+touches broadcast delivery") and on the pre-pass state being correct, and is
+marked **not observed live**. The two steps that *were* observed — SC-009's reply
+count and SC-004's catalog state — remain recorded above as observed.
 
 ### S6 — A failed fetch removes nothing · proves SC-005
 
@@ -471,7 +489,7 @@ what CI keeps enforcing:
 | S2       | SC-008                 | `command-scope.service.spec` — "removes dev from a deployed run even when the guild is configured"; `test/command-scope.e2e-spec` — "keeps the admin pair in the test guild and drops the dev pair when deployed"                                                                                                                   | run the image with `NODE_ENV=production`     |
 | S3       | SC-001                 | same scope tests as S1 — the `dev`/`sync`/`broadcast` roots are never global                                                                                                                                                                                                                                                        | manual `/sync` in the second guild           |
 | S4       | SC-002, SC-006, SC-010 | `generic-platform.spec` — "picks, suppresses, flips to pending, then sends exactly once (R6)", "skips a platform with no catalog rows at all (FR-007)"; `broadcast.service.spec` — "fetches exactly that channel and never queries a subscription (R-4.1)", "keeps the no-recipient path querying subscriptions (R-4.2)" | ✅ observed 2026-10-18/19 — five runs plus a zero-row Epic catalog; see S4 and SC-006 |
-| S5       | SC-003, SC-004, SC-009 | `generic-platform.spec` — "never touches broadcast delivery", "clears before it writes, then marks announced", "still clears when a successful fetch returns zero rows"; `dev.commands.spec` — "states how many rows were seeded announced (FR-015)"                                                                                | row counts + the scheduled pass on Discord   |
+| S5       | SC-003, SC-004, SC-009 | `generic-platform.spec` — "never touches broadcast delivery", "clears before it writes, then marks announced", "still clears when a successful fetch returns zero rows"; `dev.commands.spec` — "states how many rows were seeded announced (FR-015)"                                                                                | ⚠️ partial 2026-10-19 — reset reply + catalog state observed on Epic and Xbox; the scheduled-pass silence was lost to a host restart, recorded as not observed |
 | S6       | SC-005                 | `generic-platform.spec` — "performs no write when the storefront fetch rejects (R-4.4)"; `dev.commands.spec` — "reports a failed fetch as a failure, not as a reset (FR-010)"                                                                                                                                                       | break the network and compare row counts     |
 | S7       | SC-011                 | `dev.commands.spec` — "acknowledges with deferReply before any awaited work (R-5.2, SC-011)" and its FR-017 twin, plus "answers only through editReply — never a second reply (R-5.2)"                                                                                                                                              | a genuinely slow storefront                  |
 
@@ -488,8 +506,12 @@ and SC-006 executed 2026-10-18/19** (second guild created for the run; counts
 read from the live registry; runtime refusal provoked with a temporary
 registration that was cleaned up afterwards; five consecutive `/dev broadcast`
 runs observed by the operator and corroborated by a catalog read; then a
-zero-row Epic catalog to reach the skip branch). Still open: S1b, S2's live
-count (blocked on a deploy of this branch — the running image is `v3.4.0`,
-which predates it), S5, S6 and S7, each marked with its reason above rather
-than left unmarked. Convergence tasks **T033** and **T036** track the
-remainder. Nothing in this record claims an observation that was not made.
+zero-row Epic catalog to reach the skip branch). **S5 partially observed**
+2026-10-19: its reset reply count (SC-009) and catalog state (SC-004) were
+observed on *both* platforms, but its scheduled-pass silence (SC-003) was lost
+when the host session restarted during the measurement — recorded as not
+observed rather than inferred. Still open: S1b, S2's live count (blocked on a
+deploy of this branch — the running image is `v3.4.0`, which predates it), S6,
+and S7, each marked with its reason above rather than left unmarked.
+Convergence tasks **T033** and **T036** track the remainder. Nothing in this
+record claims an observation that was not made.

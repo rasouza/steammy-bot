@@ -413,8 +413,17 @@ the technical-constraint and deployment blocks) and produced no violation.
   > `Epic Games: skipped (0 delivered)` while `Xbox Game Pass: delivered 1` still delivered, with
   > no error — the skip branch. A preceding run also showed the suppression clause firing with
   > the correct number (`suppressed 5`), the first live confirmation of FR-015's other arm.
+  > **S5** is partial: `/dev sync` was run on both platforms and the reply count plus catalog state
+  > were observed (Epic `2 seeded announced (14 fetched)`; Xbox `515 seeded announced (515
+  > fetched)`, matching because Xbox's mapper filters nothing), with `0` pending rows afterwards on
+  > both — so SC-009 and SC-004 are observed. Its scheduled-pass silence (SC-003) was **not**
+  > observed: the host session restarted mid-measurement and killed the post-pass probe, and the
+  > bot was later found not running, so "no messages" could not be distinguished from "the pass
+  > never ran". Epic could not have proven it anyway — both its rows start 2026-10-22 and are
+  > outside their offer window, which is why the run moved to Xbox, whose pending rule is
+  > window-free.
   > Still open: S1b, S2's live count (blocked on a deploy — the running image is `v3.4.0`, which
-  > predates this branch), S5, S6 and S7. Recorded in quickstart.md
+  > predates this branch), S5/SC-003, S6 and S7. Recorded in quickstart.md
   > with a reason beside each rather than left unmarked.
   >
   > A second converge pass re-verified T031–T035 against the tree and appended Phase 8: **T036**
