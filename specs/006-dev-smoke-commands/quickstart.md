@@ -213,12 +213,35 @@ storefront path (disconnect the network or point the API host at an unroutable a
 **Expected**: the reply reports a failed run, **not** a reset; the row count is byte-identical to
 before (SC-005). Compare immediately before and after.
 
-### S7 — No "did not respond" · proves SC-011
+### S7 — No "did not respond" · proves SC-011 ⛔ deliberately not executed
 
 Run `/dev sync <platform>` against a slow storefront (throttle the network, or watch the first run
 after a cold start). **Expected**: the reply appears immediately and is updated when the work
 finishes. The same applies to `/dev broadcast`. `0` invocations may surface Discord's application
 error.
+
+**Not run, and not planned — a decision taken 2026-10-19, not an oversight.** Two reasons, both
+structural:
+
+**There is no axios timeout anywhere in this codebase** — not in `epic.api.ts`, `xbox.api.ts`, nor
+`axios.defaults`. A "slow storefront" is therefore an *unbounded* hang: `reset()` would never
+resolve, and the only way to end the test is to kill the process holding the socket. A test that
+cannot terminate on its own is not a test worth running, and the workaround would measure the
+harness rather than the code.
+
+**SC-011 is already pinned where it actually lives.** The property is that the acknowledgement is
+sent *before* any awaited work, so Discord's 15-second "did not respond" can never fire. That is
+guaranteed by ordering, not by timing — `onDevSync` and `onDevBroadcast` both call
+`interaction.deferReply(...)` as their first statement, ahead of `runtime(...).reset()`. It is
+asserted directly by `dev.commands.spec` — "acknowledges with deferReply before any awaited work
+(R-5.2, SC-011)" and its FR-017 twin — and it was *also* observed incidentally throughout this
+run: every `/dev sync` and `/dev broadcast` in S4, S5 and SC-006 returned an ephemeral reply
+rather than an application error, including the SC-006 run whose Epic catalog was empty.
+
+**So the record's honest position is**: SC-011 is supported by automated evidence plus incidental
+observation across five live invocations, and was not subjected to its own slow-storefront
+scenario because staging it would have required an unbounded hang to observe a property that
+follows from statement ordering.
 
 ### S8 — No pre-existing check regresses · proves SC-007
 
@@ -491,7 +514,7 @@ what CI keeps enforcing:
 | S4       | SC-002, SC-006, SC-010 | `generic-platform.spec` — "picks, suppresses, flips to pending, then sends exactly once (R6)", "skips a platform with no catalog rows at all (FR-007)"; `broadcast.service.spec` — "fetches exactly that channel and never queries a subscription (R-4.1)", "keeps the no-recipient path querying subscriptions (R-4.2)" | ✅ observed 2026-10-18/19 — five runs plus a zero-row Epic catalog; see S4 and SC-006 |
 | S5       | SC-003, SC-004, SC-009 | `generic-platform.spec` — "never touches broadcast delivery", "clears before it writes, then marks announced", "still clears when a successful fetch returns zero rows"; `dev.commands.spec` — "states how many rows were seeded announced (FR-015)"                                                                                | ⚠️ partial 2026-10-19 — reset reply + catalog state observed on Epic and Xbox; the scheduled-pass silence was lost to a host restart, recorded as not observed |
 | S6       | SC-005                 | `generic-platform.spec` — "performs no write when the storefront fetch rejects (R-4.4)"; `dev.commands.spec` — "reports a failed fetch as a failure, not as a reset (FR-010)"                                                                                                                                                       | break the network and compare row counts     |
-| S7       | SC-011                 | `dev.commands.spec` — "acknowledges with deferReply before any awaited work (R-5.2, SC-011)" and its FR-017 twin, plus "answers only through editReply — never a second reply (R-5.2)"                                                                                                                                              | a genuinely slow storefront                  |
+| S7       | SC-011                 | `dev.commands.spec` — "acknowledges with deferReply before any awaited work (R-5.2, SC-011)" and its FR-017 twin, plus "answers only through editReply — never a second reply (R-5.2)"                                                                                                                                              | ⛔ not executed by decision 2026-10-19 — no axios timeout exists, so a slow storefront is an unbounded hang; see S7 above |
 
 Research **R8**'s propagation caveat applies to the _removal_ half of S1/S2 and
 to post-deploy checklist item 3: a command removed from one guild can stay
@@ -510,8 +533,11 @@ zero-row Epic catalog to reach the skip branch). **S5 partially observed**
 2026-10-19: its reset reply count (SC-009) and catalog state (SC-004) were
 observed on *both* platforms, but its scheduled-pass silence (SC-003) was lost
 when the host session restarted during the measurement — recorded as not
-observed rather than inferred. Still open: S1b, S2's live count (blocked on a
-deploy of this branch — the running image is `v3.4.0`, which predates it), S6,
-and S7, each marked with its reason above rather than left unmarked.
-Convergence tasks **T033** and **T036** track the remainder. Nothing in this
-record claims an observation that was not made.
+observed rather than inferred. **S7 deliberately not executed** 2026-10-19: no
+axios timeout exists anywhere in the codebase, so a "slow storefront" is an
+unbounded hang, and SC-011 follows from `deferReply` being the first statement
+in both handlers. Still open: S1b, S2's live count (blocked on a deploy of this
+branch — the running image is `v3.4.0`, which predates it), S5/SC-003 and S6,
+each marked with its reason above rather than left unmarked. Convergence tasks
+**T033** and **T036** track the remainder. Nothing in this record claims an
+observation that was not made.

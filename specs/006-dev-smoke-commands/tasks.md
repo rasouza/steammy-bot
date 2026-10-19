@@ -421,9 +421,12 @@ the technical-constraint and deployment blocks) and produced no violation.
   > bot was later found not running, so "no messages" could not be distinguished from "the pass
   > never ran". Epic could not have proven it anyway — both its rows start 2026-10-22 and are
   > outside their offer window, which is why the run moved to Xbox, whose pending rule is
-  > window-free.
+  > window-free. **S7** is dropped by decision, not oversight: the codebase sets no axios timeout,
+  > so a slow storefront is an unbounded hang, while SC-011 itself follows from `deferReply` being
+  > the first statement in both handlers and is already asserted by `dev.commands.spec` and seen
+  > incidentally in five live invocations.
   > Still open: S1b, S2's live count (blocked on a deploy — the running image is `v3.4.0`, which
-  > predates this branch), S5/SC-003, S6 and S7. Recorded in quickstart.md
+  > predates this branch), S5/SC-003 and S6. Recorded in quickstart.md
   > with a reason beside each rather than left unmarked.
   >
   > A second converge pass re-verified T031–T035 against the tree and appended Phase 8: **T036**
